@@ -1,0 +1,66 @@
+# Dependencias y cachés
+/.phpunit.cache
+/node_modules
+/vendor
+composer.lock
+
+# Assets compilados
+/public/build
+/public/hot
+
+# Archivos de entorno (sensibles)
+.env
+.env.backup
+.env.production
+.env.local
+.env.*.local
+
+# Archivos de logs y cachés
+*.log
+npm-debug.log
+yarn-error.log
+.phpunit.result.cache
+/storage/logs/*
+!/storage/logs/.gitkeep
+
+# Archivos subidos por usuarios
+/storage/app/public/*
+!/storage/app/public/.gitkeep
+/public/storage
+
+# Backups y archivos temporales
+*.sql
+*.backup
+backup.sql
+*.tmp
+*.temp
+
+# IDE y editores
+/.fleet
+/.idea
+/.vscode
+*.sublime-project
+*.sublime-workspace
+
+# Homestead y Vagrant
+Homestead.json
+Homestead.yaml
+auth.json
+
+# OS específicos
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Archivos de testing
+/coverage
+/tests/coverage
+
+# Archivos específicos del proyecto
+/public/vendor/adminlte
+/public/vendor/fontawesome-free
+/public/vendor/jquery
