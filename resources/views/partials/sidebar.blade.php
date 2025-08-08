@@ -2,11 +2,9 @@
     use App\Models\Modulo;
     use App\Models\Permiso;
     use App\Models\Pedido_para_obra;
-    use App\Models\PresupuestoAprobado;
     $permisos = Permiso::where('area_id', session('usuario_area_id'))->get();
     $modulos = Modulo::all();
     $pedidosPendientes = Pedido_para_obra::where('estado', '1')->count();
-    $presupuestoaprobados = PresupuestoAprobado::where('estado', '1')->count();
 @endphp
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <a href="#" class="brand-link">
@@ -38,46 +36,7 @@
                             <i class="right fas fa-angle-left"></i>
                         </p>
                     </a>
-                    @if ($permisos->where('modulo_id', Modulo::where('nombre', 'pre_apr_ing')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
-                    <ul class="nav nav-treeview">
-                        <li class="nav-item">
-                            <a href="{{ route('presupuesto_aprobado.index') }}" class="nav-link">
-                                <i class="nav-icon fas fa-minus"></i>
-                                <p>Presupuesto Aprobado</p>
-                            </a>
-                        </li>
-                    </ul>
-                    @endif
-                    @if ($permisos->where('modulo_id', Modulo::where('nombre', 'val_pre_apr')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
-                    <ul class="nav nav-treeview">
-                        <li class="nav-item">
-                            <a href="{{ route('validar_presupuesto.index') }}" class="nav-link">
-                                <i class="nav-icon fas fa-minus"></i>
-                                <p>Validar Presupuesto</p>
-                            </a>
-                        </li>
-                    </ul>
-                    @endif
-                    @if ($permisos->where('modulo_id', Modulo::where('nombre', 'age_tra')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
-                    <ul class="nav nav-treeview">
-                        <li class="nav-item">
-                            <a href="{{ route('agendamiento.index') }}" class="nav-link">
-                                <i class="nav-icon fas fa-minus"></i>
-                                <p>Agendar Trabajos</p>
-                            </a>
-                        </li>
-                    </ul>
-                    @endif
-                    @if ($permisos->where('modulo_id', Modulo::where('nombre', 'ges_tra')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
-                    <ul class="nav nav-treeview">
-                        <li class="nav-item">
-                            <a href="{{ route('gestiontrabajo.index') }}" class="nav-link">
-                                <i class="nav-icon fas fa-minus"></i>
-                                <p>Gestion de trabajos</p>
-                            </a>
-                        </li>
-                    </ul>
-                    @endif
+
                     @if ($permisos->where('modulo_id', Modulo::where('nombre', 'ped_obr_ing')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
@@ -134,12 +93,12 @@
                                 <i class="right fas fa-angle-left"></i>
                             </p>
                         </a>
-                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'pre_apr_adm')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
+                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'pre')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('trabajo_cobrar.index') }}" class="nav-link">
+                                    <a href="{{ route('presupuestos.index') }}" class="nav-link">
                                         <i class="nav-icon fas fa-minus"></i>
-                                        <p>Trabajos Aprobados</p>
+                                        <p>Presupuestos</p>
                                     </a>
                                 </li>
                             </ul>

@@ -1,19 +1,15 @@
 <?php
 
-use App\Http\Controllers\AgendamientoController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DocumentosController;
-use App\Http\Controllers\GestiontrabajoController;
 use App\Http\Controllers\InsumosController;
 use App\Http\Controllers\ObrasController;
 use App\Http\Controllers\PedobraController;
 use App\Http\Controllers\PermisosController;
 use App\Http\Controllers\PreparobraController;
-use App\Http\Controllers\PresupuestoaprobadoController;
-use App\Http\Controllers\TrabajosaprobadosController;
+use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\UsuariosController;
-use App\Http\Controllers\ValidarpresupuestoController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
@@ -85,32 +81,8 @@ Route::get('/permisos', [PermisosController::class, 'index'])->name('permisos.in
 Route::get('/permisos/{id}/editar', [PermisosController::class, 'edit'])->name('permisos.edit');
 Route::put('/permisos/{id}', [PermisosController::class, 'update'])->name('permisos.update');
 
-// Rutas para la vista de presupuestos aprobados
-Route::get('/presupuesto_aprobado', [PresupuestoaprobadoController::class, 'index'])->name('presupuesto_aprobado.index');
-Route::get('/presupuesto_aprobado/cargar', [PresupuestoAprobadoController::class, 'create'])->name('presupuesto_aprobado.create');
-Route::post('/presupuesto_aprobado', [PresupuestoAprobadoController::class, 'store'])->name('presupuesto_aprobado.store');
-Route::get('/presupuesto_aprobado/{id}/editar', [PresupuestoAprobadoController::class, 'edit'])->name('presupuesto_aprobado.edit');
-Route::put('/presupuesto_aprobado/{id}', [PresupuestoAprobadoController::class, 'update'])->name('presupuesto_aprobado.update');
 
 
-// Rutas para la validar presupuestos aprobados
-Route::get('/validar_presupuesto', [ValidarpresupuestoController::class, 'index'])->name('validar_presupuesto.index');
-Route::get('/validar_presupuesto', [ValidarpresupuestoController::class, 'store'])->name('validar_presupuesto.store');
-Route::resource('validar_presupuesto', ValidarpresupuestoController::class);
-Route::post('validar_presupuesto/check', [ValidarpresupuestoController::class, 'checkObra'])->name('validar_presupuesto.check');
-Route::post('validar_presupuesto/anular/{id}', [ValidarpresupuestoController::class, 'anular'])->name('validar_presupuesto.anular');
-
-// Rutas para la cobrar presupuestos aprobados
-Route::get('/trabajo_cobrar', [TrabajosaprobadosController::class, 'index'])->name('trabajo_cobrar.index');
-Route::post('/trabajo_cobrar', [TrabajosaprobadosController::class, 'store'])->name('trabajo_cobrar.store');
-Route::post('/trabajo_cobrar/anular/{id}', [TrabajosaprobadosController::class, 'anular'])->name('trabajo_cobrar.anular');
-
-// Rutas para agendamiento
-Route::get('/agendamiento', [AgendamientoController::class, 'index'])->name('agendamiento.index');
-Route::resource('agendamiento', AgendamientoController::class);
-
-// Rutas para gestion de trabajos
-Route::get('/gestiontrabajo', [GestiontrabajoController::class, 'index'])->name('gestiontrabajo.index');
 
 
 // Rutas para gestion de informes
@@ -124,3 +96,23 @@ Route::get('/documentos/{id}/detalles', [DocumentosController::class, 'detalles'
 Route::post('/documentos/{id}/detalles', [DocumentosController::class, 'guardarDetalles'])->name('documentos.detalles.guardar');
 Route::get('documentos/{id}/generar-word', [DocumentosController::class, 'generarWord'])->name('documentos.generarWord');
 Route::get('/documentos/{id}/reemplazar-marcadores', [DocumentosController::class, 'reemplazarMarcadoresInforme'])->name('documentos.reemplazarMarcadores');
+
+// Rutas para gestion de presupuestos
+Route::get('/presupuestos', [PresupuestoController::class, 'index'])->name('presupuestos.index');
+Route::get('/presupuestos/create', [PresupuestoController::class, 'create'])->name('presupuestos.create');
+Route::post('/presupuestos', [PresupuestoController::class, 'store'])->name('presupuestos.store');
+Route::get('/presupuestos/{id}/edit', [PresupuestoController::class, 'edit'])->name('presupuestos.edit');
+Route::put('/presupuestos/{id}', [PresupuestoController::class, 'update'])->name('presupuestos.update');
+Route::get('/presupuestos/{id}/download/{type}', [PresupuestoController::class, 'downloadFile'])->name('presupuestos.download-file');
+Route::get('/presupuestos/{id}', [PresupuestoController::class, 'show'])->name('presupuestos.show');
+Route::delete('/presupuestos/{id}', [PresupuestoController::class, 'destroy'])->name('presupuestos.destroy');
+
+
+// Rutas para gestion de facturas
+Route::get('/presupuestos/{id}/facturas/create', [PresupuestoController::class, 'createFactura'])->name('presupuestos.facturas.create');
+Route::post('/presupuestos/{id}/facturas', [PresupuestoController::class, 'storeFactura'])->name('presupuestos.facturas.store');
+
+
+// Rutas para gestion de recibos
+Route::get('/facturas/{id}/recibos/create', [PresupuestoController::class, 'createRecibo'])->name('facturas.recibos.create');
+Route::post('/facturas/{id}/recibos', [PresupuestoController::class, 'storeRecibo'])->name('facturas.recibos.store');

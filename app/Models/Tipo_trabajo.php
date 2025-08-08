@@ -12,7 +12,7 @@ class Tipo_trabajo extends Model
     protected $table = 'tipo_trabajos';
 
     protected $fillable = [
-        'descripcion',
+        'nombre',
         'estado',
     ];
 

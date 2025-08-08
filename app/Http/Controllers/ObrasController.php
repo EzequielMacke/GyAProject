@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Obra;
-use App\Models\PresupuestoAprobado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,7 +13,6 @@ class ObrasController extends Controller
         $obras = Obra::with('presupuestos')->get();
         $estados = config('constantes.estado_obras');
         $estados_pre = config('constantes.estado_de_presupuestos');
-        $presupuestos = PresupuestoAprobado::all();
         $tipo_trabajo = config('constantes.tipo_trabajo');
         return view('obras.index', compact('obras', 'estados','presupuestos','tipo_trabajo','estados_pre'));
     }
