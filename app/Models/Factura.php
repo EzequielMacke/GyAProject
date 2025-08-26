@@ -17,6 +17,7 @@ class Factura extends Model
         'moneda_id',
         'fecha',
         'usuario_id',
+        'adjunto',
     ];
 
     // Relaciones

@@ -10,11 +10,10 @@ class ObrasController extends Controller
 {
     public function index()
     {
-        $obras = Obra::with('presupuestos')->get();
+        $obras = Obra::with('usuario')->get();
         $estados = config('constantes.estado_obras');
-        $estados_pre = config('constantes.estado_de_presupuestos');
-        $tipo_trabajo = config('constantes.tipo_trabajo');
-        return view('obras.index', compact('obras', 'estados','presupuestos','tipo_trabajo','estados_pre'));
+
+        return view('obras.index', compact('obras', 'estados'));
     }
 
     public function create()
@@ -100,5 +99,12 @@ class ObrasController extends Controller
         return redirect()->route('obras.index')->with('success', 'Obra actualizada exitosamente.');
     }
 
+    public function show($id)
+    {
+        $obra = Obra::with(['usuario', 'presupuestos.tipoTrabajo', 'presupuestos.moneda', 'presupuestos.estado', 'presupuestos.usuario'])->findOrFail($id);
+        $estados = config('constantes.estado_obras');
+
+        return view('obras.show', compact('obra', 'estados'));
+    }
 
 }

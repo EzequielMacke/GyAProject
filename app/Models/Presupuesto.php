@@ -12,6 +12,7 @@ class Presupuesto extends Model
         'nombre',
         'fecha',
         'usuario_id',
+        'observacion',
         'obra_id',
         'presupuesto',
         'conformidad',

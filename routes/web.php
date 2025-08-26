@@ -58,7 +58,9 @@ Route::get('/usuarios', [UsuariosController::class, 'index'])->name('usuarios.in
 Route::get('/obras/cargar', [ObrasController::class, 'create'])->name('obras.create');
 Route::post('/obras', [ObrasController::class, 'store'])->name('obras.store');
 Route::get('/obras', [ObrasController::class, 'index'])->name('obras.index');
-Route::resource('obras', ObrasController::class);
+Route::get('/obras/{id}', [ObrasController::class, 'show'])->name('obras.show');
+Route::get('/obras/{id}/edit', [ObrasController::class, 'edit'])->name('obras.edit');
+Route::put('/obras/{id}', [ObrasController::class, 'update'])->name('obras.update');
 
 // Ruta para la vista de carga de pedidos de obras
 Route::get('/pedidobra/cargar', [PedobraController::class, 'create'])->name('pedidobra.create');
@@ -100,6 +102,8 @@ Route::get('/documentos/{id}/reemplazar-marcadores', [DocumentosController::clas
 // Rutas para gestion de presupuestos
 Route::get('/presupuestos', [PresupuestoController::class, 'index'])->name('presupuestos.index');
 Route::get('/presupuestos/create', [PresupuestoController::class, 'create'])->name('presupuestos.create');
+Route::get('/presupuestos/reportes', [PresupuestoController::class, 'reportes'])->name('presupuestos.reportes');
+Route::get('/presupuestos/reporte/{tipo}', [PresupuestoController::class, 'generarReporte'])->name('presupuestos.generar.reporte');
 Route::post('/presupuestos', [PresupuestoController::class, 'store'])->name('presupuestos.store');
 Route::get('/presupuestos/{id}/edit', [PresupuestoController::class, 'edit'])->name('presupuestos.edit');
 Route::put('/presupuestos/{id}', [PresupuestoController::class, 'update'])->name('presupuestos.update');
@@ -111,8 +115,15 @@ Route::delete('/presupuestos/{id}', [PresupuestoController::class, 'destroy'])->
 // Rutas para gestion de facturas
 Route::get('/presupuestos/{id}/facturas/create', [PresupuestoController::class, 'createFactura'])->name('presupuestos.facturas.create');
 Route::post('/presupuestos/{id}/facturas', [PresupuestoController::class, 'storeFactura'])->name('presupuestos.facturas.store');
+Route::get('/facturas/{id}/download-adjunto', [PresupuestoController::class, 'downloadAdjuntoFactura'])->name('facturas.download-adjunto');
+Route::get('/facturas/{id}/edit', [PresupuestoController::class, 'editFactura'])->name('facturas.edit');
+Route::put('/facturas/{id}', [PresupuestoController::class, 'updateFactura'])->name('facturas.update');
+Route::delete('/facturas/{id}', [PresupuestoController::class, 'destroyFactura'])->name('facturas.destroy');
 
 
 // Rutas para gestion de recibos
 Route::get('/facturas/{id}/recibos/create', [PresupuestoController::class, 'createRecibo'])->name('facturas.recibos.create');
 Route::post('/facturas/{id}/recibos', [PresupuestoController::class, 'storeRecibo'])->name('facturas.recibos.store');
+Route::get('/recibos/{id}/edit', [PresupuestoController::class, 'editRecibo'])->name('recibos.edit');
+Route::put('/recibos/{id}', [PresupuestoController::class, 'updateRecibo'])->name('recibos.update');
+Route::delete('/recibos/{id}', [PresupuestoController::class, 'destroyRecibo'])->name('recibos.destroy');

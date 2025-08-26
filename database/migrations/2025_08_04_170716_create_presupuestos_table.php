@@ -15,6 +15,7 @@ return new class extends Migration
             $table->increments('id');
             $table->string('nombre');
             $table->date('fecha');
+            $table->text('observacion')->nullable();
             $table->unsignedBigInteger('usuario_id');
             $table->foreign('usuario_id')->references('id')->on('usuarios');
             $table->unsignedBigInteger('obra_id')->nullable();

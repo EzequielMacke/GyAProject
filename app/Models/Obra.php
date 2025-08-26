@@ -19,7 +19,7 @@ class Obra extends Model
     }
     public function presupuestos()
     {
-        return $this->hasMany(PresupuestoAprobado::class, 'obra_id');
+        return $this->hasMany(Presupuesto::class);
     }
 }
 

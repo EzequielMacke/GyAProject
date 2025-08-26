@@ -82,6 +82,38 @@
         .cotizacion-container {
             display: none;
         }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .file-input-label {
+            cursor: pointer;
+            display: block;
+            padding: 12px 16px;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background-color: #f8f9fa;
+        }
+        .file-input-label:hover {
+            border-color: #28a745;
+            background-color: #f0fff4;
+        }
+        .file-preview {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 6px;
+            display: none;
+        }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -146,7 +178,7 @@
                                         </div>
                                     </div>
 
-                                    <form action="{{ route('presupuestos.facturas.store', $presupuesto->id) }}" method="POST" id="facturaForm">
+                                    <form action="{{ route('presupuestos.facturas.store', $presupuesto->id) }}" method="POST" id="facturaForm" enctype="multipart/form-data">
                                         @csrf
 
                                         <!-- Información del sistema -->
@@ -199,6 +231,35 @@
                                                         <textarea name="concepto" class="form-control" rows="3"
                                                                   placeholder="Descripción del trabajo facturado..." required></textarea>
                                                         <small class="form-text text-muted">Descripción detallada del concepto facturado</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <div class="form-group">
+                                                        <label>
+                                                            <i class="fas fa-file-pdf text-danger mr-2"></i>
+                                                            Documento adjunto (PDF opcional)
+                                                        </label>
+                                                        <div class="file-input-wrapper">
+                                                            <input type="file" name="documento" id="documento" accept="application/pdf">
+                                                            <label for="documento" class="file-input-label">
+                                                                <i class="fas fa-cloud-upload-alt text-success fa-2x mb-2"></i>
+                                                                <div class="font-weight-bold">Haga clic para seleccionar archivo PDF</div>
+                                                                <div class="small text-muted mt-1">Máximo 100MB - Formato PDF únicamente</div>
+                                                            </label>
+                                                        </div>
+                                                        <div id="documento-preview" class="file-preview">
+                                                            <i class="fas fa-file-pdf text-danger mr-2"></i>
+                                                            <span id="file-name"></span>
+                                                            <div class="small text-muted mt-1">
+                                                                <span id="file-size"></span>
+                                                            </div>
+                                                        </div>
+                                                        <small class="form-text text-muted">
+                                                            <i class="fas fa-info-circle mr-1"></i>
+                                                            Adjunte un archivo PDF que respalde lo facturado (opcional)
+                                                        </small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -341,6 +402,50 @@
 
                 // Mostrar loading
                 $('button[type="submit"]').html('<i class="fas fa-spinner fa-spin mr-2"></i>Guardando...').prop('disabled', true);
+            });
+
+            // Preview de archivo PDF
+            $('#documento').on('change', function() {
+                const file = this.files[0];
+                const preview = $('#documento-preview');
+
+                if (file) {
+                    // Validar tipo de archivo
+                    if (file.type !== 'application/pdf') {
+                        alert('Por favor seleccione solo archivos PDF');
+                        this.value = '';
+                        preview.hide();
+                        return;
+                    }
+
+                    // Validar tamaño (100MB = 104857600 bytes)
+                    if (file.size > 104857600) {
+                        alert('El archivo es demasiado grande. El tamaño máximo permitido es 10MB');
+                        this.value = '';
+                        preview.hide();
+                        return;
+                    }
+
+                    // Mostrar preview
+                    $('#file-name').text(file.name);
+                    $('#file-size').text((file.size / 1024 / 1024).toFixed(2) + ' MB');
+                    preview.show();
+
+                    // Actualizar label
+                    $(this).siblings('label').html(`
+                        <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                        <div class="font-weight-bold text-success">Archivo seleccionado correctamente</div>
+                        <div class="small text-muted mt-1">${file.name}</div>
+                    `);
+                } else {
+                    preview.hide();
+                    // Restaurar label original
+                    $(this).siblings('label').html(`
+                        <i class="fas fa-cloud-upload-alt text-success fa-2x mb-2"></i>
+                        <div class="font-weight-bold">Haga clic para seleccionar archivo PDF</div>
+                        <div class="small text-muted mt-1">Máximo 100MB - Formato PDF únicamente</div>
+                    `);
+                }
             });
         });
     </script>

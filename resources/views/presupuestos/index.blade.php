@@ -161,6 +161,10 @@
                                     Agregar Presupuesto
                                 </a>
                                 @endif
+                                <a href="{{ route('presupuestos.reportes') }}" class="btn btn-danger mt-2">
+                                    <i class="fas fa-file-pdf mr-1"></i>
+                                    Generar Reportes
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -186,6 +190,15 @@
                         <div class="alert alert-success alert-dismissible fade show">
                             <i class="fas fa-check-circle mr-2"></i>
                             {{ session('success') }}
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                    @endif
+                    @if (session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            {{ session('error') }}
                             <button type="button" class="close" data-dismiss="alert">
                                 <span>&times;</span>
                             </button>
@@ -397,6 +410,11 @@
                                                                     <div class="row align-items-center">
                                                                         <div class="col-md-2">
                                                                             <strong>Factura #{{ $factura->numero ?? 'S/N' }}</strong>
+                                                                            @if($factura->adjunto)
+                                                                                <br><small class="text-success">
+                                                                                    <i class="fas fa-paperclip mr-1"></i>Con adjunto
+                                                                                </small>
+                                                                            @endif
                                                                         </div>
                                                                         <div class="col-md-1">
                                                                             <small class="text-muted">Fecha:</small><br>
@@ -442,15 +460,20 @@
                                                                                     <i class="fas fa-cog"></i>
                                                                                 </button>
                                                                                 <div class="dropdown-menu dropdown-menu-right">
-                                                                                    <a class="dropdown-item" href="#" onclick="editarFactura({{ $factura->id }})">
+                                                                                    <a class="dropdown-item" href="{{ route('facturas.edit', $factura->id) }}">
                                                                                         <i class="fas fa-edit mr-1"></i> Editar
                                                                                     </a>
+                                                                                    @if($factura->adjunto)
+                                                                                        <a class="dropdown-item" href="{{ route('facturas.download-adjunto', $factura->id) }}" target="_blank">
+                                                                                            <i class="fas fa-file-pdf text-danger mr-1"></i> Ver Documento
+                                                                                        </a>
+                                                                                    @endif
                                                                                     @if($factura->recibos->count() == 0)
-                                                                                        <form action="#" method="POST" style="display: inline;">
+                                                                                        <form action="{{ route('facturas.destroy', $factura->id) }}" method="POST" style="display: inline;">
                                                                                             @csrf
                                                                                             @method('DELETE')
                                                                                             <button type="submit" class="dropdown-item text-danger" style="border: none; background: none; width: 100%; text-align: left;"
-                                                                                                    onclick="return confirm('¿Está seguro de eliminar esta factura?')">
+                                                                                                    onclick="return confirm('¿Está seguro de eliminar esta factura? Esta acción no se puede deshacer.')">
                                                                                                 <i class="fas fa-trash mr-1"></i> Eliminar
                                                                                             </button>
                                                                                         </form>
@@ -509,10 +532,10 @@
                                                                                                         <i class="fas fa-cog"></i>
                                                                                                     </button>
                                                                                                     <div class="dropdown-menu dropdown-menu-right">
-                                                                                                        <a class="dropdown-item" href="#" onclick="editarRecibo({{ $recibo->id }})">
+                                                                                                        <a class="dropdown-item" href="{{ route('recibos.edit', $recibo->id) }}">
                                                                                                             <i class="fas fa-edit mr-1"></i> Editar
                                                                                                         </a>
-                                                                                                        <form action="#" method="POST" style="display: inline;">
+                                                                                                        <form action="{{ route('recibos.destroy', $recibo->id) }}" method="POST" style="display: inline;">
                                                                                                             @csrf
                                                                                                             @method('DELETE')
                                                                                                             <button type="submit" class="dropdown-item text-danger" style="border: none; background: none; width: 100%; text-align: left;"

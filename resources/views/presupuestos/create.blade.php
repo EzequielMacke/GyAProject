@@ -208,6 +208,12 @@
                                                         </select>
                                                     </div>
                                                 </div>
+                                                <div class="col-md-12">
+                                                    <div class="form-group">
+                                                        <label>Observación</label>
+                                                        <textarea name="observacion" class="form-control" rows="3" placeholder="Ingrese una observación o comentario adicional"></textarea>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -300,7 +306,7 @@
                                                             <label for="presupuesto" class="file-input-label">
                                                                 <i class="fas fa-cloud-upload-alt text-primary mr-2"></i>
                                                                 Haga clic para seleccionar el archivo PDF
-                                                                <div class="small text-muted mt-1">Máximo 10MB</div>
+                                                                <div class="small text-muted mt-1">Máximo 100MB</div>
                                                             </label>
                                                         </div>
                                                         <div id="presupuesto-preview" class="mt-2"></div>
@@ -315,7 +321,7 @@
                                                             <label for="conformidad" class="file-input-label">
                                                                 <i class="fas fa-cloud-upload-alt text-primary mr-2"></i>
                                                                 Haga clic para seleccionar el archivo PDF
-                                                                <div class="small text-muted mt-1">Máximo 10MB</div>
+                                                                <div class="small text-muted mt-1">Máximo 100MB</div>
                                                             </label>
                                                         </div>
                                                         <div id="conformidad-preview" class="mt-2"></div>
@@ -425,13 +431,41 @@
                 this.value = parts.join(',');
             });
 
-            // Preview de archivos
+            // Preview de archivos con validación de tamaño
             function handleFilePreview(input, previewId) {
                 $(input).on('change', function() {
                     const file = this.files[0];
                     const preview = $(previewId);
 
                     if (file) {
+                        // Validar tipo de archivo
+                        if (file.type !== 'application/pdf') {
+                            alert('Por favor seleccione solo archivos PDF');
+                            this.value = '';
+                            preview.empty();
+                            // Restaurar label original
+                            $(this).siblings('label').html(`
+                                <i class="fas fa-cloud-upload-alt text-primary mr-2"></i>
+                                Haga clic para seleccionar el archivo PDF
+                                <div class="small text-muted mt-1">Máximo 100MB</div>
+                            `);
+                            return;
+                        }
+
+                        // Validar tamaño (100MB = 104857600 bytes)
+                        if (file.size > 104857600) {
+                            alert('El archivo es demasiado grande. El tamaño máximo permitido es 100MB');
+                            this.value = '';
+                            preview.empty();
+                            // Restaurar label original
+                            $(this).siblings('label').html(`
+                                <i class="fas fa-cloud-upload-alt text-primary mr-2"></i>
+                                Haga clic para seleccionar el archivo PDF
+                                <div class="small text-muted mt-1">Máximo 100MB</div>
+                            `);
+                            return;
+                        }
+
                         preview.html(`
                             <div class="alert alert-success alert-dismissible fade show" role="alert">
                                 <i class="fas fa-file-pdf mr-2"></i>
@@ -448,6 +482,12 @@
                         `);
                     } else {
                         preview.empty();
+                        // Restaurar label original
+                        $(this).siblings('label').html(`
+                            <i class="fas fa-cloud-upload-alt text-primary mr-2"></i>
+                            Haga clic para seleccionar el archivo PDF
+                            <div class="small text-muted mt-1">Máximo 100MB</div>
+                        `);
                     }
                 });
             }

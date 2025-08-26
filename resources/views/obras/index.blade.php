@@ -3,109 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Listado de Obras</title>
+    <title>Gestión de Obras</title>
     @include('partials.head')
-    <script>
-        document.addEventListener('keydown', function(event) {
-            if (event.ctrlKey && event.key === '1') {
-                event.preventDefault();
-                document.getElementById('agregar-obra-btn').click();
+    <style>
+        .content-header {
+            background: #007bff;
+            color: white;
+            border-radius: 0 0 20px 20px;
+            margin-bottom: 30px;
+            padding: 30px 0;
+        }
+        .content-header h1 {
+            color: white;
+            font-weight: 600;
+            margin: 0;
+        }
+        .content-header .breadcrumb {
+            background: transparent;
+            margin: 0;
+            padding: 0;
+        }
+        .search-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            border: none;
+            margin-bottom: 25px;
+        }
+        .table-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            border: none;
+            overflow: hidden;
+        }
+        .table {
+            margin: 0;
+        }
+        .table thead th {
+            background: #f8f9fa;
+            border: none;
+            font-weight: 600;
+            color: #495057;
+            padding: 15px;
+        }
+        .table tbody td {
+            padding: 15px;
+            vertical-align: middle;
+            border-top: 1px solid #f1f3f4;
+        }
+        .table tbody tr:hover {
+            background-color: #f8f9ff;
+            transition: all 0.3s ease;
+        }
+        .btn-action {
+            margin: 2px;
+            border-radius: 8px;
+            padding: 8px 12px;
+            transition: all 0.3s ease;
+        }
+        .btn-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn-add {
+            background: #28a745;
+            border: none;
+            color: white;
+            font-weight: 600;
+            border-radius: 25px;
+            padding: 12px 30px;
+            transition: all 0.3s ease;
+        }
+        .btn-add:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            color: white;
+        }
+        .search-input {
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        .search-input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .badge-estado {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 0.85em;
+        }
+        .badge-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .badge-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .badge-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .badge-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .badge-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        .loading-row {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        .action-buttons {
+            white-space: nowrap;
+        }
+        .btn-info {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+        }
+        .btn-info:hover {
+            background-color: #138496;
+            border-color: #117a8b;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+            color: #212529;
+        }
+        .text-primary {
+            color: #007bff !important;
+        }
+        .text-success {
+            color: #28a745 !important;
+        }
+        .text-muted {
+            color: #6c757d !important;
+        }
+        @media (max-width: 768px) {
+            .table-responsive {
+                border-radius: 15px;
             }
-        });
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('search');
-            const tableRows = document.querySelectorAll('#obras-table tbody tr');
-            const tipoTrabajo = @json($tipo_trabajo);
-            const estados = @json($estados);
-            const estados_pre = @json($estados_pre);
-
-            searchInput.addEventListener('input', function() {
-                const searchTerm = searchInput.value.toLowerCase();
-
-                tableRows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    const rowText = Array.from(cells).map(cell => cell.textContent.toLowerCase()).join(' ');
-                    if (rowText.includes(searchTerm)) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-            });
-
-            document.querySelectorAll('.btn-ver').forEach(button => {
-                button.addEventListener('click', function() {
-                    const obra = JSON.parse(this.getAttribute('data-obra'));
-                    const presupuestos = obra.presupuestos || [];
-                    const modalTitle = document.getElementById('verObraModalTitle');
-                    const modalBody = document.getElementById('verObraModalBody');
-
-                    modalTitle.textContent = `Obra ID: ${obra.id}`;
-                let presupuestosHtml = '';
-                if (presupuestos.length > 0) {
-                    presupuestosHtml = `
-                        <h5>Presupuestos Asociados</h5>
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Nombre del presupuesto</th>
-                                    <th>Tipo de Trabajo</th>
-                                    <th>Orden de Trabajo</th>
-                                    <th>PDF</th>
-                                    <th>Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    `;
-                    presupuestos.forEach(presupuesto => {
-                        const pdfUrl = presupuesto.presupuesto.replace('public/', '');
-                        presupuestosHtml += `
-                            <tr>
-                                <td>${presupuesto.id}</td>
-                                <td>${presupuesto.clave}</td>
-                                <td>${tipoTrabajo[presupuesto.tipo_trabajo] || 'Desconocido'}</td>
-                                <td>${presupuesto.orden_trabajo || 'Pendiente'}</td>
-                                <td><a href="/storage/${pdfUrl}" target="_blank">Ver PDF</a></td>
-                                <td>${estados_pre[presupuesto.estado] || 'Pendiente'}</td>
-                            </tr>
-                        `;
-                    });
-                    presupuestosHtml += `
-                            </tbody>
-                        </table>
-                    `;
-                } else {
-                    presupuestosHtml = '<p>No hay presupuestos asociados a esta obra.</p>';
-                }
-
-                modalBody.innerHTML = `
-                    <p><strong>Nombre:</strong> ${obra.nombre || 'Pendiente'}</p>
-                    <p><strong>Dirección:</strong> ${obra.direccion || 'Pendiente'}</p>
-                    <p><strong>Contacto:</strong> ${obra.contacto || 'Pendiente'}</p>
-                    <p><strong>Número de contacto:</strong> ${obra.numero || 'Pendiente'}</p>
-                    <p><strong>Peticionario:</strong> ${obra.peticionario || 'Pendiente'}</p>
-                    <p><strong>Observación:</strong> ${obra.observacion || 'Pendiente'}</p>
-                    <p><strong>Cargado por:</strong> ${obra.usuario.nombre || 'Pendiente'}</p>
-                    <p><strong>Cargado en fecha:</strong> ${obra.fecha_carga || 'Pendiente'}</p>
-                    <p><strong>RUC:</strong> ${obra.ruc || 'Pendiente'}</p>
-                    <p><strong>Razón Social:</strong> ${obra.razon_social || 'Pendiente'}</p>
-                    <p><strong>Dirección Facturación:</strong> ${obra.direccion_fac || 'Pendiente'}</p>
-                    <p><strong>Correo Facturación:</strong> ${obra.correo_fac || 'Pendiente'}</p>
-                    <p><strong>Correo Peticionario:</strong> ${obra.correo_pet || 'Pendiente'}</p>
-                    <p><strong>Nombre Obra:</strong> ${obra.nombre_obr || 'Pendiente'}</p>
-                    <p><strong>Teléfono Obra:</strong> ${obra.telefono_obr || 'Pendiente'}</p>
-                    <p><strong>Correo Obra:</strong> ${obra.correo_obr || 'Pendiente'}</p>
-                    <p><strong>Nombre Administrador:</strong> ${obra.nombre_adm || 'Pendiente'}</p>
-                    <p><strong>Teléfono Administrador:</strong> ${obra.telefono_adm || 'Pendiente'}</p>
-                    <p><strong>Correo Administrador:</strong> ${obra.correo_adm || 'Pendiente'}</p>
-                    ${presupuestosHtml}
-                `;
-                    $('#verObraModal').modal('show');
-                });
-            });
-        });
-    </script>
+            .content-header {
+                text-align: center;
+            }
+        }
+    </style>
     @php
         use App\Models\Modulo;
         use App\Models\Permiso;
@@ -121,100 +188,259 @@
     <div class="wrapper">
         @include('partials.navbar')
         @include('partials.sidebar')
+
         <div class="content-wrapper">
+            <!-- Header -->
             <div class="content-header">
                 <div class="container-fluid">
-                    <div class="row mb-2">
-                        <div class="col-sm-6">
-                            <h1 class="m-0">Listado de Obras</h1>
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="mb-2">
+                                <i class="fas fa-building mr-3"></i>
+                                Gestión de Obras
+                            </h1>
+                            <p class="mb-0 opacity-75">Administre y controle todas sus obras de construcción</p>
                         </div>
-                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('agregar', 1)->isNotEmpty())
-                        <div class="col-sm-6">
-                            <a href="{{ route('obras.create') }}" class="btn btn-primary float-right" id="agregar-obra-btn">Agregar Obra</a>
-                        </div>
-                        @endif
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-sm-12">
-                            <input type="text" id="search" name="search" class="form-control mr-2" placeholder="Buscar obras...">
+                        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+                            @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('agregar', 1)->isNotEmpty())
+                            <a href="{{ route('obras.create') }}" class="btn btn-add" id="agregar-obra-btn">
+                                <i class="fas fa-plus mr-2"></i>
+                                Nueva Obra
+                            </a>
+                            @endif
                         </div>
                     </div>
                 </div>
             </div>
+
             <section class="content">
                 <div class="container-fluid">
+                    <!-- Mensajes de éxito -->
                     @if (session('success'))
-                        <div class="alert alert-success">
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle mr-2"></i>
                             {{ session('success') }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
                         </div>
                     @endif
-                    <table class="table table-bordered" id="obras-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Dirección</th>
-                                <th>Contacto</th>
-                                <th>Numero de contacto</th>
-                                <th>Peticionario</th>
-                                <th>Cargado por</th>
-                                <th>Cargado en fecha</th>
-                                <th>Observacion</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($obras->reverse() as $obra)
-                                <tr>
-                                    <td>{{ $obra->id }}</td>
-                                    <td>{{ $obra->nombre }}</td>
-                                    <td>{{ $obra->direccion }}</td>
-                                    <td>{{ $obra->contacto }}</td>
-                                    <td>{{ $obra->numero }}</td>
-                                    <td>{{ $obra->peticionario }}</td>
-                                    <td>{{ $obra->usuario->nombre }}</td>
-                                    <td>{{ $obra->fecha_carga }}</td>
-                                    <td>{{ $obra->observacion }}</td>
-                                    <td>{{ $estados[$obra->estado] ?? 'Desconocido' }}</td>
-                                    <td>
-                                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('editar', 1)->isNotEmpty())
-                                        <a href="{{ route('obras.edit', $obra->id) }}" class="btn btn-warning btn-sm" data-toggle="tooltip" title="Editar">
-                                         <i class="nav-icon fas fa-pen"></i>
-                                        </a>
-                                        @endif
-                                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
-                                        <button class="btn btn-secondary btn-sm btn-ver" data-toggle="tooltip" title="Ver" data-obra="{{ json_encode($obra) }}" data-presupuestos="{{ json_encode($presupuestos->where('obra_id', $obra->id)) }}">
-                                            <i class="nav-icon fas fa-eye"></i>
-                                        </button>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+
+                    <!-- Buscador -->
+                    <div class="card search-card">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-transparent border-0">
+                                                <i class="fas fa-search text-muted"></i>
+                                            </span>
+                                        </div>
+                                        <input type="text" id="search" class="form-control search-input border-0"
+                                               placeholder="Buscar por nombre, dirección, contacto, peticionario..."
+                                               autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-md-right mt-3 mt-md-0">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Mostrando <span id="results-count">{{ $obras->count() }}</span> obras
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de obras -->
+                    <div class="card table-card">
+                        <div class="card-body p-0">
+                            @if($obras->count() > 0)
+                            <div class="table-responsive">
+                                <table class="table" id="obras-table">
+                                    <thead>
+                                        <tr>
+                                            <th><i class="fas fa-hashtag mr-1"></i> ID</th>
+                                            <th><i class="fas fa-building mr-1"></i> Nombre</th>
+                                            <th><i class="fas fa-map-marker-alt mr-1"></i> Dirección</th>
+                                            <th><i class="fas fa-user mr-1"></i> Contacto</th>
+                                            <th><i class="fas fa-phone mr-1"></i> Teléfono</th>
+                                            <th><i class="fas fa-user-tie mr-1"></i> Peticionario</th>
+                                            <th><i class="fas fa-calendar mr-1"></i> Fecha</th>
+                                            <th><i class="fas fa-flag mr-1"></i> Estado</th>
+                                            <th><i class="fas fa-cogs mr-1"></i> Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($obras->reverse() as $obra)
+                                            <tr data-obra-id="{{ $obra->id }}">
+                                                <td><strong>#{{ $obra->id }}</strong></td>
+                                                <td>
+                                                    <div class="font-weight-bold text-primary">{{ $obra->nombre }}</div>
+                                                    @if($obra->observacion)
+                                                        <small class="text-muted">{{ Str::limit($obra->observacion, 50) }}</small>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <i class="fas fa-map-marker-alt text-muted mr-1"></i>
+                                                    {{ Str::limit($obra->direccion, 30) }}
+                                                </td>
+                                                <td>
+                                                    <div>{{ $obra->contacto }}</div>
+                                                    <small class="text-muted">por {{ $obra->usuario->nombre }}</small>
+                                                </td>
+                                                <td>
+                                                    <a href="tel:{{ $obra->numero }}" class="text-decoration-none">
+                                                        <i class="fas fa-phone text-success mr-1"></i>
+                                                        {{ $obra->numero }}
+                                                    </a>
+                                                </td>
+                                                <td>{{ $obra->peticionario }}</td>
+                                                <td>
+                                                    <div>{{ \Carbon\Carbon::parse($obra->fecha_carga)->format('d/m/Y') }}</div>
+                                                    <small class="text-muted">{{ \Carbon\Carbon::parse($obra->fecha_carga)->diffForHumans() }}</small>
+                                                </td>
+                                                <td>
+                                                    @php
+                                                        $estadoColors = [
+                                                            1 => 'success',
+                                                            2 => 'primary',
+                                                            3 => 'warning',
+                                                            4 => 'danger'
+                                                        ];
+                                                        $estadoColor = $estadoColors[$obra->estado] ?? 'secondary';
+                                                    @endphp
+                                                    <span class="badge badge-{{ $estadoColor }} badge-estado">
+                                                        {{ $estados[$obra->estado] ?? 'Desconocido' }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
+                                                        <a href="{{ route('obras.show', $obra->id) }}"
+                                                           class="btn btn-info btn-sm btn-action"
+                                                           data-toggle="tooltip" title="Ver detalles">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        @endif
+                                                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('editar', 1)->isNotEmpty())
+                                                        <a href="{{ route('obras.edit', $obra->id) }}"
+                                                           class="btn btn-warning btn-sm btn-action"
+                                                           data-toggle="tooltip" title="Editar obra">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @else
+                            <div class="empty-state">
+                                <i class="fas fa-building-slash"></i>
+                                <h4>No hay obras registradas</h4>
+                                <p class="text-muted">Comience agregando su primera obra para gestionar sus proyectos de construcción.</p>
+                                @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('agregar', 1)->isNotEmpty())
+                                <a href="{{ route('obras.create') }}" class="btn btn-add">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    Crear Primera Obra
+                                </a>
+                                @endif
+                            </div>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
         @include('partials.footer')
     </div>
-    <div class="modal fade" id="verObraModal" tabindex="-1" role="dialog" aria-labelledby="verObraModalTitle" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="verObraModalTitle">Ver Obra</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body" id="verObraModalBody">
-                    <!-- Aquí se llenará la información de la obra -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar tooltips
+            $('[data-toggle="tooltip"]').tooltip();
+
+            // Funcionalidad de búsqueda mejorada
+            const searchInput = document.getElementById('search');
+            const tableRows = document.querySelectorAll('#obras-table tbody tr');
+            const resultsCount = document.getElementById('results-count');
+
+            if (searchInput && tableRows.length > 0) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase().trim();
+                    let visibleCount = 0;
+
+                    tableRows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        const rowText = Array.from(cells).map(cell =>
+                            cell.textContent.toLowerCase()
+                        ).join(' ');
+
+                        if (searchTerm === '' || rowText.includes(searchTerm)) {
+                            row.style.display = '';
+                            visibleCount++;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+
+                    // Actualizar contador de resultados
+                    if (resultsCount) {
+                        resultsCount.textContent = visibleCount;
+                    }
+
+                    // Mostrar mensaje si no hay resultados
+                    const tableBody = document.querySelector('#obras-table tbody');
+                    let noResultsRow = document.getElementById('no-results-row');
+
+                    if (visibleCount === 0 && searchTerm !== '') {
+                        if (!noResultsRow) {
+                            noResultsRow = document.createElement('tr');
+                            noResultsRow.id = 'no-results-row';
+                            noResultsRow.innerHTML = `
+                                <td colspan="9" class="text-center py-4">
+                                    <i class="fas fa-search text-muted mb-2 d-block" style="font-size: 2rem;"></i>
+                                    <h5 class="text-muted">No se encontraron resultados</h5>
+                                    <p class="text-muted mb-0">Intente con otros términos de búsqueda</p>
+                                </td>
+                            `;
+                            tableBody.appendChild(noResultsRow);
+                        }
+                    } else if (noResultsRow) {
+                        noResultsRow.remove();
+                    }
+                });
+            }
+
+            // Atajo de teclado para agregar obra (Ctrl + 1)
+            document.addEventListener('keydown', function(event) {
+                if (event.ctrlKey && event.key === '1') {
+                    event.preventDefault();
+                    const addButton = document.getElementById('agregar-obra-btn');
+                    if (addButton) {
+                        addButton.click();
+                    }
+                }
+            });
+
+            // Atajo de teclado para foco en búsqueda (Ctrl + F)
+            document.addEventListener('keydown', function(event) {
+                if (event.ctrlKey && event.key === 'f') {
+                    event.preventDefault();
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }
+            });
+
+            // Auto-dismiss alerts
+            setTimeout(function() {
+                $('.alert').fadeOut();
+            }, 5000);
+        });
+    </script>
 </body>
 </html>

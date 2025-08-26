@@ -379,6 +379,18 @@
                                                 @endif
                                             </td>
                                         </tr>
+                                        <tr>
+                                            <th>
+                                                <i class="fas fa-comment-dots text-info mr-2"></i>Observación
+                                            </th>
+                                            <td>
+                                                @if($presupuesto->observacion)
+                                                    <span class="text-muted">{{ $presupuesto->observacion }}</span>
+                                                @else
+                                                    <span class="text-muted">Sin observación</span>
+                                                @endif
+                                            </td>
+                                        </tr>
                                     </table>
                                 </div>
                             </div>

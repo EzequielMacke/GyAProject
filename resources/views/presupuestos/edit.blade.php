@@ -212,6 +212,12 @@
                                                         </select>
                                                     </div>
                                                 </div>
+                                                <div class="col-md-12">
+                                                    <div class="form-group">
+                                                        <label>Observación</label>
+                                                        <textarea name="observacion" class="form-control" rows="3" placeholder="Ingrese una observación o comentario adicional">{{ old('observacion', $presupuesto->observacion) }}</textarea>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 

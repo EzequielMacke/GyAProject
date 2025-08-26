@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('facturas', function (Blueprint $table) {
             $table->increments('id');
             $table->string('numero');
+            $table->string('adjunto')->nullable();
             $table->unsignedInteger('presupuesto_id');
             $table->foreign('presupuesto_id')->references('id')->on('presupuestos');
             $table->string('concepto');
