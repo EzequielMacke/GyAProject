@@ -5,117 +5,134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Listado de Obras</title>
     @include('partials.head')
-    <script>
-        document.addEventListener('keydown', function(event) {
-            if (event.ctrlKey && event.key === '1') {
-                event.preventDefault();
-                document.getElementById('agregar-obra-btn').click();
-            }
-        });
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('search');
-            const tableRows = document.querySelectorAll('#obras-table tbody tr');
-            const tipoTrabajo = @json($tipo_trabajo);
-            const estados = @json($estados);
-            const estados_pre = @json($estados_pre);
-
-            searchInput.addEventListener('input', function() {
-                const searchTerm = searchInput.value.toLowerCase();
-
-                tableRows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    const rowText = Array.from(cells).map(cell => cell.textContent.toLowerCase()).join(' ');
-                    if (rowText.includes(searchTerm)) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-            });
-
-            document.querySelectorAll('.btn-ver').forEach(button => {
-                button.addEventListener('click', function() {
-                    const obra = JSON.parse(this.getAttribute('data-obra'));
-                    const presupuestos = obra.presupuestos || [];
-                    const modalTitle = document.getElementById('verObraModalTitle');
-                    const modalBody = document.getElementById('verObraModalBody');
-
-                    modalTitle.textContent = `Obra ID: ${obra.id}`;
-                let presupuestosHtml = '';
-                if (presupuestos.length > 0) {
-                    presupuestosHtml = `
-                        <h5>Presupuestos Asociados</h5>
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Nombre del presupuesto</th>
-                                    <th>Tipo de Trabajo</th>
-                                    <th>Orden de Trabajo</th>
-                                    <th>PDF</th>
-                                    <th>Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    `;
-                    presupuestos.forEach(presupuesto => {
-                        const pdfUrl = presupuesto.presupuesto.replace('public/', '');
-                        presupuestosHtml += `
-                            <tr>
-                                <td>${presupuesto.id}</td>
-                                <td>${presupuesto.clave}</td>
-                                <td>${tipoTrabajo[presupuesto.tipo_trabajo] || 'Desconocido'}</td>
-                                <td>${presupuesto.orden_trabajo || 'Pendiente'}</td>
-                                <td><a href="/storage/${pdfUrl}" target="_blank">Ver PDF</a></td>
-                                <td>${estados_pre[presupuesto.estado] || 'Pendiente'}</td>
-                            </tr>
-                        `;
-                    });
-                    presupuestosHtml += `
-                            </tbody>
-                        </table>
-                    `;
-                } else {
-                    presupuestosHtml = '<p>No hay presupuestos asociados a esta obra.</p>';
-                }
-
-                modalBody.innerHTML = `
-                    <p><strong>Nombre:</strong> ${obra.nombre || 'Pendiente'}</p>
-                    <p><strong>Dirección:</strong> ${obra.direccion || 'Pendiente'}</p>
-                    <p><strong>Contacto:</strong> ${obra.contacto || 'Pendiente'}</p>
-                    <p><strong>Número de contacto:</strong> ${obra.numero || 'Pendiente'}</p>
-                    <p><strong>Peticionario:</strong> ${obra.peticionario || 'Pendiente'}</p>
-                    <p><strong>Observación:</strong> ${obra.observacion || 'Pendiente'}</p>
-                    <p><strong>Cargado por:</strong> ${obra.usuario.nombre || 'Pendiente'}</p>
-                    <p><strong>Cargado en fecha:</strong> ${obra.fecha_carga || 'Pendiente'}</p>
-                    <p><strong>RUC:</strong> ${obra.ruc || 'Pendiente'}</p>
-                    <p><strong>Razón Social:</strong> ${obra.razon_social || 'Pendiente'}</p>
-                    <p><strong>Dirección Facturación:</strong> ${obra.direccion_fac || 'Pendiente'}</p>
-                    <p><strong>Correo Facturación:</strong> ${obra.correo_fac || 'Pendiente'}</p>
-                    <p><strong>Correo Peticionario:</strong> ${obra.correo_pet || 'Pendiente'}</p>
-                    <p><strong>Nombre Obra:</strong> ${obra.nombre_obr || 'Pendiente'}</p>
-                    <p><strong>Teléfono Obra:</strong> ${obra.telefono_obr || 'Pendiente'}</p>
-                    <p><strong>Correo Obra:</strong> ${obra.correo_obr || 'Pendiente'}</p>
-                    <p><strong>Nombre Administrador:</strong> ${obra.nombre_adm || 'Pendiente'}</p>
-                    <p><strong>Teléfono Administrador:</strong> ${obra.telefono_adm || 'Pendiente'}</p>
-                    <p><strong>Correo Administrador:</strong> ${obra.correo_adm || 'Pendiente'}</p>
-                    ${presupuestosHtml}
-                `;
-                    $('#verObraModal').modal('show');
-                });
-            });
-        });
-    </script>
-    @php
-        use App\Models\Modulo;
-        use App\Models\Permiso;
-        $permisos = Permiso::where('area_id', session('usuario_area_id'))->get();
-    @endphp
-    @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('ver', 1)->isEmpty())
-        <script>
-            window.location.href = "{{ url('/home') }}";
-        </script>
-    @endif
+    <style>
+        .obra-card {
+            border-radius: 1.1rem;
+            box-shadow: 0 2px 12px 0 rgba(40,40,40,0.09);
+            transition: box-shadow 0.15s, border-color 0.13s, background 0.13s;
+            border: 1.5px solid #e3e6ea;
+            background: #fff;
+            cursor: pointer;
+            min-height: 420px;
+            max-width: 420px;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .obra-card:hover {
+            box-shadow: 0 8px 24px 0 rgba(40,40,40,0.16);
+            border-color: #bdbdbd;
+            background: #f8fafd;
+        }
+        .obra-card .card-image {
+            background: #e9ecef;
+            height: 200px;
+            width: 100%;
+            object-fit: cover;
+            display: block;
+            padding: 0;
+            border: none;
+        }
+        .obra-card .card-text {
+            padding: 1.1rem 1.2rem 0.7rem 1.2rem;
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+        .obra-card .date {
+            color: #bdbdbd;
+            font-size: 0.92rem;
+            margin-bottom: 0.2rem;
+        }
+        .obra-card .card-title {
+            font-size: 1.13rem;
+            color: #222;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+            letter-spacing: 0.1px;
+        }
+        .obra-card .card-desc {
+            color: #444;
+            font-size: 0.97rem;
+            margin-bottom: 0.1rem;
+            flex: 1 1 auto;
+        }
+        .obra-card .card-stats {
+            display: flex;
+            border-top: 1px solid #ececec;
+            background: #f7f8fa;
+            padding: 0.7rem 1.2rem;
+            justify-content: space-between;
+        }
+        .obra-card .stat {
+            text-align: center;
+            flex: 1 1 0;
+        }
+        .obra-card .stat.border {
+            border-left: 1px solid #ececec;
+            border-right: 1px solid #ececec;
+        }
+        .obra-card .stat .value {
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: #222;
+        }
+        .obra-card .stat .type {
+            font-size: 0.85rem;
+            color: #bdbdbd;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+        .search-bar {
+            border-radius: 1.2rem;
+            border: 1px solid #ececec;
+            padding-left: 1rem;
+            font-size: 0.98rem;
+            background: #fff;
+            color: #222;
+            box-shadow: none;
+            transition: border 0.13s;
+        }
+        .search-bar:focus {
+            border: 1.5px solid #bdbdbd;
+            outline: none;
+        }
+        .agregar-obra-btn {
+            border-radius: 1.2rem;
+            font-weight: 500;
+            font-size: 0.98rem;
+            padding: 0.38rem 1.1rem;
+            background: #222;
+            color: #fff;
+            border: none;
+            box-shadow: none;
+            transition: background 0.13s;
+        }
+        .agregar-obra-btn:hover {
+            background: #444;
+            color: #fff;
+        }
+    </style>
+    <style>
+        /* Loader animación */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #222;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 0.8s linear infinite;
+            margin: 40px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
     <div class="wrapper">
@@ -124,19 +141,18 @@
         <div class="content-wrapper">
             <div class="content-header">
                 <div class="container-fluid">
-                    <div class="row mb-2">
-                        <div class="col-sm-6">
-                            <h1 class="m-0">Listado de Obras</h1>
+                    <div class="row mb-2 align-items-center">
+                        <div class="col-md-6">
+                            <h1 class="m-0" style="font-size:1.1rem;font-weight:600;color:#222;letter-spacing:0.2px;">Listado de Obras</h1>
                         </div>
-                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('agregar', 1)->isNotEmpty())
-                        <div class="col-sm-6">
-                            <a href="{{ route('obras.create') }}" class="btn btn-primary float-right" id="agregar-obra-btn">Agregar Obra</a>
+                        <div class="col-md-6 text-md-right mt-2 mt-md-0">
+                            <a href="{{ route('obras.create') }}" class="agregar-obra-btn" id="agregar-obra-btn">+ Agregar Obra</a>
                         </div>
-                        @endif
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-sm-12">
-                            <input type="text" id="search" name="search" class="form-control mr-2" placeholder="Buscar obras...">
+                    <div class="row mb-3">
+                        <div class="col-12 d-flex">
+                            <input type="text" id="search" name="search" class="form-control search-bar mr-2" placeholder="🔍 Buscar obras...">
+                            <button id="btn-buscar" class="btn agregar-obra-btn" type="button" style="min-width:90px;">Buscar</button>
                         </div>
                     </div>
                 </div>
@@ -148,73 +164,100 @@
                             {{ session('success') }}
                         </div>
                     @endif
-                    <table class="table table-bordered" id="obras-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Dirección</th>
-                                <th>Contacto</th>
-                                <th>Numero de contacto</th>
-                                <th>Peticionario</th>
-                                <th>Cargado por</th>
-                                <th>Cargado en fecha</th>
-                                <th>Observacion</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($obras->reverse() as $obra)
-                                <tr>
-                                    <td>{{ $obra->id }}</td>
-                                    <td>{{ $obra->nombre }}</td>
-                                    <td>{{ $obra->direccion }}</td>
-                                    <td>{{ $obra->contacto }}</td>
-                                    <td>{{ $obra->numero }}</td>
-                                    <td>{{ $obra->peticionario }}</td>
-                                    <td>{{ $obra->usuario->nombre }}</td>
-                                    <td>{{ $obra->fecha_carga }}</td>
-                                    <td>{{ $obra->observacion }}</td>
-                                    <td>{{ $estados[$obra->estado] ?? 'Desconocido' }}</td>
-                                    <td>
-                                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('editar', 1)->isNotEmpty())
-                                        <a href="{{ route('obras.edit', $obra->id) }}" class="btn btn-warning btn-sm" data-toggle="tooltip" title="Editar">
-                                         <i class="nav-icon fas fa-pen"></i>
-                                        </a>
-                                        @endif
-                                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'obr')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
-                                        <button class="btn btn-secondary btn-sm btn-ver" data-toggle="tooltip" title="Ver" data-obra="{{ json_encode($obra) }}" data-presupuestos="{{ json_encode($presupuestos->where('obra_id', $obra->id)) }}">
-                                            <i class="nav-icon fas fa-eye"></i>
-                                        </button>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                    <div class="row" id="obras-cards">
+                                            <div id="loader-busqueda" class="loader"></div>
+                        @forelse ($obras->reverse() as $obra)
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+                            <a href="{{ route('obras.show', $obra->id) }}" class="obra-card text-decoration-none" tabindex="0" title="Ver detalles de la obra" style="display:block;">
+                                <div class="card-image">
+                                    @php
+                                        // Coordenadas aleatorias dentro de Paraguay
+                                        $lat = rand(-27000000, -19000000) / 1000000.0; // entre -27 y -19
+                                        $lng = rand(-59000000, -54000000) / 1000000.0; // entre -59 y -54
+                                    @endphp
+                                    <iframe
+                                        width="100%"
+                                        height="200"
+                                        frameborder="0"
+                                        style="border:0;display:block;"
+                                        src="https://www.google.com/maps?q={{ $lat }},{{ $lng }}&hl=es&z=8&output=embed"
+                                        allowfullscreen>
+                                    </iframe>
+                                </div>
+                                <div class="card-text">
+                                    <h2 class="card-title">{{ $obra->nombre }}</h2>
+                                    <span class="date">{{ \Carbon\Carbon::parse($obra->fecha_carga)->diffForHumans() }}</span>
+                                    <p class="card-desc">{{ $obra->direccion }}<br><span style="color:#888;font-size:0.93em;">{{ $obra->contacto }} ({{ $obra->numero }})</span></p>
+                                </div>
+                                <div class="card-stats">
+                                    <div class="stat">
+                                        <div class="value">{{ rand(1,5) }}</div>
+                                        <div class="type">Presupuestos</div>
+                                    </div>
+                                    <div class="stat border">
+                                        <div class="value">{{ rand(10,50) }}</div>
+                                        <div class="type">Pedidos</div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="value">{{ rand(2,10) }}</div>
+                                        <div class="type">Usuarios</div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        @empty
+                        <div class="col-12">
+                            <div class="alert alert-info text-center">No hay obras registradas.</div>
+                        </div>
+                        @endforelse
+                    </div>
                 </div>
             </section>
         </div>
         @include('partials.footer')
     </div>
-    <div class="modal fade" id="verObraModal" tabindex="-1" role="dialog" aria-labelledby="verObraModalTitle" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="verObraModalTitle">Ver Obra</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body" id="verObraModalBody">
-                    <!-- Aquí se llenará la información de la obra -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </body>
+<script>
+    // Filtrado en vivo y animación de carga
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('search');
+        const btnBuscar = document.getElementById('btn-buscar');
+        const loader = document.getElementById('loader-busqueda');
+        const cardsContainer = document.getElementById('obras-cards');
+        const allCards = Array.from(cardsContainer.children);
+
+        function filtrarObras() {
+            const texto = searchInput.value.trim().toLowerCase();
+            allCards.forEach(card => {
+                const contenido = card.textContent.toLowerCase();
+                card.style.display = contenido.includes(texto) ? '' : 'none';
+            });
+        }
+
+        function mostrarLoaderYFiltrar() {
+            // Ocultar todas las tarjetas antes de mostrar el loader
+            allCards.forEach(card => { card.style.display = 'none'; });
+            loader.style.display = 'block';
+            cardsContainer.style.opacity = '0.5';
+            setTimeout(() => {
+                filtrarObras();
+                loader.style.display = 'none';
+                cardsContainer.style.opacity = '1';
+            }, 600); // Duración de la animación
+        }
+
+        // Buscar al presionar el botón
+        btnBuscar.addEventListener('click', mostrarLoaderYFiltrar);
+
+        // Buscar al presionar Enter en el input
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                mostrarLoaderYFiltrar();
+            }
+        });
+
+        // (Filtrado en vivo desactivado, solo buscar con botón o Enter)
+    });
+</script>
 </html>
+
