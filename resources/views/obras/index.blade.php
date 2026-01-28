@@ -6,6 +6,49 @@
     <title>Listado de Obras</title>
     @include('partials.head')
     <style>
+        .titulo-box {
+            background: #f4f6fb;
+            border-radius: 1.1rem;
+            border: 1.5px solid #e3e6ea;
+            padding: 1.2rem 2rem 1.2rem 1.5rem;
+            margin-bottom: 2.2rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .titulo-box .titulo-lista {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #222;
+            letter-spacing: 0.2px;
+            margin: 0 0 0.7rem 0;
+            text-align: left;
+        }
+        .titulo-box .acciones {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.7rem;
+        }
+        @media (max-width: 767.98px) {
+            .titulo-box {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 1.1rem 1rem;
+            }
+            .titulo-box .acciones {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5rem;
+            }
+            .input-group {
+                min-width: 100%;
+                max-width: 100%;
+            }
+        }
         .obra-card {
             border-radius: 1.1rem;
             box-shadow: 0 2px 12px 0 rgba(40,40,40,0.09);
@@ -141,18 +184,15 @@
         <div class="content-wrapper">
             <div class="content-header">
                 <div class="container-fluid">
-                    <div class="row mb-2 align-items-center">
-                        <div class="col-md-6">
-                            <h1 class="m-0" style="font-size:1.1rem;font-weight:600;color:#222;letter-spacing:0.2px;">Listado de Obras</h1>
-                        </div>
-                        <div class="col-md-6 text-md-right mt-2 mt-md-0">
-                            <a href="{{ route('obras.create') }}" class="agregar-obra-btn" id="agregar-obra-btn">+ Agregar Obra</a>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-12 d-flex">
-                            <input type="text" id="search" name="search" class="form-control search-bar mr-2" placeholder="🔍 Buscar obras...">
-                            <button id="btn-buscar" class="btn agregar-obra-btn" type="button" style="min-width:90px;">Buscar</button>
+                    <div class="titulo-box">
+                        <div class="titulo-lista"><h1>Listado de Obras</h1></div>
+                        <div class="acciones">
+                            <div class="input-group" style="min-width:340px;max-width:540px;">
+                                <input type="search" id="search" name="search" class="form-control" placeholder="Buscar obras...">
+                                <button id="btn-buscar" class="btn btn-primary" type="button" title="Buscar"><i class="fas fa-search"></i></button>
+                                <a href="{{ route('obras.create') }}" class="btn btn-light" id="agregar-obra-btn" title="Agregar Obra"><i class="fas fa-plus"></i></a>
+                                <a href="{{ route('home') }}" class="btn btn-light" title="Volver al menú"><i class="fas fa-arrow-left"></i></a>
+                            </div>
                         </div>
                     </div>
                 </div>

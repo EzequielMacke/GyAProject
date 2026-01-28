@@ -101,6 +101,12 @@ class ObrasController extends Controller
 
         return redirect()->route('obras.index')->with('success', 'Obra actualizada exitosamente.');
     }
+    
+    public function show($id)
+    {
+        $obra = Obra::findOrFail($id);
+        return view('obras.show', compact('obra'));
+    }
 
 
 }
