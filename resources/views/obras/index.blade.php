@@ -205,7 +205,7 @@
                         </div>
                     @endif
                     <div class="row" id="obras-cards">
-                                            <div id="loader-busqueda" class="loader"></div>
+                        <div id="loader-busqueda" class="loader"></div>
                         @forelse ($obras->reverse() as $obra)
                         <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
                             <a href="{{ route('obras.show', $obra->id) }}" class="obra-card text-decoration-none" tabindex="0" title="Ver detalles de la obra" style="display:block;">
