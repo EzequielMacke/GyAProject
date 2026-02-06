@@ -3,6 +3,8 @@
 use App\Http\Controllers\AgendamientoController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ContactoController;
+use App\Http\Controllers\DirectorioController;
 use App\Http\Controllers\DocumentosController;
 use App\Http\Controllers\GestiontrabajoController;
 use App\Http\Controllers\InsumosController;
@@ -87,8 +89,8 @@ Route::get('/permisos/{id}/editar', [PermisosController::class, 'edit'])->name('
 Route::put('/permisos/{id}', [PermisosController::class, 'update'])->name('permisos.update');
 
 // Rutas para la vista de presupuestos aprobados
-Route::get('/presupuesto_aprobado', [PresupuestoaprobadoController::class, 'index'])->name('presupuesto_aprobado.index');
-Route::get('/presupuesto_aprobado/cargar', [PresupuestoAprobadoController::class, 'create'])->name('presupuesto_aprobado.create');
+Route::get('/presupuesto_aprobado/{obra?}', [PresupuestoaprobadoController::class, 'index'])->name('presupuesto_aprobado.index');
+Route::get('/presupuesto_aprobado/cargar/{obra?}', [PresupuestoaprobadoController::class, 'create'])->name('presupuesto_aprobado.create');
 Route::post('/presupuesto_aprobado', [PresupuestoAprobadoController::class, 'store'])->name('presupuesto_aprobado.store');
 Route::get('/presupuesto_aprobado/{id}/editar', [PresupuestoAprobadoController::class, 'edit'])->name('presupuesto_aprobado.edit');
 Route::put('/presupuesto_aprobado/{id}', [PresupuestoAprobadoController::class, 'update'])->name('presupuesto_aprobado.update');
@@ -125,3 +127,15 @@ Route::get('/documentos/{id}/detalles', [DocumentosController::class, 'detalles'
 Route::post('/documentos/{id}/detalles', [DocumentosController::class, 'guardarDetalles'])->name('documentos.detalles.guardar');
 Route::get('documentos/{id}/generar-word', [DocumentosController::class, 'generarWord'])->name('documentos.generarWord');
 Route::get('/documentos/{id}/reemplazar-marcadores', [DocumentosController::class, 'reemplazarMarcadoresInforme'])->name('documentos.reemplazarMarcadores');
+
+//Rutas de directorio
+Route::get('/directorio/{obra}', [DirectorioController::class, 'index'])->name('directorio.index');
+Route::get('/directorio/{obra}/create', [DirectorioController::class, 'create'])->name('directorio.create');
+Route::post('/directorio/{obra}', [DirectorioController::class, 'store'])->name('directorio.store');
+
+//Ruta para contactos
+Route::get('/contacto/{obra}', [ContactoController::class, 'index'])->name('contacto.index');
+Route::get('contacto/create/{obra?}', [ContactoController::class, 'create'])->name('contacto.create');
+Route::post('/contacto', [ContactoController::class, 'store'])->name('contacto.store');
+Route::get('/contacto/{id}/edit', [ContactoController::class, 'edit'])->name('contacto.edit');
+Route::put('/contacto/{id}', [ContactoController::class, 'update'])->name('contacto.update');

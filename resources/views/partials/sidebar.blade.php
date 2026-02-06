@@ -9,14 +9,14 @@
     $presupuestoaprobados = PresupuestoAprobado::where('estado', '1')->count();
 @endphp
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
-    <a href="#" class="brand-link">
-        <span class="brand-text font-weight-light">Gavilan y Asociados</span>
+    <a href="#" class="brand-link" style="text-decoration:none">
+        <span class="brand-text font-weight-light" >Gavilan y Asociados</span>
     </a>
     <div class="sidebar">
         <div class="user-panel mt-3 pb-3 mb-3 d-flex">
             <div class="info">
-                <a href="#" class="d-block">Usuario: <b>{{ session('usuario_nombre') }} </b></a>
-                <a href="#" class="d-block">Area: <b>{{ session('usuario_area') }} </b></a>
+                <a href="#" class="d-block" style="text-decoration:none" >Usuario: <b>{{ session('usuario_nombre') }} </b></a>
+                <a href="#" class="d-block" style="text-decoration:none">Area: <b>{{ session('usuario_area') }} </b></a>
             </div>
         </div>
         <nav class="mt-2">

@@ -11,7 +11,11 @@ class ObrasController extends Controller
 {
     public function index()
     {
-        $obras = Obra::with('presupuestos')->get();
+        $userId = Auth::id();
+        // Obtener solo las obras donde el usuario está en el directorio
+        $obras = Obra::whereHas('directorios', function($query) use ($userId) {
+            $query->where('usuario_id', $userId);
+        })->with('presupuestos')->get();
         $estados = config('constantes.estado_obras');
         $estados_pre = config('constantes.estado_de_presupuestos');
         $presupuestos = PresupuestoAprobado::all();
@@ -21,7 +25,6 @@ class ObrasController extends Controller
 
     public function create()
     {
-
         $obras = Obra::all();
         return view('obras.create', compact('obras'));
     }
@@ -98,7 +101,6 @@ class ObrasController extends Controller
             'telefono_adm' => $request->telefono_adm,
             'correo_adm' => $request->correo_adm,
         ]);
-
         return redirect()->route('obras.index')->with('success', 'Obra actualizada exitosamente.');
     }
     

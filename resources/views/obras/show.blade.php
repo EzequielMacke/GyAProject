@@ -128,13 +128,13 @@
                 <div class="container-fluid d-flex flex-column align-items-center" style="min-height:60vh;">
                     <div class="row w-100 justify-content-center mx-0 opciones-row">
                         <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="#" class="opcion-card">
+                            <a href="{{ route('directorio.index', ['obra' => $obra->id]) }}" class="opcion-card">
                                 <span style="color:#6c63ff;"><i class="fas fa-folder-open"></i></span>
                                 <div>Directorio</div>
                             </a>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="#" class="opcion-card">
+                            <a href="{{ route('presupuesto_aprobado.index', $obra->id) }}" class="opcion-card">
                                 <span style="color:#fdcb6e;"><i class="fas fa-file-invoice-dollar"></i></span>
                                 <div>Presupuestos Aprobados</div>
                             </a>
@@ -146,7 +146,7 @@
                             </a>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="#" class="opcion-card">
+                            <a href="{{ route('contacto.index', $obra->id) }}" class="opcion-card">
                                 <span style="color:#00b894;"><i class="fas fa-address-book"></i></span>
                                 <div>Contactos</div>
                             </a>

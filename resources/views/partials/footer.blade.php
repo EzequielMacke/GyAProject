@@ -2,5 +2,5 @@
     <div class="float-right d-none d-sm-inline">
         <b>Version 4.0</b>
     </div>
-    <strong>Copyright &copy; 2025 <a href="#">Gavilan y Asociados</a>.</strong> Todos los derechos reservados.
+    <strong>Copyright &copy; 2026 <a href="#" style="text-decoration:none">Gavilan y Asociados</a>.</strong> Todos los derechos reservados.
 </footer>

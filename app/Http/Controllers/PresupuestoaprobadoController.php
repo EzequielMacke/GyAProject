@@ -11,24 +11,42 @@ use setasign\Fpdi\Fpdi;
 
 class PresupuestoaprobadoController extends Controller
 {
-    public function index()
+    public function index(Request $request, $obra = null)
     {
-        $presupuestos = PresupuestoAprobado::with('usuario')->get();
+        $query = PresupuestoAprobado::with('usuario');
+        if ($obra) {
+            $query->where('obra_id', $obra);
+        }
+        $presupuestos = $query->get();
         $estados = config('constantes.estado_de_presupuestos');
         $estados_label = config('constantes.estado_de_presupuestos_btn');
         $tipo_trabajo = config('constantes.tipo_trabajo');
-        return view('presupuesto_aprobado.index', compact('presupuestos', 'estados', 'estados_label','tipo_trabajo'));
+        return view('presupuesto_aprobado.index', compact('presupuestos', 'estados', 'estados_label','tipo_trabajo', 'obra'));
     }
-    public function create()
+
+    public function create($obra = null)
     {
         $obras = Obra::all();
-        return view('presupuesto_aprobado.create', compact('obras'));
+        $selectedObra = null;
+        if ($obra) {
+            $selectedObra = Obra::find($obra);
+        }
+        return view('presupuesto_aprobado.create', compact('obras', 'selectedObra', 'obra'));
     }
     public function store(Request $request)
     {
         $request->validate([
             'clave' => 'required|string|max:255|unique:presupuesto_aprobados,clave',
+            'presupuesto' => 'required|file|mimes:pdf',
+            'conformidad' => 'nullable|file|mimes:pdf',
+            'ubicacion' => 'required|string|max:255',
+            'tipo_trabajo' => 'required',
+            'monto_total' => 'nullable|string'
         ]);
+
+        // Fecha de carga: si no viene, usar hoy
+        $fecha_carga = $request->fecha_carga ?? now()->toDateString();
+
         $presupuestoPath = $request->file('presupuesto')->store('public/presupuestos');
         $conformidadPath = $request->file('conformidad') ? $request->file('conformidad')->store('public/conformidades') : null;
 
@@ -43,11 +61,12 @@ class PresupuestoaprobadoController extends Controller
             $finalPresupuestoPath = $mergedPdfPath;
         }
 
-        $monto_total = str_replace('.', '', $request->monto_total);
-        PresupuestoAprobado::create([
-            'fecha_carga' => $request->fecha_carga,
+        $monto_total = $request->monto_total ? str_replace('.', '', $request->monto_total) : null;
+
+        $presupuesto = PresupuestoAprobado::create([
+            'fecha_carga' => $fecha_carga,
             'usuario_id' => Auth::id(),
-            'obra_id' => $request->obra_id,
+            'obra_id' => $request->obra_id ?? null,
             'presupuesto' => $finalPresupuestoPath,
             'ubicacion' => $request->ubicacion,
             'clave' => $request->clave,
@@ -57,7 +76,7 @@ class PresupuestoaprobadoController extends Controller
             'tipo_trabajo' => $request->tipo_trabajo,
         ]);
 
-        return redirect()->route('presupuesto_aprobado.index')->with('success', 'Presupuesto aprobado guardado exitosamente.');
+        return redirect()->route('presupuesto_aprobado.index', $request->obra_id)->with('success', 'Presupuesto aprobado guardado exitosamente.');
     }
     private function mergePdfs($presupuestoPath, $conformidadPath, $outputPath)
     {
@@ -87,21 +106,27 @@ class PresupuestoaprobadoController extends Controller
     public function edit($id)
     {
         $presupuesto = PresupuestoAprobado::findOrFail($id);
-
         if ($presupuesto->estado == 2) {
             return redirect('/home')->with('error', 'No se puede editar un presupuesto aprobado.');
         }
-
-        return view('presupuesto_aprobado.edit', compact('presupuesto'));
+        $obra = $presupuesto->obra_id;
+        return view('presupuesto_aprobado.edit', compact('presupuesto', 'obra'));
     }
     public function update(Request $request, $id)
     {
-        $monto_total = str_replace('.', '', $request->monto_total);
         $presupuesto = PresupuestoAprobado::findOrFail($id);
+        $request->validate([
+            'clave' => 'required|string|max:255|unique:presupuesto_aprobados,clave,' . $presupuesto->id,
+            'presupuesto' => 'nullable|file|mimes:pdf',
+            'ubicacion' => 'required|string|max:255',
+            'tipo_trabajo' => 'required',
+            'monto_total' => 'nullable|string'
+        ]);
+
         $presupuesto->ubicacion = $request->ubicacion;
         $presupuesto->clave = $request->clave;
         $presupuesto->tipo_trabajo = $request->tipo_trabajo;
-        $presupuesto->monto_total = $monto_total;
+        $presupuesto->monto_total = $request->monto_total ? str_replace('.', '', $request->monto_total) : null;
         $presupuesto->observacion = $request->observacion;
 
         $presupuestoPath = $presupuesto->presupuesto;
@@ -120,7 +145,6 @@ class PresupuestoaprobadoController extends Controller
             if (!Storage::exists('public/presupuestos')) {
                 Storage::makeDirectory('public/presupuestos');
             }
-
             $mergedPdfPath = 'public/presupuestos/' . uniqid() . '.pdf';
             $this->mergePdfs(storage_path('app/' . $presupuestoPath), storage_path('app/' . $conformidadPath), storage_path('app/' . $mergedPdfPath));
             $finalPresupuestoPath = $mergedPdfPath;
@@ -129,7 +153,7 @@ class PresupuestoaprobadoController extends Controller
         $presupuesto->presupuesto = $finalPresupuestoPath;
         $presupuesto->save();
 
-        return redirect()->route('presupuesto_aprobado.index')->with('success', 'Presupuesto actualizado correctamente');
+        return redirect()->route('presupuesto_aprobado.index', $presupuesto->obra_id)->with('success', 'Presupuesto actualizado correctamente');
     }
 
 }

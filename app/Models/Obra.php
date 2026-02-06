@@ -21,5 +21,9 @@ class Obra extends Model
     {
         return $this->hasMany(PresupuestoAprobado::class, 'obra_id');
     }
+    public function directorios()
+    {
+        return $this->hasMany(Directorio::class, 'obra_id');
+    }
 }
 
