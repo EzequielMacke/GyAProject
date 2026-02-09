@@ -158,7 +158,7 @@
                             </a>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="#" class="opcion-card">
+                            <a href="{{ route('factura_venta.show', $obra->id) }}" class="opcion-card">
                                 <span style="color:#00bcd4;"><i class="fas fa-file-invoice"></i></span>
                                 <div>Facturación</div>
                             </a>

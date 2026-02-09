@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PresupuestoAprobado extends Model
+    
 {
     use HasFactory;
     protected $table = 'presupuesto_aprobados';
@@ -42,5 +43,9 @@ class PresupuestoAprobado extends Model
     public function obra()
     {
         return $this->belongsTo(Obra::class);
+    }
+    public function facturasVenta()
+    {
+        return $this->hasMany(\App\Models\FacturaVenta::class, 'presupuesto_aprobado_id');
     }
 }

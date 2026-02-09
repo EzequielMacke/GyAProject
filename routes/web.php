@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\DirectorioController;
 use App\Http\Controllers\DocumentosController;
+use App\Http\Controllers\FacturaVentaController;
 use App\Http\Controllers\GestiontrabajoController;
 use App\Http\Controllers\InsumosController;
 use App\Http\Controllers\ObrasController;
@@ -139,3 +140,9 @@ Route::get('contacto/create/{obra?}', [ContactoController::class, 'create'])->na
 Route::post('/contacto', [ContactoController::class, 'store'])->name('contacto.store');
 Route::get('/contacto/{id}/edit', [ContactoController::class, 'edit'])->name('contacto.edit');
 Route::put('/contacto/{id}', [ContactoController::class, 'update'])->name('contacto.update');
+
+// Rutas para facturas de venta
+Route::get('/factura_venta/{obra?}', [FacturaVentaController::class, 'index'])->name('factura_venta.index');
+Route::get('/factura_venta/cargar/{obra?}', [FacturaVentaController::class, 'create'])->name('factura_venta.create');
+Route::post('/factura_venta', [FacturaVentaController::class, 'store'])->name('factura_venta.store');
+Route::get('/factura-venta/obra/{obraId}/presupuestos', [FacturaVentaController::class, 'show'])->name('factura_venta.show');
