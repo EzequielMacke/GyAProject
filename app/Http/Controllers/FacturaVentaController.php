@@ -18,48 +18,103 @@ class FacturaVentaController extends Controller
         return view('factura_venta.show', compact('obra', 'presupuestos'));
     }
     
-	public function index($obra = null)
-	{
-		$facturas = FacturaVenta::with(['presupuestoAprobado', 'obra'])->when($obra, function($query) use ($obra) {
-			$query->where('obra_id', $obra);
-		})->get();
-		$obra = $obra ? Obra::find($obra) : null;
-		return view('factura_venta.index', compact('facturas', 'obra'));
-	}
-
-    public function create($obraId)
+    public function index($presupuesto = null, $obra = null)
     {
-        $obra = Obra::findOrFail($obraId);
-        $presupuestos = PresupuestoAprobado::where('obra_id', $obraId)->get();
-        $usuarios = Usuarios::all();
 
-        return view('factura_venta.create', compact('obra', 'presupuestos', 'usuarios'));
+        $facturas = FacturaVenta::with(['presupuestoAprobado', 'obra'])
+            ->when($obra, function($query) use ($obra) {
+                $query->where('obra_id', $obra);
+            })
+            ->when($presupuesto, function($query) use ($presupuesto) {
+                $query->where('presupuesto_aprobado_id', $presupuesto);
+            })
+            ->get();
+        $obra = $obra ? Obra::find($obra) : null;
+        $presupuesto = $presupuesto ? PresupuestoAprobado::find($presupuesto) : null;
+        return view('factura_venta.index', compact('facturas', 'obra', 'presupuesto'));
+    }
+
+    public function create($presupuesto = null, $obra = null)
+    {
+        $obra = $obra ? Obra::findOrFail($obra) : null;
+        $presupuestos = $obra ? PresupuestoAprobado::where('obra_id', $obra->id)->get() : collect();
+        $usuarios = Usuarios::all();
+        $presupuesto = $presupuesto ? PresupuestoAprobado::find($presupuesto) : null;
+
+        return view('factura_venta.create', compact('obra', 'presupuestos', 'usuarios', 'presupuesto'));
     }
 
     public function store(Request $request)
     {
-        $factura = new FacturaVenta();
+        $data = $request->only([
+            'nro_factura',
+            'concepto',
+            'monto',
+            'presupuesto_aprobado_id',
+            'obra_id',
+        ]);
+        $data['fecha_emision'] = now();
+        $data['usuario_id'] = auth()->id();
 
-        $factura->nro_factura = $request->input('nro_factura');
-        $factura->fecha_emision = now();
-        $factura->concepto = $request->input('concepto');
-        $factura->monto = $request->input('monto');
-        $factura->presupuesto_aprobado_id = $request->input('presupuesto_aprobado_id');
-        $factura->usuario_id = auth()->id();
-        $factura->obra_id = $request->input('obra_id');
+        // Limpiar monto (eliminar puntos de miles)
+        $data['monto'] = str_replace('.', '', $data['monto']);
 
         // Calcular saldo
-        $saldo = $factura->monto;
-        if (!empty($factura->presupuesto_aprobado_id)) {
-            $presupuesto = PresupuestoAprobado::find($factura->presupuesto_aprobado_id);
+        $saldo = $data['monto'];
+        if (!empty($data['presupuesto_aprobado_id'])) {
+            $presupuesto = PresupuestoAprobado::find($data['presupuesto_aprobado_id']);
             $facturas = FacturaVenta::where('presupuesto_aprobado_id', $presupuesto->id)->sum('monto');
-            $saldo = $presupuesto->monto - $facturas - $factura->monto;
+            $montoTotal = is_numeric($presupuesto->monto_total) ? $presupuesto->monto_total : 0;
+            $facturasSum = is_numeric($facturas) ? $facturas : 0;
+            $montoFactura = is_numeric($data['monto']) ? $data['monto'] : 0;
+            $saldo = $montoTotal - $facturasSum - $montoFactura;
         }
-        $factura->saldo = $saldo;
+        $data['saldo'] = $saldo;
 
-        $factura->save();
+        FacturaVenta::create($data);
 
-        return redirect()->route('factura_venta.index', $factura->obra_id)
+        return redirect()->route('factura_venta.index', ['presupuesto' => $data['presupuesto_aprobado_id'], 'obra' => $data['obra_id']])
             ->with('success', 'Factura de venta cargada correctamente.');
     }
+
+    public function edit($id)
+    {
+        $factura = FacturaVenta::findOrFail($id);
+        $obra = $factura->obra;
+        $presupuesto = $factura->presupuestoAprobado;
+        return view('factura_venta.edit', compact('factura', 'obra', 'presupuesto'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $factura = FacturaVenta::findOrFail($id);
+        $data = $request->only([
+            'nro_factura',
+            'concepto',
+            'monto',
+        ]);
+        // Limpiar monto (eliminar puntos de miles)
+        $data['monto'] = str_replace('.', '', $data['monto']);
+
+        // Recalcular saldo
+        $saldo = $data['monto'];
+        if ($factura->presupuesto_aprobado_id) {
+            $presupuesto = $factura->presupuestoAprobado;
+            // Sumar todas las facturas menos la actual
+            $facturas = FacturaVenta::where('presupuesto_aprobado_id', $presupuesto->id)
+                ->where('id', '!=', $factura->id)
+                ->sum('monto');
+            $montoTotal = is_numeric($presupuesto->monto_total) ? $presupuesto->monto_total : 0;
+            $facturasSum = is_numeric($facturas) ? $facturas : 0;
+            $montoFactura = is_numeric($data['monto']) ? $data['monto'] : 0;
+            $saldo = $montoTotal - $facturasSum - $montoFactura;
+        }
+        $data['saldo'] = $saldo;
+
+        $factura->update($data);
+
+        return redirect()->route('factura_venta.index', ['presupuesto' => $factura->presupuesto_aprobado_id, 'obra' => $factura->obra_id])
+            ->with('success', 'Factura de venta actualizada correctamente.');
+    }
+    
 }

@@ -106,7 +106,7 @@
                                     $porcentaje . ' ' .
                                     $presupuesto->facturasVenta->count()
                                 }}">
-                                <a href="{{ route('factura_venta.index', ['presupuesto' => $presupuesto->id]) }}" style="text-decoration:none; color:inherit;">
+                                <a href="{{ route('factura_venta.index', ['presupuesto' => $presupuesto->id, 'obra' => $obra->id]) }}" style="text-decoration:none; color:inherit;">
                                     <div class="card h-100 d-flex flex-column justify-content-between" style="border-radius:22px; min-height:540px; box-shadow:0 2px 16px rgba(0,0,0,0.11); transition:box-shadow .18s,transform .18s;">
                                         <div class="card-body d-flex flex-column p-4">
                                             <div class="mb-2 d-flex justify-content-between align-items-center">
@@ -119,6 +119,13 @@
                                             <div class="mb-2 text-end" style="font-size:1.25rem; color:#1e7e34; font-weight:600;">Gs. {{ number_format($montoTotal, 0, '', '.') }}</div>
                                             <div class="mb-2 text-center" style="font-size:1.05rem; color:#0d6efd;">
                                                 {{ $presupuesto->facturasVenta->count() }} factura{{ $presupuesto->facturasVenta->count() == 1 ? '' : 's' }}
+                                            </div>
+                                            <div class="mb-2 text-center" style="font-size:1.05rem; color:#e67e22;">
+                                                @if(!empty($presupuesto->orden_trabajo))
+                                                    Orden de Trabajo: {{ $presupuesto->orden_trabajo }}
+                                                @else
+                                                    Orden Pendiente
+                                                @endif
                                             </div>
                                             @if($presupuesto->presupuesto)
                                                 <div class="mb-3 text-center">

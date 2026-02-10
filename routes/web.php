@@ -142,7 +142,9 @@ Route::get('/contacto/{id}/edit', [ContactoController::class, 'edit'])->name('co
 Route::put('/contacto/{id}', [ContactoController::class, 'update'])->name('contacto.update');
 
 // Rutas para facturas de venta
-Route::get('/factura_venta/{obra?}', [FacturaVentaController::class, 'index'])->name('factura_venta.index');
-Route::get('/factura_venta/cargar/{obra?}', [FacturaVentaController::class, 'create'])->name('factura_venta.create');
+Route::get('/factura_venta/{presupuesto?}/{obra?}', [FacturaVentaController::class, 'index'])->name('factura_venta.index');
+Route::get('/factura_venta/cargar/{presupuesto?}/{obra?}', [FacturaVentaController::class, 'create'])->name('factura_venta.create');
 Route::post('/factura_venta', [FacturaVentaController::class, 'store'])->name('factura_venta.store');
-Route::get('/factura-venta/obra/{obraId}/presupuestos', [FacturaVentaController::class, 'show'])->name('factura_venta.show');
+Route::get('/factura_venta/obra/{obraId}/presupuestos', [FacturaVentaController::class, 'show'])->name('factura_venta.show');
+Route::get('/factura_venta/{id}/edit', [FacturaVentaController::class, 'edit'])->name('factura_venta.edit');
+Route::put('/factura_venta/{id}', [FacturaVentaController::class, 'update'])->name('factura_venta.update');

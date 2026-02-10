@@ -12,15 +12,7 @@
         @include('partials.sidebar')
 
         <div class="content-wrapper">
-            <div class="content-header">
-                <div class="container-fluid">
-                    <div class="row mb-2">
-                        <div class="col-sm-6">
-                            <h1 class="m-0">Resumen</h1>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            
             <section class="content">
                 <div class="container-fluid d-flex flex-column align-items-center" style="min-height:60vh;">
                     <div class="row w-100 justify-content-center mx-0 opciones-row mt-5">
@@ -40,6 +32,36 @@
                             <a href="#" class="opcion-card text-center">
                                 <span style="color:#fdcb6e;"><i class="fas fa-truck"></i></span>
                                 <div style="font-size:1.2rem; font-weight:600;">Vehículos</div>
+                            </a>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
+                            <a href="#" class="opcion-card text-center">
+                                <span style="color:#e17055;"><i class="fas fa-user-shield"></i></span>
+                                <div style="font-size:1.2rem; font-weight:600;">Permisos</div>
+                            </a>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
+                            <a href="#" class="opcion-card text-center">
+                                <span style="color:#636e72;"><i class="fas fa-users"></i></span>
+                                <div style="font-size:1.2rem; font-weight:600;">Usuarios</div>
+                            </a>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
+                            <a href="#" class="opcion-card text-center">
+                                <span style="color:#00bcd4;"><i class="fas fa-hammer"></i></span>
+                                <div style="font-size:1.2rem; font-weight:600;">Herramientas</div>
+                            </a>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
+                            <a href="#" class="opcion-card text-center">
+                                <span style="color:#fd79a8;"><i class="fas fa-tools"></i></span>
+                                <div style="font-size:1.2rem; font-weight:600;">Mantenimiento</div>
+                            </a>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
+                            <a href="#" class="opcion-card text-center">
+                                <span style="color:#0984e3;"><i class="fas fa-chart-bar"></i></span>
+                                <div style="font-size:1.2rem; font-weight:600;">Reportes</div>
                             </a>
                         </div>
                     </div>

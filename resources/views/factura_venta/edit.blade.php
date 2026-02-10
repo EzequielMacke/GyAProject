@@ -52,7 +52,8 @@
         <div class="content-wrapper" style="min-height: 100vh; background: transparent;">
             <div class="container-fluid">
                 <div class="card card-custom p-4 w-100" style="min-width:0;">
-                    <form action="{{ route('factura_venta.store') }}" method="POST" class="w-100">
+                    <form action="{{ route('factura_venta.update', $factura->id) }}" method="POST" class="w-100">
+                        @method('PUT')
                         <div class="row mb-3">
                             <div class="col-8">
                                 <h2 class="mb-0">Cargar Factura de Venta</h2>
@@ -97,15 +98,15 @@
                         <div class="row mb-3">
                             <div class="col-md-4 mb-2">
                                 <label for="nro_factura" class="form-label">Número de factura</label>
-                                <input type="text" name="nro_factura" class="form-control" id="nro_factura" required>
+                                <input type="text" name="nro_factura" class="form-control" id="nro_factura" value="{{ old('nro_factura', $factura->nro_factura) }}" required>
                             </div>
                             <div class="col-md-4 mb-2">
                                 <label for="concepto" class="form-label">Concepto</label>
-                                <input type="text" name="concepto" class="form-control" id="concepto" required>
+                                <input type="text" name="concepto" class="form-control" id="concepto" value="{{ old('concepto', $factura->concepto) }}" required>
                             </div>
                             <div class="col-md-4 mb-2">
                                 <label for="monto" class="form-label">Monto</label>
-                                <input type="text" name="monto" class="form-control" id="monto" required>
+                                <input type="text" name="monto" class="form-control" id="monto" value="{{ old('monto', number_format($factura->monto, 0, '', '.')) }}" required>
                             </div>
                         </div>
                     </form>

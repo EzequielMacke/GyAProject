@@ -72,7 +72,7 @@
                                         <span class="input-group-text"><i class="fas fa-search"></i></span>
                                     </div>
                                     <div class="titulo-box">
-                                        <a href="{{ route('obras.show', $obra) }}" class="btn btn-light" title="Volver al listado"><i class="fas fa-arrow-left mr-2"></i></a>
+                                        <a href="{{ route('factura_venta.show', ['obraId' => $obra->id]) }}" class="btn btn-light" title="Volver al listado"><i class="fas fa-arrow-left mr-2"></i></a>
                                     </div>
                                 </div>
                             </form>
@@ -89,7 +89,7 @@
                     @endif
                     <div class="row" id="cards-container">
                         <div class="col-md-3 mb-4">
-                            <a href="{{ route('factura_venta.create', $obra) }}" class="card add-card" id="agregar-factura-card" style="text-decoration:none; color:inherit;">
+                            <a href="{{ route('factura_venta.create', ['presupuesto' => $presupuesto?->id ?? null, 'obra' => $obra?->id ?? null]) }}" class="card add-card" id="agregar-factura-card" style="text-decoration:none; color:inherit;">
                                 <div style="display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#f0fff4,#e6ffed); height:440px;">
                                     <div style="text-align:center;">
                                         <i class="fas fa-plus-circle" style="font-size:48px; color:#2f8f4a;"></i>
@@ -110,25 +110,26 @@
                         </div>
                         @foreach ($facturas->reverse() as $factura)
                         <div class="col-md-3 mb-4">
-                            <!-- Tarjeta de factura individual simplificada -->
-                            <div class="card factura-card">
-                                <div class="factura-info">
-                                    <h5>{{ $factura->nro_factura }}</h5>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div class="factura-meta">{{ $factura->concepto }}</div>
-                                        <div class="text-right">
-                                            <div class="h5 mb-0">{{ number_format($factura->monto, 0, '', '.') }}</div>
-                                            <small class="text-muted">{{ \Carbon\Carbon::parse($factura->fecha_emision)->format('d/m/Y') }}</small>
+                            <a href="{{ route('factura_venta.edit', $factura->id) }}" style="text-decoration:none; color:inherit;">
+                                <div class="card factura-card" style="height:440px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                                    <div class="factura-info w-100">
+                                        <h5>{{ $factura->nro_factura }}</h5>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="factura-meta">{{ $factura->concepto }}</div>
+                                            <div class="text-right">
+                                                <div class="h5 mb-0">{{ number_format($factura->monto, 0, '', '.') }}</div>
+                                                <small class="text-muted">{{ \Carbon\Carbon::parse($factura->fecha_emision)->format('d/m/Y') }}</small>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <span class="badge badge-info">Saldo: {{ number_format($factura->saldo, 0, '', '.') }}</span>
+                                        </div>
+                                        <div class="mt-2">
+                                            <small class="text-muted">Obra: {{ $factura->obra->nombre ?? '' }}</small>
                                         </div>
                                     </div>
-                                    <div class="mt-2">
-                                        <span class="badge badge-info">Saldo: {{ number_format($factura->saldo, 0, '', '.') }}</span>
-                                    </div>
-                                    <div class="mt-2">
-                                        <small class="text-muted">Obra: {{ $factura->obra->nombre ?? '' }}</small>
-                                    </div>
                                 </div>
-                            </div>
+                            </a>
                         </div>
                         @endforeach
                     </div>
