@@ -23,6 +23,12 @@
                             </a>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
+                            <a href="{{ route('tabletas.index') }}" class="opcion-card text-center">
+                                <span style="color:#8e44ad;"><i class="fas fa-tablet-alt"></i></span>
+                                <div style="font-size:1.2rem; font-weight:600;">Tablets</div>
+                            </a>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
                             <a href="#" class="opcion-card text-center">
                                 <span style="color:#00b894;"><i class="fas fa-tools"></i></span>
                                 <div style="font-size:1.2rem; font-weight:600;">Equipos</div>

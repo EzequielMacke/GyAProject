@@ -14,6 +14,7 @@ use App\Http\Controllers\PedobraController;
 use App\Http\Controllers\PermisosController;
 use App\Http\Controllers\PreparobraController;
 use App\Http\Controllers\PresupuestoaprobadoController;
+use App\Http\Controllers\TabletController;
 use App\Http\Controllers\TrabajosaprobadosController;
 use App\Http\Controllers\UsuariosController;
 use App\Http\Controllers\ValidarpresupuestoController;
@@ -142,9 +143,16 @@ Route::get('/contacto/{id}/edit', [ContactoController::class, 'edit'])->name('co
 Route::put('/contacto/{id}', [ContactoController::class, 'update'])->name('contacto.update');
 
 // Rutas para facturas de venta
-Route::get('/factura_venta/{presupuesto?}/{obra?}', [FacturaVentaController::class, 'index'])->name('factura_venta.index');
 Route::get('/factura_venta/cargar/{presupuesto?}/{obra?}', [FacturaVentaController::class, 'create'])->name('factura_venta.create');
 Route::post('/factura_venta', [FacturaVentaController::class, 'store'])->name('factura_venta.store');
 Route::get('/factura_venta/obra/{obraId}/presupuestos', [FacturaVentaController::class, 'show'])->name('factura_venta.show');
 Route::get('/factura_venta/{id}/edit', [FacturaVentaController::class, 'edit'])->name('factura_venta.edit');
 Route::put('/factura_venta/{id}', [FacturaVentaController::class, 'update'])->name('factura_venta.update');
+Route::get('/factura_venta/{presupuesto?}/{obra?}', [FacturaVentaController::class, 'index'])->name('factura_venta.index');
+
+// Rutas para tablets
+Route::get('/tabletas/index', [TabletController::class, 'index'])->name('tabletas.index');
+Route::get('/tabletas/create', [TabletController::class, 'create'])->name('tabletas.create');
+Route::post('/tabletas/store', [TabletController::class, 'store'])->name('tabletas.store');
+Route::get('/tabletas/generar-qrs', [TabletController::class, 'generarQrs'])->name('tabletas.generarQrs');
+Route::get('/tabletas/assign/{clave}', [TabletController::class, 'assignShow'])->name('tabletas.assign.show');
