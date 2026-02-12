@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tableta;
+use App\Models\TabletaUso;
+use App\Models\Usuarios;
 use Illuminate\Http\Request;
 
 class TabletController extends Controller
@@ -48,8 +50,52 @@ class TabletController extends Controller
 
     public function assignShow($clave)
     {
-        return view('tablet.assign', compact('clave'));
+        $tableta = Tableta::where('clave', $clave)->firstOrFail();
+        $ultimoUso = TabletaUso::where('tableta_id', $tableta->id)
+            ->orderBy('fecha_retiro', 'desc')
+            ->first();
+        if ($ultimoUso && !$ultimoUso->fecha_devolucion) {
+            $usuarioRetiro = Usuarios::find($ultimoUso->usuario_id);
+            return view('tablet.return', compact('tableta', 'usuarioRetiro'));
+        } else {
+            $usuarios = Usuarios::where('estado', 1)->get();
+            return view('tablet.assign', compact('tableta', 'usuarios'));
+        }
     }
-    
-    
+
+    public function assignRetiro(Request $request, $clave)
+    {
+        $tableta = Tableta::where('clave', $clave)->firstOrFail();
+        $usuarioId = $request->input('usuario');
+        if (!$usuarioId) {
+            return back()->withErrors(['usuario' => 'Debe seleccionar un usuario.']);
+        }
+        // Registrar el retiro
+        $tabletaUso = new TabletaUso();
+        $tabletaUso->tableta_id = $tableta->id;
+        $tabletaUso->usuario_id = $usuarioId;
+        $tabletaUso->fecha_retiro = now();
+        $tabletaUso->save();
+        return redirect()->route('tabletas.thanks')->with('success', 'Retiro registrado correctamente.');
+    }
+
+    public function devolucion(Request $request, $clave)
+    {
+        $tableta = Tableta::where('clave', $clave)->firstOrFail();
+        $ultimoUso = TabletaUso::where('tableta_id', $tableta->id)
+            ->orderBy('fecha_retiro', 'desc')
+            ->first();
+        if ($ultimoUso && !$ultimoUso->fecha_devolucion) {
+            $ultimoUso->fecha_devolucion = now();
+            $ultimoUso->save();
+            return redirect()->route('tabletas.thanks')->with('success', 'Devolución registrada correctamente.');
+        } else {
+            return back()->withErrors(['devolucion' => 'No hay retiro pendiente para esta tableta.']);
+        }
+    }
+
+    public function thanks()
+    {
+        return view('tablet.thanks');
+    }
 }

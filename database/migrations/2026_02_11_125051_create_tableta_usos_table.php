@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedInteger('tableta_id');
             $table->foreign('tableta_id')->references('id')->on('tabletas');
             $table->unsignedBigInteger('usuario_id');
-            $table->foreign('usuario_id')->references('id')->on('users');
+            $table->foreign('usuario_id')->references('id')->on('usuarios');
             $table->date('fecha_retiro')->nullable();
             $table->date('fecha_devolucion')->nullable();
             $table->timestamps();

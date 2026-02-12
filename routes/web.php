@@ -156,3 +156,6 @@ Route::get('/tabletas/create', [TabletController::class, 'create'])->name('table
 Route::post('/tabletas/store', [TabletController::class, 'store'])->name('tabletas.store');
 Route::get('/tabletas/generar-qrs', [TabletController::class, 'generarQrs'])->name('tabletas.generarQrs');
 Route::get('/tabletas/assign/{clave}', [TabletController::class, 'assignShow'])->name('tabletas.assign.show');
+Route::post('/tabletas/assign/{clave}', [TabletController::class, 'assignRetiro'])->name('tabletas.assign.retiro');
+Route::post('/tabletas/devolucion/{clave}', [TabletController::class, 'devolucion'])->name('tabletas.devolucion');
+Route::get('/tabletas/thanks', [TabletController::class, 'thanks'])->name('tabletas.thanks');

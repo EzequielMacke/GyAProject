@@ -20,7 +20,7 @@
         <div class="content-wrapper" style="min-height: 100vh; background: transparent;">
             <div class="container-fluid px-0">
                 <div class="card card-custom p-4 w-100" style="max-width: 540px; margin: 40px auto;">
-                    <form method="POST" action="{{ route('tabletas.assign.retiro', ['clave' => $tableta->clave]) }}" class="w-100">
+                    <form method="POST" action="{{ route('tabletas.devolucion', ['clave' => $tableta->clave]) }}" class="w-100">
                         <div class="row mb-3">
                             <div class="col-8">
                                 <h2 class="mb-0"><i class="fas fa-tablet-alt me-2"></i>Asignar Tablet</h2>
@@ -71,16 +71,11 @@
                             </div>
                         </div>
                         @endif
-                        <div class="form-section-title">Asignación</div>
+                        <div class="form-section-title">Usuario que retiró</div>
                         <div class="row mb-3">
                             <div class="col-md-12 mb-2">
-                                <label for="usuario" class="form-label"><i class="fas fa-user me-1"></i>Seleccionar usuario</label>
-                                <select name="usuario" id="usuario" class="form-select select2-usuarios" required style="width:100%;">
-                                    <option value="">-- Seleccione --</option>
-                                    @foreach($usuarios as $usuario)
-                                        <option value="{{ $usuario->id }}">{{ $usuario->nombre }}</option>
-                                    @endforeach
-                                </select>
+                                <label class="form-label"><i class="fas fa-user me-1"></i>Usuario</label>
+                                <input type="text" class="form-control" value="{{ $usuarioRetiro->nombre ?? '' }}" readonly>
                             </div>
                         </div>
                         <div class="form-section-title">Escanear QR de Administrador</div>
@@ -104,7 +99,7 @@
                         </div>
                         <div class="row mb-3">
                             <div class="col-12 text-center">
-                                <button type="submit" class="btn btn-success px-5 py-2 fw-bold" id="btn-asignar" disabled style="font-size:1.2rem;"><i class="fas fa-check-circle me-2"></i>Confirmar</button>
+                                <button type="submit" class="btn btn-warning px-5 py-2 fw-bold" id="btn-devolucion" disabled style="font-size:1.2rem;"><i class="fas fa-undo-alt me-2"></i>Devolución</button>
                             </div>
                         </div>
                     </form>
@@ -240,9 +235,9 @@
                 placeholder: '-- Seleccione --',
                 allowClear: true
             });
-            const btnAsignar = document.getElementById('btn-asignar');
+            const btnDevolucion = document.getElementById('btn-devolucion');
             const qrAdminInput = document.getElementById('qr_admin');
-            btnAsignar.disabled = true;
+            btnDevolucion.disabled = true;
             let html5Qr = new Html5Qrcode('reader');
             function onScanSuccess(decodedText, decodedResult) {
                 qrAdminInput.value = decodedText;
@@ -250,7 +245,7 @@
                 const scannerLine = document.getElementById('scanner-line');
                 const aprobadoOverlay = document.getElementById('aprobado-overlay');
                 if (decodedText === '9XQ2Z7LJ4B1V6KTP') {
-                    btnAsignar.disabled = false;
+                    btnDevolucion.disabled = false;
                     // Borroso el video
                     if (video) video.style.filter = 'blur(6px)';
                     // Detener animación línea
@@ -258,7 +253,7 @@
                     // Mostrar mensaje APROBADO
                     if (aprobadoOverlay) aprobadoOverlay.style.display = 'flex';
                 } else {
-                    btnAsignar.disabled = true;
+                    btnDevolucion.disabled = true;
                     // Quitar blur
                     if (video) video.style.filter = '';
                     // Reanudar animación línea
