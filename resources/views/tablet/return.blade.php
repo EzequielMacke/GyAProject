@@ -82,15 +82,20 @@
                         <div class="row mb-3 justify-content-center">
                             <div class="col-12 d-flex flex-column align-items-center">
                                 <div class="qr-reader-wrapper qr-reader-box">
-                                    <div id="reader" class="qr-reader-custom"></div>
-                                    <div class="scanner-frame">
-                                        <div class="scanner-corner tl"></div>
-                                        <div class="scanner-corner tr"></div>
-                                        <div class="scanner-corner bl"></div>
-                                        <div class="scanner-corner br"></div>
-                                        <div class="scanner-line" id="scanner-line"></div>
-                                        <div class="aprobado-overlay" id="aprobado-overlay" style="display:none;">
-                                            <span>APROBADO</span>
+                                    <div style="position:relative; width:100%; height:100%;">
+                                        <div id="reader" class="qr-reader-custom"></div>
+                                        <button type="button" id="btn-cambiar-camara" title="Cambiar cámara" style="position:absolute; top:10px; right:10px; z-index:10; background:#fff; border:1.5px solid #43a047; color:#43a047; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px #43a04722; font-size:1.2em; cursor:pointer; padding:0;">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        <div class="scanner-frame">
+                                            <div class="scanner-corner tl"></div>
+                                            <div class="scanner-corner tr"></div>
+                                            <div class="scanner-corner bl"></div>
+                                            <div class="scanner-corner br"></div>
+                                            <div class="scanner-line" id="scanner-line"></div>
+                                            <div class="aprobado-overlay" id="aprobado-overlay" style="display:none;">
+                                                <span>APROBADO</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -221,15 +226,12 @@
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Solicitar permiso de cámara al cargar la página
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ video: true })
                     .catch(function(err) {
                         // El usuario negó el permiso o no hay cámara
-                        // Puedes mostrar un mensaje si lo deseas
                     });
             }
-            // Inicializar select2 para usuarios
             $('.select2-usuarios').select2({
                 width: '100%',
                 placeholder: '-- Seleccione --',
@@ -239,6 +241,8 @@
             const qrAdminInput = document.getElementById('qr_admin');
             btnDevolucion.disabled = true;
             let html5Qr = new Html5Qrcode('reader');
+            let cameras = [];
+            let currentCameraIdx = 0;
             function onScanSuccess(decodedText, decodedResult) {
                 qrAdminInput.value = decodedText;
                 const video = document.querySelector('#reader video');
@@ -246,54 +250,51 @@
                 const aprobadoOverlay = document.getElementById('aprobado-overlay');
                 if (decodedText === '9XQ2Z7LJ4B1V6KTP') {
                     btnDevolucion.disabled = false;
-                    // Borroso el video
                     if (video) video.style.filter = 'blur(6px)';
-                    // Detener animación línea
                     if (scannerLine) scannerLine.classList.add('paused');
-                    // Mostrar mensaje APROBADO
                     if (aprobadoOverlay) aprobadoOverlay.style.display = 'flex';
                 } else {
                     btnDevolucion.disabled = true;
-                    // Quitar blur
                     if (video) video.style.filter = '';
-                    // Reanudar animación línea
                     if (scannerLine) scannerLine.classList.remove('paused');
-                    // Ocultar mensaje APROBADO
                     if (aprobadoOverlay) aprobadoOverlay.style.display = 'none';
                 }
             }
-            // Iniciar escaneo en tiempo real
-            Html5Qrcode.getCameras().then(cameras => {
-                if (cameras && cameras.length) {
-                    html5Qr.start(
-                        cameras[0].id,
+            function startCamera(idx) {
+                if (!cameras.length) return;
+                html5Qr.getState && html5Qr.getState() === 2
+                    ? html5Qr.stop().then(() => {
+                        html5Qr.start(
+                            cameras[idx].id,
+                            {
+                                fps: 10,
+                                qrbox: 360
+                            },
+                            onScanSuccess
+                        );
+                    })
+                    : html5Qr.start(
+                        cameras[idx].id,
                         {
                             fps: 10,
                             qrbox: 360
                         },
                         onScanSuccess
                     );
+            }
+            Html5Qrcode.getCameras().then(foundCameras => {
+                cameras = foundCameras;
+                if (cameras && cameras.length) {
+                    currentCameraIdx = 0;
+                    startCamera(currentCameraIdx);
                 }
             }).catch(err => {
                 // No hay cámaras disponibles
             });
-            document.getElementById('usuario').addEventListener('change', function() {
-                btnAsignar.disabled = true;
-                qrAdminInput.value = '';
-                html5Qr.stop().then(() => {
-                    Html5Qrcode.getCameras().then(cameras => {
-                        if (cameras && cameras.length) {
-                            html5Qr.start(
-                                cameras[0].id,
-                                {
-                                    fps: 10,
-                                    qrbox: 360
-                                },
-                                onScanSuccess
-                            );
-                        }
-                    });
-                });
+            document.getElementById('btn-cambiar-camara').addEventListener('click', function() {
+                if (!cameras.length) return;
+                currentCameraIdx = (currentCameraIdx + 1) % cameras.length;
+                startCamera(currentCameraIdx);
             });
         });
     </script>

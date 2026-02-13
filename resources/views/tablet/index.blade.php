@@ -152,7 +152,7 @@
                         @else
                             @foreach ($tabletas->reverse() as $tableta)
                                 @php
-                                    $ultimoUso = $tabletausos->where('tableta_id', $tableta->id)->sortByDesc('fecha_retiro')->first();
+                                    $ultimoUso = $tabletausos->where('tableta_id', $tableta->id)->sortByDesc('id')->first();
                                     $sinDevolucion = $ultimoUso && !$ultimoUso->fecha_devolucion;
                                 @endphp
                                 <div class="col-md-3 mb-4">
