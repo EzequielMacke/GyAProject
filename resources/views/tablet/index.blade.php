@@ -6,13 +6,77 @@
     <title>Listado de Tabletas</title>
     @include('partials.head')
     <style>
-        .tablet-card { cursor: pointer; border-radius:10px; overflow:hidden; transition: transform .18s, box-shadow .18s; }
-        .tablet-card:hover { transform: translateY(-6px); box-shadow: 0 10px 25px rgba(16,24,40,0.08); }
-        .tablet-info { padding: 20px; }
-        .tablet-info h5 { margin-bottom: 10px; font-size:1.25rem; }
-        .tablet-meta { color:#6b7280; font-size:1rem; }
-        .add-card { border: 2px dashed #2f8f4a; background: linear-gradient(180deg,#f0fff4,#e6ffed); transition: box-shadow .18s, transform .18s, border-color .18s; }
-        .add-card:hover, .add-card:focus { box-shadow: 0 8px 32px rgba(47,143,74,0.13); border-color: #1e6b36; transform: scale(1.035) translateY(-4px); }
+        .tablet-card {
+            cursor: pointer;
+            border-radius:16px;
+            overflow:hidden;
+            transition: transform .18s, box-shadow .18s;
+            background: #f8f9fa;
+            box-shadow: 0 4px 24px 0 #2f8f4a33;
+            min-height: 320px;
+        }
+        .tablet-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 16px 32px 0 #2f8f4a44;
+        }
+        .tablet-card.sin-devolucion {
+            border: 2.5px solid #d32f2f;
+            box-shadow: 0 4px 32px 0 #d32f2f44;
+            background: #fff0f0;
+        }
+        .tablet-info {
+            padding: 24px 18px 18px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .tablet-info h5 {
+            margin-bottom: 8px;
+            font-size:1.35rem;
+            color: #222;
+            font-weight: 700;
+            text-align: left;
+        }
+        .tablet-meta {
+            font-size:1.05rem;
+            border-radius:6px;
+            padding: 6px 10px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #222;
+            background: #fff;
+        }
+        .tablet-meta strong { min-width: 70px; text-align:right; color:#666; }
+        .preview {
+            height: 140px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background: #e6ffe6;
+            box-shadow: 0 0 32px 0 #2f8f4a33;
+        }
+        .preview i {
+            font-size:56px;
+            color:#2f8f4a;
+            /* filter: drop-shadow(0 0 8px #2f8f4a); */
+        }
+        .tablet-card.sin-devolucion .preview i {
+            color: #d32f2f;
+        }
+        .icon-meta {
+            margin-right: 8px;
+            font-size: 1.2em;
+            opacity: 0.85;
+        }
+        @media (max-width: 992px) {
+            .tablet-card .preview { height: 360px; }
+        }
+        @media (max-width: 768px) {
+            .tablet-card .preview { height: 260px; }
+            .tablet-info h5 { font-size:1.05rem; }
+        }
         @media (max-width: 992px) {
             .tablet-card .preview { height: 360px; }
         }
@@ -52,21 +116,25 @@
             <div class="content-header">
                 <div class="container-fluid">
                     <div class="row mb-2 align-items-end">
-                        <div class="col-md-6 col-12 d-flex align-items-center">
-                            <h1 class="m-0">Gestión de Tablets</h1>
-                        </div>
-                        <div class="col-md-6 col-12">
-                            <form onsubmit="return false;" class="float-md-right w-100" autocomplete="off">
-                                <div class="input-group">
-                                    <input type="text" id="search" class="form-control" placeholder="Buscar tableta" aria-label="Buscar tableta">
-                                    <div class="input-group-append">
-                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                    </div>
-                                    <div class="titulo-box">
-                                        <a href="{{ route("home") }}" class="btn btn-light" title="Volver al listado"><i class="fas fa-arrow-left mr-2"></i></a>
-                                    </div>
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3" style="background:#f8f9fa; border-radius:12px; padding:18px 12px;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <h1 class="m-0 me-3">Gestión de Tablets</h1>
+                                    <form onsubmit="return false;" class="d-inline-block" autocomplete="off">
+                                        <div class="input-group">
+                                            <input type="text" id="search" class="form-control" placeholder="Buscar tableta" aria-label="Buscar tableta">
+                                            <div class="input-group-append">
+                                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                            </div>
+                                        </div>
+                                    </form>
                                 </div>
-                            </form>
+                                <div class="d-flex gap-2">
+                                    <a href="{{ route('home') }}" class="btn btn-light" title="Volver al listado"><i class="fas fa-arrow-left mr-2"></i></a>
+                                    <a href="{{ route('tabletas.create') }}" class="btn btn-success" id="agregar-tablet-btn"><i class="fas fa-plus"></i> Agregar Tableta</a>
+                                    <a href="{{ route('tabletas.generarQrs') }}" class="btn btn-secondary" id="generar-qr-btn"><i class="fas fa-qrcode"></i> Generar código QR</a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -78,31 +146,50 @@
                             {{ session('success') }}
                         </div>
                     @endif
-                    <div class="mb-3 d-flex gap-2">
-                        <a href="{{ route('tabletas.create') }}" class="btn btn-success me-2" id="agregar-tablet-btn"><i class="fas fa-plus"></i> Agregar Tableta</a>
-                        <a href="{{ route('tabletas.generarQrs') }}" class="btn btn-secondary" id="generar-qr-btn"><i class="fas fa-qrcode"></i> Generar código QR</a>
-                    </div>
+                    <div class="tablet-list-group row mt-2">
                         @if ($tabletas->isEmpty())
                             <div class="alert alert-info text-center mt-4">No hay tablets registradas.</div>
                         @else
                             @foreach ($tabletas->reverse() as $tableta)
-                            <div class="col-md-3 mb-4">
-                                <a href="#" style="text-decoration:none; color:inherit;">
-                                    <div class="card tablet-card" data-tableta='@json($tableta)'>
-                                        <div class="preview position-relative" style="height:120px; display:flex; align-items:center; justify-content:center; background:#f8f9fa;">
-                                            <i class="fas fa-tablet-alt" style="font-size:48px; color:#2f8f4a;"></i>
+                                @php
+                                    $ultimoUso = $tabletausos->where('tableta_id', $tableta->id)->sortByDesc('fecha_retiro')->first();
+                                    $sinDevolucion = $ultimoUso && !$ultimoUso->fecha_devolucion;
+                                @endphp
+                                <div class="col-md-3 mb-4">
+                                    <a href="#" style="text-decoration:none; color:inherit;">
+                                        <div class="card tablet-card{{ $sinDevolucion ? ' sin-devolucion' : '' }}" data-tableta='@json($tableta)'>
+                                            <div class="preview position-relative" style="height:120px; display:flex; align-items:center; justify-content:center; background:#f8f9fa;">
+                                                <i class="fas fa-tablet-alt" style="font-size:48px; color:{{ $sinDevolucion ? '#d32f2f' : '#2f8f4a' }};"></i>
+                                            </div>
+                                            <div class="tablet-info">
+                                                <h5>{{ $tableta->clave }} - {{ $tableta->nombre }}</h5>
+                                                @if($sinDevolucion && $ultimoUso && $ultimoUso->usuario_id)
+                                                    @php
+                                                        $usuario = $ultimoUso->usuario_id ? App\Models\Usuarios::find($ultimoUso->usuario_id) : null;
+                                                    @endphp
+                                                    <div class="tablet-meta" style="background:#fff7f7; color:#b71c1c; font-size:0.98em;">
+                                                        <span class="icon-meta"><i class="fas fa-user"></i></span>
+                                                        <strong>Retirado por:</strong>
+                                                        {{ $usuario ? $usuario->nombre : 'Usuario desconocido' }}
+                                                        <span style="margin-left:8px;"><i class="fas fa-calendar-alt"></i> {{ $ultimoUso->fecha_retiro ? \Carbon\Carbon::parse($ultimoUso->fecha_retiro)->format('d/m/Y') : '' }}</span>
+                                                    </div>
+                                                @endif
+                                                @if (!empty($tableta->modelo))
+                                                    <div class="tablet-meta modelo"><span class="icon-meta"><i class="fas fa-microchip"></i></span><strong>Modelo:</strong> {{ $tableta->modelo }}</div>
+                                                @endif
+                                                @if (!empty($tableta->serie))
+                                                    <div class="tablet-meta serie"><span class="icon-meta"><i class="fas fa-barcode"></i></span><strong>Serie:</strong> {{ $tableta->serie }}</div>
+                                                @endif
+                                                @if (!empty($tableta->sim))
+                                                    <div class="tablet-meta sim"><span class="icon-meta"><i class="fas fa-sim-card"></i></span><strong>SIM:</strong> {{ $tableta->sim }}</div>
+                                                @endif
+                                                @if (!empty($tableta->observacion))
+                                                    <div class="tablet-meta observacion"><span class="icon-meta"><i class="fas fa-comment-dots"></i></span><strong>Obs.:</strong> {{ Str::limit($tableta->observacion, 40) }}</div>
+                                                @endif
+                                            </div>
                                         </div>
-                                        <div class="tablet-info">
-                                            <h5>{{ $tableta->nombre }}</h5>
-                                            <div class="tablet-meta modelo"><strong>Modelo:</strong> {{ $tableta->modelo ?? '-' }}</div>
-                                            <div class="tablet-meta serie"><strong>Serie:</strong> {{ $tableta->serie ?? '-' }}</div>
-                                            <div class="tablet-meta sim"><strong>SIM:</strong> {{ $tableta->sim ?? '-' }}</div>
-                                            <div class="tablet-meta estado"><strong>Estado:</strong> {{ $tableta->estado ?? '-' }}</div>
-                                            <div class="tablet-meta observacion"><strong>Obs.:</strong> {{ Str::limit($tableta->observacion, 40) }}</div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
+                                    </a>
+                                </div>
                             @endforeach
                         @endif
                     </div>

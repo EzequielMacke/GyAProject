@@ -12,7 +12,8 @@ class TabletController extends Controller
     public function index()
     {
         $tabletas = Tableta::all();
-        return view('tablet.index', compact('tabletas'));
+        $tabletausos = TabletaUso::all();
+        return view('tablet.index', compact('tabletas', 'tabletausos'));
     }
 
         public function create()
