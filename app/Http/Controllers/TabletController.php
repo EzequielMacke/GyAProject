@@ -53,7 +53,7 @@ class TabletController extends Controller
     {
         $tableta = Tableta::where('clave', $clave)->firstOrFail();
         $ultimoUso = TabletaUso::where('tableta_id', $tableta->id)
-            ->orderBy('fecha_retiro', 'desc')
+            ->orderBy('id', 'desc')
             ->first();
         if ($ultimoUso && !$ultimoUso->fecha_devolucion) {
             $usuarioRetiro = Usuarios::find($ultimoUso->usuario_id);
@@ -84,7 +84,7 @@ class TabletController extends Controller
     {
         $tableta = Tableta::where('clave', $clave)->firstOrFail();
         $ultimoUso = TabletaUso::where('tableta_id', $tableta->id)
-            ->orderBy('fecha_retiro', 'desc')
+            ->orderBy('id', 'desc')
             ->first();
         if ($ultimoUso && !$ultimoUso->fecha_devolucion) {
             $ultimoUso->fecha_devolucion = now();
@@ -99,4 +99,16 @@ class TabletController extends Controller
     {
         return view('tablet.thanks');
     }
+
+    public function report(Request $request)
+        {
+            $tabletas = Tableta::all();
+            $query = TabletaUso::with('tableta', 'usuario');
+            if ($request->filled('tableta_id')) {
+                $query->where('tableta_id', $request->tableta_id);
+            }
+            $usos = $query->orderBy('fecha_retiro', 'desc')->get();
+            return view('tablet.report', compact('usos', 'tabletas'));
+        }
+    
 }

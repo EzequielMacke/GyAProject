@@ -124,8 +124,11 @@
                                         <div class="mt-2">
                                             <span class="badge badge-info">Saldo: {{ number_format($factura->saldo, 0, '', '.') }}</span>
                                         </div>
-                                        <div class="mt-2">
+                                        <div class="mt-2 d-flex justify-content-between align-items-center">
                                             <small class="text-muted">Obra: {{ $factura->obra->nombre ?? '' }}</small>
+                                            <a href="{{ route('recibo_venta.index', ['presupuesto' => $factura->presupuesto_aprobado_id, 'obra' => $factura->obra_id, 'factura' => $factura->id]) }}" class="btn btn-sm btn-success ms-2" title="Ver recibos de esta factura">
+                                               + Agregar recibo
+                                            </a>
                                         </div>
                                     </div>
                                 </div>

@@ -14,6 +14,7 @@ use App\Http\Controllers\PedobraController;
 use App\Http\Controllers\PermisosController;
 use App\Http\Controllers\PreparobraController;
 use App\Http\Controllers\PresupuestoaprobadoController;
+use App\Http\Controllers\ReciboController;
 use App\Http\Controllers\TabletController;
 use App\Http\Controllers\TrabajosaprobadosController;
 use App\Http\Controllers\UsuariosController;
@@ -159,3 +160,12 @@ Route::get('/tabletas/assign/{clave}', [TabletController::class, 'assignShow'])-
 Route::post('/tabletas/assign/{clave}', [TabletController::class, 'assignRetiro'])->name('tabletas.assign.retiro');
 Route::post('/tabletas/devolucion/{clave}', [TabletController::class, 'devolucion'])->name('tabletas.devolucion');
 Route::get('/tabletas/thanks', [TabletController::class, 'thanks'])->name('tabletas.thanks');
+Route::get('/tabletas/report', [TabletController::class, 'report'])->name('tabletas.report');
+
+// Rutas para recibos de venta
+Route::get('/recibo_venta/{id}/edit', [ReciboController::class, 'edit'])->name('recibo_venta.edit');
+Route::put('/recibo_venta/{id}', [ReciboController::class, 'update'])->name('recibo_venta.update');
+Route::get('/recibo_venta/cargar/{presupuesto?}/{obra?}/{factura?}', [ReciboController::class, 'create'])->name('recibo_venta.create');
+Route::post('/recibo_venta/guardar', [ReciboController::class, 'store'])->name('recibo_venta.store');
+Route::get('/recibo_venta/{presupuesto?}/{obra?}/{factura?}', [ReciboController::class, 'index'])->name('recibo_venta.index');
+

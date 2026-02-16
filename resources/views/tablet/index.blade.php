@@ -132,6 +132,7 @@
                                 <div class="d-flex gap-2">
                                     <a href="{{ route('home') }}" class="btn btn-light" title="Volver al listado"><i class="fas fa-arrow-left mr-2"></i></a>
                                     <a href="{{ route('tabletas.create') }}" class="btn btn-success" id="agregar-tablet-btn"><i class="fas fa-plus"></i> Agregar Tableta</a>
+                                    <a href="{{ route('tabletas.report') }}" class="btn btn-secondary" id="ver-reportes-btn"><i class="fas fa-file-alt"></i> Ver Reportes</a>
                                     <a href="{{ route('tabletas.generarQrs') }}" class="btn btn-secondary" id="generar-qr-btn"><i class="fas fa-qrcode"></i> Generar código QR</a>
                                 </div>
                             </div>

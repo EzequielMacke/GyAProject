@@ -165,12 +165,6 @@
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
                             <a href="#" class="opcion-card">
-                                <span style="color:#00bcd4;"><i class="fas fa-money-bill-wave"></i></span>
-                                <div>Recibos de Dinero</div>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="#" class="opcion-card">
                                 <span style="color:#636e72;"><i class="fas fa-info-circle"></i></span>
                                 <div>Datos de la Obra</div>
                             </a>
