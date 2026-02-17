@@ -116,8 +116,8 @@
                                 <div class="card budget-card" data-presupuesto='@json($presupuesto)' data-search="{{ strtolower($presupuesto->clave . ' ' . ($presupuesto->obra->nombre ?? 'Pendiente') . ' ' . (\Illuminate\Support\Arr::get(config('constantes.tipo_trabajo'), $presupuesto->tipo_trabajo, ''))) }}">
                                     <div class="preview position-relative">
                                         <!-- Vista previa PDF usando iframe -->
-                                        <iframe src="{{ asset('storage/' . str_replace('public/', '', $presupuesto->presupuesto)) }}" width="100%" height="100%" style="border:none; min-height:180px; background:#fff;" class="pdf-preview-iframe" data-pdf-full="{{ asset('storage/' . str_replace('public/', '', $presupuesto->presupuesto)) }}"></iframe>
-                                        <button type="button" class="btn btn-light btn-sm position-absolute" style="top:10px; right:10px; z-index:2; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.08);" title="Pantalla completa" onclick="event.preventDefault(); event.stopPropagation(); abrirPdfModal('{{ asset('storage/' . str_replace('public/', '', $presupuesto->presupuesto)) }}')">
+                                        <iframe src="{{ Storage::url('presupuestos/'.$presupuesto->presupuesto) }}" width="100%" height="100%" style="border:none; min-height:180px; background:#fff;" class="pdf-preview-iframe" data-pdf-full="{{ Storage::url('presupuestos/'.$presupuesto->presupuesto) }}"></iframe>
+                                        <button type="button" class="btn btn-light btn-sm position-absolute" style="top:10px; right:10px; z-index:2; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,0.08);" title="Pantalla completa" onclick="event.preventDefault(); event.stopPropagation(); abrirPdfModal('{{ Storage::url('presupuestos/'.$presupuesto->presupuesto) }}')">
                                             <i class="fas fa-expand"></i>
                                         </button>
                                     </div>

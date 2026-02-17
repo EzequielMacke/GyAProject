@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Directorio;
 use App\Models\Obra;
 use App\Models\PresupuestoAprobado;
 use Illuminate\Http\Request;
@@ -33,34 +34,21 @@ class ObrasController extends Controller
     {
         $request->validate([
             'nombre' => 'required|string|max:255|unique:obras,nombre',
-            'fecha_carga' => 'required|date',
         ]);
 
-        Obra::create([
+        $obra = Obra::create([
             'nombre' => $request->nombre,
             'direccion' => $request->direccion,
-            'fecha_carga' => $request->fecha_carga,
+            'fecha_carga' => now(),
             'usuario_id' => Auth::id(),
-            'observacion'=> $request->observacion,
-
-            'ruc' => $request->ruc,
-            'peticionario' => $request->peticionario,
-            'direccion_fac' => $request->direccion_fac,
-            'correo_fac' => $request->correo_fac,
-
-            'contacto' => $request->contacto,
-            'numero' => $request->numero,
-            'correo_pet' => $request->correo_pet,
-
-            'nombre_obr' => $request->nombre_obr,
-            'telefono_obr' => $request->telefono_obr,
-            'correo_obr' => $request->correo_obr,
-
-            'nombre_adm' => $request->nombre_adm,
-            'telefono_adm' => $request->telefono_adm,
-            'correo_adm' => $request->correo_adm,
-
+            'observacion' => $request->observacion,
             'estado' => 1,
+        ]);
+
+        Directorio::create([
+            'obra_id' => $obra->id,
+            'usuario_id' => 1,
+            'fecha' => now(),
         ]);
 
         return redirect()->route('obras.index')->with('success', 'Obra creada exitosamente.');

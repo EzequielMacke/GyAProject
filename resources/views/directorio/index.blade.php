@@ -104,7 +104,7 @@
                         <div class="acciones">
                             <input type="text" id="search" name="search" class="form-control search-bar" placeholder="Buscar usuarios..." style="min-width: 250px;">
                             <a href="{{ route('directorio.create', $obra->id) }}" class="btn agregar-usuario-btn">Agregar Usuarios</a>
-                            <a href="{{ route('obras.show', ['obra' => $obra->id]) }}" class="btn btn-light" title="Volver a la obra"><i class="fas fa-arrow-left"></i></a>
+                            <a href="{{ route('obras.show', ['id' => $obra->id]) }}" class="btn btn-light" title="Volver a la obra"><i class="fas fa-arrow-left"></i></a>
                         </div>
                     </div>
                 </div>

@@ -9,10 +9,14 @@ class Obra extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre','direccion','contacto','numero',
-    'peticionario','observacion','estado','usuario_id','fecha_carga','ruc','razon_social',
-    'direccion_fac','correo_fac','correo_pet','nombre_obr','telefono_obr','correo_obr',
-    'nombre_adm','telefono_adm','correo_adm'];
+    protected $fillable = [
+        'nombre',
+        'direccion',
+        'observacion',
+        'estado',
+        'usuario_id',
+        'fecha_carga'
+    ];
     public function usuario()
     {
         return $this->belongsTo(Usuarios::class);

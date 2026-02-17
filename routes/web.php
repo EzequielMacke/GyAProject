@@ -65,10 +65,9 @@ Route::get('/usuarios', [UsuariosController::class, 'index'])->name('usuarios.in
 
 // Ruta para la vista de carga de obras
 Route::get('/obras/cargar', [ObrasController::class, 'create'])->name('obras.create');
-Route::post('/obras', [ObrasController::class, 'store'])->name('obras.store');
-Route::get('/obras', [ObrasController::class, 'index'])->name('obras.index');
+Route::post('/obras/guardar', [ObrasController::class, 'store'])->name('obras.store');
+Route::get('/obras/index', [ObrasController::class, 'index'])->name('obras.index');
 Route::get('/obras/{id}', [ObrasController::class, 'show'])->name('obras.show');
-Route::resource('obras', ObrasController::class);
 
 // Ruta para la vista de carga de pedidos de obras
 Route::get('/pedidobra/cargar', [PedobraController::class, 'create'])->name('pedidobra.create');
