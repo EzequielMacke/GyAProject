@@ -120,7 +120,38 @@
                 <div class="container-fluid">
                     <div class="titulo-box">
                         <h1>Obra: {{ $obra->nombre }}</h1>
-                        <a href="{{ route('obras.index') }}" class="btn btn-light" title="Volver al listado"><i class="fas fa-arrow-left mr-2"></i></a>
+                        <div style="margin-left:auto;display:flex;gap:0.5rem;">
+                            <button type="button" class="btn btn-light" title="Eliminar Obra" data-bs-toggle="modal" data-bs-target="#modalEliminarObra">
+                                <i class="fas fa-trash-alt mr-2"></i>
+                            </button>
+                                    <!-- Modal de confirmación de eliminación -->
+                                    <div class="modal fade" id="modalEliminarObra" tabindex="-1" aria-labelledby="modalEliminarObraLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-danger text-white">
+                                                    <h5 class="modal-title" id="modalEliminarObraLabel"><i class="fas fa-exclamation-triangle me-2"></i>Confirmar eliminación</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                                </div>
+                                                <div class="modal-body text-center">
+                                                    <p class="mb-3"><i class="fas fa-trash-alt fa-3x text-danger mb-2"></i></p>
+                                                    <p class="fw-bold">¿Estás seguro que quieres eliminar la obra <span class="text-danger">"{{ $obra->nombre }}"</span>?</p>
+                                                    <p class="text-muted">Esta acción no se puede deshacer.</p>
+                                                </div>
+                                                <div class="modal-footer justify-content-center">
+                                                    <form action="{{ route('obras.destroy', $obra->id) }}" method="POST">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn btn-danger px-4">Eliminar definitivamente</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Fin Modal -->
+                            <a href="{{ route('obras.edit', $obra->id) }}" class="btn btn-light" title="Editar Obra"><i class="fas fa-edit mr-2"></i></a>
+                            <a href="{{ route('obras.index') }}" class="btn btn-light" title="Volver al listado"><i class="fas fa-arrow-left mr-2"></i></a>
+                        </div>
                     </div>
                 </div>
             </div>

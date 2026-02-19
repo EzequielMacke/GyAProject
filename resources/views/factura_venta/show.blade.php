@@ -129,7 +129,7 @@
                                             </div>
                                             @if($presupuesto->presupuesto)
                                                 <div class="mb-3 text-center">
-                                                    <iframe src="{{ asset('storage/' . ltrim(str_replace('public/', '', $presupuesto->presupuesto), '/')) }}" style="width:100%; height:180px; border-radius:10px; border:1px solid #e0e0e0;"></iframe>
+                                                    <iframe src="{{ Storage::url('presupuestos/' . $presupuesto->presupuesto) }}" style="width:100%; height:180px; border-radius:10px; border:1px solid #e0e0e0;"></iframe>
                                                 </div>
                                             @endif
                                             @if($presupuesto->observacion)

@@ -47,18 +47,24 @@ class PresupuestoaprobadoController extends Controller
         // Fecha de carga: si no viene, usar hoy
         $fecha_carga = $request->fecha_carga ?? now()->toDateString();
 
-        $presupuestoPath = $request->file('presupuesto')->store('public/presupuestos');
+        $presupuestoFile = $request->file('presupuesto');
+        $presupuestoPath = $presupuestoFile->store('public/presupuestos');
+        $presupuestoName = basename($presupuestoPath);
+        $conformidadName = null;
         $conformidadPath = $request->file('conformidad') ? $request->file('conformidad')->store('public/conformidades') : null;
+        if ($conformidadPath) {
+            $conformidadName = basename($conformidadPath);
+        }
 
-        $finalPresupuestoPath = $presupuestoPath;
+        $finalPresupuestoName = $presupuestoName;
         if ($conformidadPath) {
             if (!Storage::exists('public/presupuestos')) {
                 Storage::makeDirectory('public/presupuestos');
             }
-
-            $mergedPdfPath = 'public/presupuestos/' . uniqid() . '.pdf';
+            $mergedPdfName = uniqid() . '.pdf';
+            $mergedPdfPath = 'public/presupuestos/' . $mergedPdfName;
             $this->mergePdfs(storage_path('app/' . $presupuestoPath), storage_path('app/' . $conformidadPath), storage_path('app/' . $mergedPdfPath));
-            $finalPresupuestoPath = $mergedPdfPath;
+            $finalPresupuestoName = $mergedPdfName;
         }
 
         $monto_total = $request->monto_total ? str_replace('.', '', $request->monto_total) : null;
@@ -67,7 +73,7 @@ class PresupuestoaprobadoController extends Controller
             'fecha_carga' => $fecha_carga,
             'usuario_id' => Auth::id(),
             'obra_id' => $request->obra_id ?? null,
-            'presupuesto' => $finalPresupuestoPath,
+            'presupuesto' => $finalPresupuestoName,
             'ubicacion' => $request->ubicacion,
             'clave' => $request->clave,
             'monto_total' => $monto_total,
@@ -133,24 +139,28 @@ class PresupuestoaprobadoController extends Controller
         $conformidadPath = $presupuesto->conformidad;
 
         if ($request->hasFile('presupuesto')) {
-            $presupuestoPath = $request->file('presupuesto')->store('public/presupuestos');
+            $presupuestoFile = $request->file('presupuesto');
+            $presupuestoPath = $presupuestoFile->store('public/presupuestos');
+            $presupuestoName = basename($presupuestoPath);
         }
 
         if ($request->hasFile('conformidad')) {
             $conformidadPath = $request->file('conformidad')->store('public/conformidades');
+            $conformidadName = basename($conformidadPath);
         }
 
-        $finalPresupuestoPath = $presupuestoPath;
+        $finalPresupuestoName = $presupuestoName ?? $presupuesto->presupuesto;
         if ($conformidadPath) {
             if (!Storage::exists('public/presupuestos')) {
                 Storage::makeDirectory('public/presupuestos');
             }
-            $mergedPdfPath = 'public/presupuestos/' . uniqid() . '.pdf';
+            $mergedPdfName = uniqid() . '.pdf';
+            $mergedPdfPath = 'public/presupuestos/' . $mergedPdfName;
             $this->mergePdfs(storage_path('app/' . $presupuestoPath), storage_path('app/' . $conformidadPath), storage_path('app/' . $mergedPdfPath));
-            $finalPresupuestoPath = $mergedPdfPath;
+            $finalPresupuestoName = $mergedPdfName;
         }
 
-        $presupuesto->presupuesto = $finalPresupuestoPath;
+        $presupuesto->presupuesto = $finalPresupuestoName;
         $presupuesto->save();
 
         return redirect()->route('presupuesto_aprobado.index', $presupuesto->obra_id)->with('success', 'Presupuesto actualizado correctamente');

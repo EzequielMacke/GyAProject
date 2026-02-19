@@ -186,13 +186,17 @@
                 <div class="container-fluid">
                     <div class="titulo-box">
                         <div class="titulo-lista"><h1>Listado de Obras</h1></div>
-                        <div class="acciones">
-                            <div class="input-group" style="min-width:340px;max-width:540px;">
-                                <input type="search" id="search" name="search" class="form-control" placeholder="Buscar obras...">
-                                <button id="btn-buscar" class="btn btn-primary" type="button" title="Buscar"><i class="fas fa-search"></i></button>
-                                <a href="{{ route('obras.create') }}" class="btn btn-light" id="agregar-obra-btn" title="Agregar Obra"><i class="fas fa-plus"></i></a>
-                                <a href="{{ route('home') }}" class="btn btn-light" title="Volver al menú"><i class="fas fa-arrow-left"></i></a>
-                            </div>
+                        <div class="acciones w-100" style="max-width:600px;">
+                            <form onsubmit="return false;" class="w-100" autocomplete="off">
+                                <div class="input-group">
+                                    <input type="text" id="search" name="search" class="form-control search-bar" placeholder="Buscar obra, presupuesto, orden de trabajo o contacto..." aria-label="Buscar obra">
+                                    <div class="input-group-append">
+                                        <button id="btn-buscar" class="btn btn-primary" type="button" title="Buscar"><i class="fas fa-search"></i></button>
+                                    </div>
+                                    <a href="{{ route('obras.create') }}" class="btn btn-light" id="agregar-obra-btn" title="Agregar Obra"><i class="fas fa-plus"></i></a>
+                                    <a href="{{ route('home') }}" class="btn btn-light" title="Volver al menú"><i class="fas fa-arrow-left"></i></a>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -208,30 +212,48 @@
                         <div id="loader-busqueda" class="loader"></div>
                         @forelse ($obras->reverse() as $obra)
                         <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
-                            <a href="{{ route('obras.show', $obra->id) }}" class="obra-card text-decoration-none" tabindex="0" title="Ver detalles de la obra" style="display:block;">
+                            @php
+                                // Consultar todos los contactos relacionados a la obra (por modelo Contacto)
+                                $contactos = \App\Models\Contacto::where('obra_id', $obra->id)->pluck('nombre')->implode(' ');
+                                // Consultar todas las órdenes de trabajo de los presupuestos asociados a la obra
+                                $ordenesTrabajo = $obra->presupuestos->pluck('orden_trabajo')->implode(' ');
+                                // Consultar todos los nombres de presupuestos asociados a la obra
+                                $presupuestosNombres = $obra->presupuestos->pluck('clave')->implode(' ');
+                            @endphp
+                            <a href="{{ route('obras.show', $obra->id) }}" class="obra-card text-decoration-none" tabindex="0" title="Ver detalles de la obra" style="display:block;"
+                                data-presupuestos="{{ strtolower($presupuestosNombres) }}"
+                                data-ordenes="{{ strtolower($ordenesTrabajo) }}"
+                                data-contactos="{{ strtolower($contactos) }}">
                                 <div class="card-image">
                                     @php
-                                        // Coordenadas aleatorias dentro de Paraguay
-                                        $lat = rand(-27000000, -19000000) / 1000000.0; // entre -27 y -19
-                                        $lng = rand(-59000000, -54000000) / 1000000.0; // entre -59 y -54
+                                        // Si la dirección es un enlace de Google Maps, extraer lat/lng
+                                        $lat = null;
+                                        $lng = null;
+                                        if (!empty($obra->direccion) && preg_match('/maps\\?q=([-0-9.]+),([-0-9.]+)/', $obra->direccion, $matches)) {
+                                            $lat = $matches[1];
+                                            $lng = $matches[2];
+                                        }
                                     @endphp
-                                    <iframe
-                                        width="100%"
-                                        height="200"
-                                        frameborder="0"
-                                        style="border:0;display:block;"
-                                        src="https://www.google.com/maps?q={{ $lat }},{{ $lng }}&hl=es&z=8&output=embed"
-                                        allowfullscreen>
-                                    </iframe>
+                                    @if ($lat && $lng)
+                                        <iframe
+                                            width="100%"
+                                            height="200"
+                                            frameborder="0"
+                                            style="border:0;display:block;"
+                                            src="https://www.google.com/maps?q={{ $lat }},{{ $lng }}&hl=es&z=14&output=embed"
+                                            allowfullscreen>
+                                        </iframe>
+                                    @else
+                                        <div style="width:100%;height:200px;background:#e9ecef;display:flex;align-items:center;justify-content:center;color:#bbb;">Sin ubicación</div>
+                                    @endif
                                 </div>
                                 <div class="card-text">
                                     <h2 class="card-title">{{ $obra->nombre }}</h2>
-                                    <span class="date">{{ \Carbon\Carbon::parse($obra->fecha_carga)->diffForHumans() }}</span>
-                                    <p class="card-desc">{{ $obra->direccion }}<br><span style="color:#888;font-size:0.93em;">{{ $obra->contacto }} ({{ $obra->numero }})</span></p>
+                                    <span class="date">{{ \Carbon\Carbon::parse($obra->created_at)->diffForHumans() }}</span>
                                 </div>
                                 <div class="card-stats">
                                     <div class="stat">
-                                        <div class="value">{{ rand(1,5) }}</div>
+                                        <div class="value">{{ $obra->presupuestos->count() }}</div>
                                         <div class="type">Presupuestos</div>
                                     </div>
                                     <div class="stat border">
@@ -239,7 +261,7 @@
                                         <div class="type">Pedidos</div>
                                     </div>
                                     <div class="stat">
-                                        <div class="value">{{ rand(2,10) }}</div>
+                                        <div class="value">{{ $obra->directorios->count() }}</div>
                                         <div class="type">Usuarios</div>
                                     </div>
                                 </div>
@@ -258,24 +280,52 @@
     </div>
 </body>
 <script>
-    // Filtrado en vivo y animación de carga
+    // Filtrado avanzado y animación de carga
     document.addEventListener('DOMContentLoaded', function() {
         const searchInput = document.getElementById('search');
         const btnBuscar = document.getElementById('btn-buscar');
         const loader = document.getElementById('loader-busqueda');
         const cardsContainer = document.getElementById('obras-cards');
-        const allCards = Array.from(cardsContainer.children);
+        // Seleccionar los div.col-* que contienen cada tarjeta
+        const allCards = Array.from(cardsContainer.querySelectorAll('div.col-12, div.col-sm-6, div.col-md-4, div.col-lg-3'));
 
         function filtrarObras() {
             const texto = searchInput.value.trim().toLowerCase();
             allCards.forEach(card => {
-                const contenido = card.textContent.toLowerCase();
-                card.style.display = contenido.includes(texto) ? '' : 'none';
+                // Buscar el <a class="obra-card"> dentro del div
+                const obraCard = card.querySelector('a.obra-card');
+                if (!obraCard) return;
+                let nombreObra = obraCard.querySelector('.card-title')?.textContent?.toLowerCase() || '';
+                let presupuestos = obraCard.getAttribute('data-presupuestos') || '';
+                let ordenes = obraCard.getAttribute('data-ordenes') || '';
+                let contactos = obraCard.getAttribute('data-contactos') || '';
+                let textoBusqueda = nombreObra + ' ' + presupuestos + ' ' + ordenes + ' ' + contactos;
+                // Buscar coincidencia exacta
+                let coincidencia = '';
+                if (texto && textoBusqueda.includes(texto)) {
+                    if (nombreObra.includes(texto)) coincidencia = 'Nombre de obra';
+                    else if (contactos.includes(texto)) coincidencia = 'Contacto';
+                    else if (ordenes.includes(texto)) coincidencia = 'Orden de trabajo';
+                    else if (presupuestos.includes(texto)) coincidencia = 'Presupuesto';
+                }
+                // Mostrar/ocultar la tarjeta
+                card.style.display = textoBusqueda.includes(texto) ? '' : 'none';
+                // Mostrar coincidencia debajo del nombre
+                let coincidenciaDiv = obraCard.querySelector('.coincidencia-busqueda');
+                if (!coincidenciaDiv) {
+                    coincidenciaDiv = document.createElement('div');
+                    coincidenciaDiv.className = 'coincidencia-busqueda';
+                    coincidenciaDiv.style.color = '#2f8f4a';
+                    coincidenciaDiv.style.fontSize = '0.93rem';
+                    coincidenciaDiv.style.marginTop = '0.1rem';
+                    obraCard.querySelector('.card-text').appendChild(coincidenciaDiv);
+                }
+                coincidenciaDiv.textContent = coincidencia ? 'Coincidencia: ' + coincidencia : '';
+                coincidenciaDiv.style.display = coincidencia ? '' : 'none';
             });
         }
 
         function mostrarLoaderYFiltrar() {
-            // Ocultar todas las tarjetas antes de mostrar el loader
             allCards.forEach(card => { card.style.display = 'none'; });
             loader.style.display = 'block';
             cardsContainer.style.opacity = '0.5';
@@ -283,21 +333,17 @@
                 filtrarObras();
                 loader.style.display = 'none';
                 cardsContainer.style.opacity = '1';
-            }, 600); // Duración de la animación
+            }, 600);
         }
 
-        // Buscar al presionar el botón
         btnBuscar.addEventListener('click', mostrarLoaderYFiltrar);
-
-        // Buscar al presionar Enter en el input
         searchInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 mostrarLoaderYFiltrar();
             }
         });
-
-        // (Filtrado en vivo desactivado, solo buscar con botón o Enter)
     });
 </script>
+
 </html>
 

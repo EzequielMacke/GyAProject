@@ -51,11 +51,14 @@
                                 </div>
                             </div>
                             <div class="col-md-6 mb-2">
-                                <label for="direccion" class="form-label">Dirección</label>
+                                <label for="direccion" class="form-label">Ubicación en el mapa</label>
+                                <div id="map" style="height: 250px; border-radius: 10px; margin-bottom: 10px;"></div>
+                                <input type="hidden" name="direccion" id="direccion">
                                 <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
-                                    <input type="text" name="direccion" class="form-control" id="direccion" placeholder="Ej: Calle Falsa 123">
+                                    <span class="input-group-text"><i class="fas fa-link"></i></span>
+                                    <input type="text" class="form-control" id="direccion_link" placeholder="El link se generará automáticamente" readonly>
                                 </div>
+                                <small class="text-muted">Haz clic en el mapa para seleccionar la ubicación. El enlace se generará automáticamente.</small>
                             </div>
                         </div>
                         <div class="form-section-title">Observaciones</div>
@@ -74,5 +77,28 @@
         </div>
         @include('partials.footer')
     </div>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var map = L.map('map').setView([-25.3167, -57.5667], 11); // Departamento Central, Paraguay por defecto
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            var marker;
+            map.on('click', function(e) {
+                if (marker) { map.removeLayer(marker); }
+                marker = L.marker(e.latlng).addTo(map);
+                var lat = e.latlng.lat.toFixed(6);
+                var lng = e.latlng.lng.toFixed(6);
+                var gmapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
+                document.getElementById('direccion').value = gmapsLink;
+                document.getElementById('direccion_link').value = gmapsLink;
+            });
+        });
+    </script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 </body>
 </html>
