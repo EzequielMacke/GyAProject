@@ -60,17 +60,21 @@
 						<input type="hidden" name="factura_id" value="{{ $factura?->id ?? '' }}">
 						<div class="form-section-title">Información de la Factura</div>
 						<div class="row mb-3">
-							<div class="col-md-4 mb-2">
+							<div class="col-md-3 mb-2">
 								<label class="form-label">Nro. Factura</label>
 								<input type="text" class="form-control" value="{{ $factura?->nro_factura ?? '-' }}" disabled>
 							</div>
-							<div class="col-md-4 mb-2">
+							<div class="col-md-3 mb-2">
 								<label class="form-label">Concepto</label>
 								<input type="text" class="form-control" value="{{ $factura?->concepto ?? '-' }}" disabled>
 							</div>
-							<div class="col-md-4 mb-2">
+							<div class="col-md-3 mb-2">
 								<label class="form-label">Monto factura</label>
 								<input type="text" class="form-control" value="{{ isset($factura) ? number_format($factura->monto, 0, '', '.') : '-' }}" disabled>
+							</div>
+							<div class="col-md-3 mb-2">
+								<label class="form-label">Saldo factura</label>
+								<input type="text" class="form-control" value="{{ isset($factura) ? number_format($factura->monto - $factura->recibosVenta->sum('monto'), 0, '', '.') : '-' }}" disabled>
 							</div>
 						</div>
 						<div class="form-section-title">Datos del recibo</div>
@@ -86,12 +90,6 @@
 							<div class="col-md-4 mb-2">
 								<label for="monto" class="form-label">Monto</label>
 								<input type="text" name="monto" class="form-control" id="monto" value="{{ old('monto', number_format($recibo->monto, 0, '', '.')) }}" required>
-							</div>
-						</div>
-						<div class="row mb-3">
-							<div class="col-md-4 mb-2">
-								<label for="fecha_emision" class="form-label">Fecha de emisión</label>
-								<input type="date" name="fecha_emision" class="form-control" id="fecha_emision" value="{{ old('fecha_emision', $recibo->fecha_emision ? \Carbon\Carbon::parse($recibo->fecha_emision)->format('Y-m-d') : '') }}" required>
 							</div>
 						</div>
 					</form>

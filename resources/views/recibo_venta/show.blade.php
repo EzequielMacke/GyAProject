@@ -62,6 +62,33 @@
 					</div>
 				</div>
 			</div>
+			{{-- Resumen general de recibos --}}
+			@php
+				$montoFactura = $factura?->monto ?? 0;
+				$cobradoTotal = $recibos->sum('monto');
+				$porcentajeCobrado = $montoFactura > 0 ? round(($cobradoTotal / $montoFactura) * 100, 2) : 0;
+				$saldoPorCobrar = $montoFactura - $cobradoTotal;
+			@endphp
+			<div class="row mb-4">
+				<div class="col-12">
+					<div class="card card-custom p-4" style="border-left: 8px solid #0d6efd; margin-left: 15px;">
+						<div class="row text-center">
+							<div class="col-md-3 col-6 mb-2">
+								<div style="font-size:1.1rem; color:#495057;">Monto Factura</div>
+								<div style="font-size:1.3rem; font-weight:700; color:#0d6efd;">Gs. {{ number_format($montoFactura, 0, '', '.') }}</div>
+							</div>
+							<div class="col-md-3 col-6 mb-2">
+								<div style="font-size:1.1rem; color:#495057;">Cobrado</div>
+								<div style="font-size:1.3rem; font-weight:700; color:#28a745;">Gs. {{ number_format($cobradoTotal, 0, '', '.') }} ({{ $porcentajeCobrado }}%)</div>
+							</div>
+							<div class="col-md-3 col-6 mb-2">
+								<div style="font-size:1.1rem; color:#495057;">Saldo por cobrar</div>
+								<div style="font-size:1.3rem; font-weight:700; color:#dc3545;">Gs. {{ number_format($saldoPorCobrar, 0, '', '.') }}</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 			<section class="content">
 				<div class="container-fluid">
 					@if (session('success'))
@@ -95,11 +122,18 @@
 							</a>
 						</div>
 						@foreach ($recibos->reverse() as $recibo)
+						@php
+							$facturaRecibo = $recibo->facturaVenta;
+							$montoFacturaRecibo = $facturaRecibo?->monto ?? 0;
+							$cobradoRecibo = $montoFacturaRecibo > 0 ? $recibo->monto : 0;
+							$porcentajeRecibo = $montoFacturaRecibo > 0 ? round(($cobradoRecibo / $montoFacturaRecibo) * 100, 2) : 0;
+						@endphp
 						<div class="col-md-3 mb-4">
 							<a href="{{ route('recibo_venta.edit', $recibo->id) }}" style="text-decoration:none; color:inherit;">
 								<div class="card recibo-card" style="height:440px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
 									<div class="recibo-info w-100">
-										<h5>{{ $recibo->nro_recibo }}</h5>
+										<h5>Nro de recibo</h5>
+										<h4>{{ $recibo->nro_recibo }}</h4>
 										<div class="d-flex justify-content-between align-items-center">
 											<div class="recibo-meta">{{ $recibo->concepto }}</div>
 											<div class="text-right">
@@ -107,11 +141,29 @@
 												<small class="text-muted">{{ \Carbon\Carbon::parse($recibo->fecha_emision)->format('d/m/Y') }}</small>
 											</div>
 										</div>
-										<div class="mt-2">
-											<span class="badge badge-info">Factura: {{ $recibo->facturaVenta?->nro_factura ?? '-' }}</span>
+										
+										<div class="mb-2 mt-2">
+											<div class="card p-2" style="background:#f8f9fa; border-radius:10px; border-left:4px solid #0d6efd;">
+												<div class="row text-center">
+													<div class="col-12 mb-1">
+														<div style="font-size:0.98rem; color:#495057;">% de la factura</div>
+														<div style="font-size:1.08rem; font-weight:600; color:#28a745;">{{ $porcentajeRecibo }}% (Gs. {{ number_format($recibo->monto, 0, '', '.') }} de {{ number_format($montoFacturaRecibo, 0, '', '.') }})</div>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="mb-2">
+											<div style="font-size:0.95rem; color:#495057;">Porcentaje de la factura</div>
+											<div class="progress" style="height: 16px; border-radius: 8px;">
+												<div class="progress-bar bg-success" role="progressbar" style="width: {{ $porcentajeRecibo }}%; font-size:0.95rem; border-radius:8px;" aria-valuenow="{{ $porcentajeRecibo }}" aria-valuemin="0" aria-valuemax="100">
+													{{ $porcentajeRecibo }}%
+												</div>
+											</div>
 										</div>
 										<div class="mt-2">
-											<small class="text-muted">Obra: {{ $recibo->obra?->nombre ?? '' }}</small>
+											@if($recibo->created_at)
+												<br><small class="text-muted">Creado {{ $recibo->created_at->diffForHumans() }}</small>
+											@endif
 										</div>
 									</div>
 								</div>

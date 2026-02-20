@@ -97,7 +97,7 @@
                         <div class="row mb-3">
                             <div class="col-md-4 mb-2">
                                 <label for="nro_factura" class="form-label">Número de factura</label>
-                                <input type="text" name="nro_factura" class="form-control" id="nro_factura" required>
+                                <input type="text" name="nro_factura" class="form-control" id="nro_factura" value="001-001-0000001" required>
                             </div>
                             <div class="col-md-4 mb-2">
                                 <label for="concepto" class="form-label">Concepto</label>

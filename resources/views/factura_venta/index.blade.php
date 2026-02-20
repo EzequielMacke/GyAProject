@@ -87,6 +87,45 @@
                             {{ session('success') }}
                         </div>
                     @endif
+
+                    {{-- Resumen general de facturas --}}
+                    @php
+                        $montoPresupuesto = $presupuesto?->monto_total ?? 0;
+                        $facturadoTotal = $facturas->sum('monto');
+                        $cobradoTotal = $facturas->reduce(function($carry, $factura) {
+                            return $carry + $factura->recibosVenta->sum('monto');
+                        }, 0);
+                        $saldoPorFacturar = $montoPresupuesto - $facturadoTotal;
+                        $saldoPorCobrar = $facturadoTotal - $cobradoTotal;
+                    @endphp
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card card-custom p-4" style="border-left: 8px solid #0d6efd;">
+                                <div class="row text-center">
+                                    <div class="col-md-2 col-6 mb-2">
+                                        <div style="font-size:1.1rem; color:#495057;">Presupuesto</div>
+                                        <div style="font-size:1.3rem; font-weight:700; color:#1e7e34;">Gs. {{ number_format($montoPresupuesto, 0, '', '.') }}</div>
+                                    </div>
+                                    <div class="col-md-2 col-6 mb-2">
+                                        <div style="font-size:1.1rem; color:#495057;">Facturado</div>
+                                        <div style="font-size:1.3rem; font-weight:700; color:#0d6efd;">Gs. {{ number_format($facturadoTotal, 0, '', '.') }}</div>
+                                    </div>
+                                    <div class="col-md-2 col-6 mb-2">
+                                        <div style="font-size:1.1rem; color:#495057;">Cobrado</div>
+                                        <div style="font-size:1.3rem; font-weight:700; color:#28a745;">Gs. {{ number_format($cobradoTotal, 0, '', '.') }}</div>
+                                    </div>
+                                    <div class="col-md-3 col-6 mb-2">
+                                        <div style="font-size:1.1rem; color:#495057;">Saldo por facturar</div>
+                                        <div style="font-size:1.3rem; font-weight:700; color:#e67e22;">Gs. {{ number_format($saldoPorFacturar, 0, '', '.') }}</div>
+                                    </div>
+                                    <div class="col-md-3 col-6 mb-2">
+                                        <div style="font-size:1.1rem; color:#495057;">Saldo por cobrar</div>
+                                        <div style="font-size:1.3rem; font-weight:700; color:#dc3545;">Gs. {{ number_format($saldoPorCobrar, 0, '', '.') }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="row" id="cards-container">
                         <div class="col-md-3 mb-4">
                             <a href="{{ route('factura_venta.create', ['presupuesto' => $presupuesto?->id ?? null, 'obra' => $obra?->id ?? null]) }}" class="card add-card" id="agregar-factura-card" style="text-decoration:none; color:inherit;">
@@ -109,11 +148,19 @@
                             </a>
                         </div>
                         @foreach ($facturas->reverse() as $factura)
+                        @php
+                            $presupuesto = $factura->presupuestoAprobado;
+                            $montoPresupuesto = $presupuesto?->monto_total ?? 0;
+                            $porcentajeFactura = $montoPresupuesto > 0 ? round(($factura->monto / $montoPresupuesto) * 100, 2) : 0;
+                            $montoCobrado = $factura->recibosVenta->sum('monto');
+                            $porcentajeCobrado = $factura->monto > 0 ? round(($montoCobrado / $factura->monto) * 100, 2) : 0;
+                        @endphp
                         <div class="col-md-3 mb-4">
                             <a href="{{ route('factura_venta.edit', $factura->id) }}" style="text-decoration:none; color:inherit;">
                                 <div class="card factura-card" style="height:440px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
                                     <div class="factura-info w-100">
-                                        <h5>{{ $factura->nro_factura }}</h5>
+                                        <h5>Nro Factura</h5>
+                                        <h4>{{ $factura->nro_factura }}</h4>
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div class="factura-meta">{{ $factura->concepto }}</div>
                                             <div class="text-right">
@@ -121,11 +168,40 @@
                                                 <small class="text-muted">{{ \Carbon\Carbon::parse($factura->fecha_emision)->format('d/m/Y') }}</small>
                                             </div>
                                         </div>
-                                        <div class="mt-2">
-                                            <span class="badge badge-info">Saldo: {{ number_format($factura->saldo, 0, '', '.') }}</span>
+                                        
+                                        {{-- Resumen individual --}}
+                                        <div class="mb-2 mt-2">
+                                            <div class="card p-2" style="background:#f8f9fa; border-radius:10px; border-left:4px solid #0d6efd;">
+                                                <div class="row text-center">
+                                                    <div class="col-6 mb-1">
+                                                        <div style="font-size:0.98rem; color:#495057;">% Presupuesto</div>
+                                                        <div style="font-size:1.08rem; font-weight:600; color:#0d6efd;">{{ $porcentajeFactura }}% (Gs. {{ number_format($factura->monto, 0, '', '.') }})</div>
+                                                    </div>
+                                                    <div class="col-6 mb-1">
+                                                        <div style="font-size:0.98rem; color:#495057;">% Cobrado</div>
+                                                        <div style="font-size:1.08rem; font-weight:600; color:#28a745;">{{ $porcentajeCobrado }}% (Gs. {{ number_format($montoCobrado, 0, '', '.') }})</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {{-- Barras de avance --}}
+                                        <div class="mb-2">
+                                            <div style="font-size:0.95rem; color:#495057;">Facturado</div>
+                                            <div class="progress" style="height: 16px; border-radius: 8px;">
+                                                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ $porcentajeFactura }}%; font-size:0.95rem; border-radius:8px;" aria-valuenow="{{ $porcentajeFactura }}" aria-valuemin="0" aria-valuemax="100">
+                                                    {{ $porcentajeFactura }}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <div style="font-size:0.95rem; color:#495057;">Cobrado</div>
+                                            <div class="progress" style="height: 16px; border-radius: 8px;">
+                                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ $porcentajeCobrado }}%; font-size:0.95rem; border-radius:8px;" aria-valuenow="{{ $porcentajeCobrado }}" aria-valuemin="0" aria-valuemax="100">
+                                                    {{ $porcentajeCobrado }}%
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="mt-2 d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">Obra: {{ $factura->obra->nombre ?? '' }}</small>
                                             <a href="{{ route('recibo_venta.index', ['presupuesto' => $factura->presupuesto_aprobado_id, 'obra' => $factura->obra_id, 'factura' => $factura->id]) }}" class="btn btn-sm btn-success ms-2" title="Ver recibos de esta factura">
                                                + Agregar recibo
                                             </a>

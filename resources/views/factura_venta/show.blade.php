@@ -87,13 +87,63 @@
                         </div>
                     </div>
                 </div>
-                <div class="mb-4">
+                {{-- Cuadro de resumen general --}}
+                @php
+                    $presupuestadoTotal = $presupuestos->sum('monto_total');
+                    $facturadoTotal = $presupuestos->reduce(function($carry, $presupuesto) {
+                        return $carry + $presupuesto->facturasVenta->sum('monto');
+                    }, 0);
+                    $cobradoTotal = $presupuestos->reduce(function($carry, $presupuesto) {
+                        return $carry + $presupuesto->facturasVenta->reduce(function($carry2, $factura) {
+                            return $carry2 + $factura->recibosVenta->sum('monto');
+                        }, 0);
+                    }, 0);
+                    $saldoPorFacturar = $presupuestadoTotal - $facturadoTotal;
+                    $saldoPorCobrar = $facturadoTotal - $cobradoTotal;
+                @endphp
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card card-custom p-4" style="border-left: 8px solid #0d6efd;">
+                            <div class="row text-center">
+                                <div class="col-md-2 col-6 mb-2">
+                                    <div style="font-size:1.1rem; color:#495057;">Presupuestado</div>
+                                    <div style="font-size:1.3rem; font-weight:700; color:#1e7e34;">Gs. {{ number_format($presupuestadoTotal, 0, '', '.') }}</div>
+                                </div>
+                                <div class="col-md-2 col-6 mb-2">
+                                    <div style="font-size:1.1rem; color:#495057;">Facturado</div>
+                                    <div style="font-size:1.3rem; font-weight:700; color:#0d6efd;">Gs. {{ number_format($facturadoTotal, 0, '', '.') }}</div>
+                                </div>
+                                <div class="col-md-2 col-6 mb-2">
+                                    <div style="font-size:1.1rem; color:#495057;">Cobrado</div>
+                                    <div style="font-size:1.3rem; font-weight:700; color:#28a745;">Gs. {{ number_format($cobradoTotal, 0, '', '.') }}</div>
+                                </div>
+                                <div class="col-md-3 col-6 mb-2">
+                                    <div style="font-size:1.1rem; color:#495057;">Saldo por facturar</div>
+                                    <div style="font-size:1.3rem; font-weight:700; color:#e67e22;">Gs. {{ number_format($saldoPorFacturar, 0, '', '.') }}</div>
+                                </div>
+                                <div class="col-md-3 col-6 mb-2">
+                                    <div style="font-size:1.1rem; color:#495057;">Saldo por cobrar</div>
+                                    <div style="font-size:1.3rem; font-weight:700; color:#dc3545;">Gs. {{ number_format($saldoPorCobrar, 0, '', '.') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                     <div class="row" id="presupuestos-list">
-                        @forelse($presupuestos as $presupuesto)
+                        @forelse($presupuestos->reverse() as $presupuesto)
                             @php
                                 $totalFacturado = $presupuesto->facturasVenta->sum('monto') ?? 0;
                                 $montoTotal = $presupuesto->monto_total ?? 0;
                                 $porcentaje = $montoTotal > 0 ? round(($totalFacturado / $montoTotal) * 100, 2) : 0;
+                                // Calcular cantidad total de recibos asociados a todas las facturas de este presupuesto
+                                $cantidadRecibos = $presupuesto->facturasVenta->reduce(function($carry, $factura) {
+                                    return $carry + $factura->recibosVenta->count();
+                                }, 0);
+                                // Calcular monto total recibido (sumando todos los recibos de todas las facturas)
+                                $montoRecibido = $presupuesto->facturasVenta->reduce(function($carry, $factura) {
+                                    return $carry + $factura->recibosVenta->sum('monto');
+                                }, 0);
+                                $porcentajeRecibido = $totalFacturado > 0 ? round(($montoRecibido / $totalFacturado) * 100, 2) : 0;
                             @endphp
                             <div class="col-md-4 mb-4 presupuesto-card-item" 
                                 data-search="{{
@@ -119,6 +169,8 @@
                                             <div class="mb-2 text-end" style="font-size:1.25rem; color:#1e7e34; font-weight:600;">Gs. {{ number_format($montoTotal, 0, '', '.') }}</div>
                                             <div class="mb-2 text-center" style="font-size:1.05rem; color:#0d6efd;">
                                                 {{ $presupuesto->facturasVenta->count() }} factura{{ $presupuesto->facturasVenta->count() == 1 ? '' : 's' }}
+                                                <span style="margin: 0 8px;">|</span>
+                                                {{ $cantidadRecibos }} recibo{{ $cantidadRecibos == 1 ? '' : 's' }}
                                             </div>
                                             <div class="mb-2 text-center" style="font-size:1.05rem; color:#e67e22;">
                                                 @if(!empty($presupuesto->orden_trabajo))
@@ -126,6 +178,33 @@
                                                 @else
                                                     Orden Pendiente
                                                 @endif
+                                            </div>
+                                            {{-- Cuadro resumen individual --}}
+                                            <div class="mb-3">
+                                                <div class="card p-2" style="background:#f8f9fa; border-radius:12px; border-left:4px solid #0d6efd;">
+                                                    <div class="row text-center">
+                                                        <div class="col-6 col-md-4 mb-1">
+                                                            <div style="font-size:0.98rem; color:#495057;">Presupuestado</div>
+                                                            <div style="font-size:1.08rem; font-weight:600; color:#1e7e34;">Gs. {{ number_format($montoTotal, 0, '', '.') }}</div>
+                                                        </div>
+                                                        <div class="col-6 col-md-4 mb-1">
+                                                            <div style="font-size:0.98rem; color:#495057;">Facturado</div>
+                                                            <div style="font-size:1.08rem; font-weight:600; color:#0d6efd;">Gs. {{ number_format($totalFacturado, 0, '', '.') }}</div>
+                                                        </div>
+                                                        <div class="col-6 col-md-4 mb-1">
+                                                            <div style="font-size:0.98rem; color:#495057;">Cobrado</div>
+                                                            <div style="font-size:1.08rem; font-weight:600; color:#28a745;">Gs. {{ number_format($montoRecibido, 0, '', '.') }}</div>
+                                                        </div>
+                                                        <div class="col-6 col-md-6 mb-1">
+                                                            <div style="font-size:0.98rem; color:#495057;">Saldo por facturar</div>
+                                                            <div style="font-size:1.08rem; font-weight:600; color:#e67e22;">Gs. {{ number_format($montoTotal - $totalFacturado, 0, '', '.') }}</div>
+                                                        </div>
+                                                        <div class="col-6 col-md-6 mb-1">
+                                                            <div style="font-size:0.98rem; color:#495057;">Saldo por cobrar</div>
+                                                            <div style="font-size:1.08rem; font-weight:600; color:#dc3545;">Gs. {{ number_format($totalFacturado - $montoRecibido, 0, '', '.') }}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             @if($presupuesto->presupuesto)
                                                 <div class="mb-3 text-center">
@@ -149,6 +228,21 @@
                                                     <div class="d-flex justify-content-between mt-1" style="font-size:1.05rem;">
                                                         <span>Gs. {{ number_format($montoTotal, 0, '', '.') }}</span>
                                                         <span>Gs. {{ number_format($totalFacturado, 0, '', '.') }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <span style="font-size:1.05rem;">Cobrado</span>
+                                                        <span style="font-size:1.15rem; font-weight:600; color:#28a745;">Gs. {{ number_format($montoRecibido, 0, '', '.') }} ({{ $porcentajeRecibido }}%)</span>
+                                                    </div>
+                                                    <div class="progress" style="height: 20px; border-radius: 10px;">
+                                                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ $porcentajeRecibido }}%; font-size:1.05rem; border-radius:10px;" aria-valuenow="{{ $porcentajeRecibido }}" aria-valuemin="0" aria-valuemax="100">
+                                                            {{ $porcentajeRecibido }}%
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between mt-1" style="font-size:1.05rem;">
+                                                        <span>Gs. {{ number_format($totalFacturado, 0, '', '.') }}</span>
+                                                        <span>Gs. {{ number_format($montoRecibido, 0, '', '.') }}</span>
                                                     </div>
                                                 </div>
                                             </div>

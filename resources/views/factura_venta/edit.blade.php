@@ -89,10 +89,6 @@
                                 <label class="form-label">Monto presupuesto</label>
                                 <input type="text" class="form-control" value="{{ number_format($presupuesto?->monto_total ?? 0, 0, '', '.') }}" disabled>
                             </div>
-                            <div class="col-md-3 mb-2">
-                                <label class="form-label">Saldo a facturar</label>
-                                <input type="text" class="form-control" value="{{ number_format(($presupuesto?->monto_total ?? 0) - ($presupuesto?->facturasVenta->sum('monto') ?? 0), 0, '', '.') }}" disabled>
-                            </div>
                         </div>
                         <div class="form-section-title">Datos de la factura</div>
                         <div class="row mb-3">
