@@ -81,7 +81,7 @@
                         </div>
                         @if ($permisos->where('modulo_id', Modulo::where('nombre', 'ped_obr_ing')->first()->id ?? null)->where('agregar', 1)->isNotEmpty())
                         <div class="col-sm-6">
-                            <a href="{{ route('pedidobra.create') }}" class="btn btn-primary float-right" id="agregar-pedido-btn">Agregar Pedido</a>
+                            <a href="#" class="btn btn-primary float-right" id="agregar-pedido-btn">Agregar Pedido</a>
                         </div>
                         @endif
                     </div>
@@ -137,8 +137,7 @@
                                     </td>
                                     <td>
                                          @if ($permisos->where('modulo_id', Modulo::where('nombre', 'ped_obr_ing')->first()->id ?? null)->where('editar', 1)->isNotEmpty())
-                                            <a href="{{ route('pedidobra.edit', $pedobra->id) }}"
-                                                class="btn btn-warning btn-sm editar-btn"
+                                            <a href="#" class="btn btn-warning btn-sm editar-btn"
                                                 data-toggle="tooltip"
                                                 title="Editar"
                                                 data-usuario-id="{{ $pedobra->usuario_id }}"

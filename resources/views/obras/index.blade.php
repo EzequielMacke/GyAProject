@@ -257,7 +257,7 @@
                                         <div class="type">Presupuestos</div>
                                     </div>
                                     <div class="stat border">
-                                        <div class="value">{{ rand(10,50) }}</div>
+                                        <div class="value">{{ \App\Models\Pedido_para_obra::where('obra_id', $obra->id)->count() }}</div>
                                         <div class="type">Pedidos</div>
                                     </div>
                                     <div class="stat">

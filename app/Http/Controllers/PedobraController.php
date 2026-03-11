@@ -18,12 +18,23 @@ class PedobraController extends Controller
         $estados_label = config('constantes.estado_de_insumo_btn');
         return view('pedidobra.show', compact('pedido','estados','estados_label'));
     }
-    public function index()
+    public function index($obra = null)
     {
-        $pedobras = Pedido_para_obra::all();
+        $query = Pedido_para_obra::query();
+        if ($obra) {
+            $query->where('obra_id', $obra);
+        } else {
+            $obraId = Auth::user()->obra_id ?? null;
+            if ($obraId) {
+                $query->where('obra_id', $obraId);
+            } else {
+                $query->whereNull('obra_id');
+            }
+        }
+        $pedobras = $query->get();
         $estados = config('constantes.estado_de_pedido');
         $estados_label = config('constantes.estado_de_pedido_btn');
-        return view('pedidobra.index', compact('pedobras', 'estados','estados_label'));
+        return view('pedidobra.index', compact('pedobras', 'estados','estados_label','obra'));
     }
     public function getInsumos()
     {

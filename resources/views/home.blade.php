@@ -59,7 +59,7 @@
                             </a>
                         </div>
                         <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
-                            <a href="#" class="opcion-card text-center">
+                            <a href="{{ route('mantenimiento.show') }}" class="opcion-card text-center">
                                 <span style="color:#fd79a8;"><i class="fas fa-tools"></i></span>
                                 <div style="font-size:1.2rem; font-weight:600;">Mantenimiento</div>
                             </a>
