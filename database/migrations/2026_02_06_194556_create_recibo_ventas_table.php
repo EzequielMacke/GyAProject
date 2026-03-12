@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('nro_recibo')->nullable();
             $table->date('fecha_emision')->nullable();
             $table->string('concepto')->nullable();
-            $table->decimal('monto', 10, 2)->nullable();
+            $table->decimal('monto', 15, 2)->nullable();
             $table->unsignedInteger('factura_id')->nullable();
             $table->foreign('factura_id')->references('id')->on('factura_ventas');
             $table->unsignedBigInteger('presupuesto_aprobado_id')->nullable();

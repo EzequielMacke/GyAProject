@@ -3,264 +3,697 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cargar Factura de Venta</title>
+    <title>Facturación de la Obra</title>
     @include('partials.head')
-    <style>
-        body { background: #f5f6fa; }
-        .card-custom { border-radius: 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); background: #fff; margin-top: 30px; margin-bottom: 30px; }
-        .form-control, .form-select { border-radius: 10px; }
-        .btn-primary, .btn-warning { border-radius: 10px; }
-        .form-section-title { font-size: 1.1rem; font-weight: 600; color: #495057; margin-bottom: 10px; margin-top: 20px; }
-    </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const montoInput = document.getElementById('monto');
-            if (montoInput) {
-                montoInput.addEventListener('input', function() {
-                    let value = montoInput.value.replace(/\./g, '');
-                    if (!isNaN(value) && value !== '') {
-                        montoInput.value = Number(value).toLocaleString('de-DE');
-                    }
-                });
-            }
-            const saldoInput = document.getElementById('saldo');
-            if (saldoInput) {
-                saldoInput.addEventListener('input', function() {
-                    let value = saldoInput.value.replace(/\./g, '');
-                    if (!isNaN(value) && value !== '') {
-                        saldoInput.value = Number(value).toLocaleString('de-DE');
-                    }
-                });
-            }
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-            
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('searchPresupuesto');
-            const cards = Array.from(document.querySelectorAll('.presupuesto-card-item'));
-            searchInput?.addEventListener('input', function() {
-                const term = (searchInput.value || '').trim().toLowerCase();
-                cards.forEach(card => {
-                    const searchData = card.getAttribute('data-search').toLowerCase();
-                    card.style.display = searchData.includes(term) ? '' : 'none';
-                });
-            });
-        });
-    </script>
     @php
         use App\Models\Modulo;
         use App\Models\Permiso;
         $permisos = Permiso::where('area_id', session('usuario_area_id'))->get();
     @endphp
     @if ($permisos->where('modulo_id', Modulo::where('nombre', 'pre_apr_ing')->first()->id ?? null)->where('agregar', 1)->isEmpty())
-        <script>
-            window.location.href = "{{ url('/home') }}";
-        </script>
+        <script>window.location.href = "{{ url('/home') }}";</script>
     @endif
+
+    <style>
+        :root {
+            --bg:       #f0f3f7;
+            --bg2:      #e4e9f0;
+            --surface:  #f8fafc;
+            --surface2: #edf1f6;
+            --border:   #d8e0ea;
+            --border2:  #c4cfdc;
+            --text:     #1e2835;
+            --text2:    #445060;
+            --muted:    #8496aa;
+            --accent:   #2a6fdb;
+            --accent-s: #e8f0fc;
+            --accent-b: #1f5bbf;
+            --green:    #1e9166;
+            --green-s:  #e5f6f0;
+            --green-b:  #a8dcc9;
+            --orange:   #c47c10;
+            --orange-s: #fef3e2;
+            --red:      #d94040;
+            --red-s:    #fdeaea;
+            --slate:    #4e6070;
+            --slate-s:  #edf1f4;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .content-wrapper { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .content-wrapper *:not(i):not([class*="fa"]):not([class*="icon"]):not(.nav-icon) {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .content-wrapper { background: var(--bg) !important; }
+
+        /* ══════════════════════════════
+           PAGE HEADER
+        ══════════════════════════════ */
+        .ph {
+            padding: 1.75rem 0 1.5rem;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .ph-crumb {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .ph-crumb a { color: var(--muted); text-decoration: none; }
+        .ph-crumb a:hover { color: var(--accent); }
+        .ph-crumb i { font-size: 0.58rem; }
+
+        .ph-title {
+            font-size: 1.65rem;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.4px;
+            line-height: 1.1;
+            word-break: break-word;
+        }
+
+        .ph-title em { font-style: normal; color: var(--accent); }
+        .ph-sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
+
+        .ph-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            height: 38px;
+            padding: 0 1rem;
+            border-radius: 0.55rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.825rem;
+            font-weight: 600;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.14s;
+            white-space: nowrap;
+        }
+
+        .btn:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+
+        /* ── Search ── */
+        .search-wrap { position: relative; }
+
+        .search-wrap i {
+            position: absolute;
+            left: 0.78rem; top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 0.72rem;
+            pointer-events: none;
+        }
+
+        .search-bar {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.83rem;
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 0.55rem;
+            padding: 0.5rem 0.9rem 0.5rem 2.1rem;
+            color: var(--text);
+            width: 240px;
+            outline: none;
+            transition: border-color 0.15s, width 0.22s, box-shadow 0.15s;
+            height: 38px;
+        }
+
+        .search-bar::placeholder { color: var(--muted); }
+        .search-bar:focus {
+            border-color: var(--accent);
+            width: 290px;
+            box-shadow: 0 0 0 3px rgba(42,111,219,0.1);
+        }
+
+        /* ══════════════════════════════
+           SUMMARY STRIP
+        ══════════════════════════════ */
+        .summary-strip {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.75rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        .summary-item {
+            flex: 1 1 160px;
+            padding: 0.6rem 1.2rem;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .summary-item:last-child { border-right: none; }
+
+        .summary-label {
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            color: var(--muted);
+        }
+
+        .summary-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 1rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .summary-val.green  { color: var(--green); }
+        .summary-val.blue   { color: var(--accent); }
+        .summary-val.teal   { color: #1e9166; }
+        .summary-val.orange { color: var(--orange); }
+        .summary-val.red    { color: var(--red); }
+
+        /* ══════════════════════════════
+           CARDS GRID
+        ══════════════════════════════ */
+        #presupuestos-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+
+        /* ── Presupuesto card ── */
+        .presup-card {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 0.85rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: var(--text);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+            animation: cardIn 0.25s ease both;
+        }
+
+        .presup-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.09);
+            border-color: var(--border2);
+            color: var(--text);
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: none; }
+        }
+
+        /* Card header */
+        .card-head {
+            padding: 1rem 1.15rem 0.8rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg2);
+        }
+
+        .card-head-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .card-clave {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.2;
+            word-break: break-word;
+        }
+
+        .card-fecha {
+            font-size: 0.72rem;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .card-fecha i { font-size: 0.6rem; }
+
+        .card-tipo {
+            font-size: 0.75rem;
+            color: var(--text2);
+            font-weight: 500;
+        }
+
+        .card-ot {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            margin-top: 0.35rem;
+            padding: 0.18rem 0.55rem;
+            border-radius: 99px;
+            background: var(--orange-s);
+            color: var(--orange);
+            border: 1px solid #f5dba8;
+        }
+
+        .card-ot.pending {
+            background: var(--slate-s);
+            color: var(--muted);
+            border-color: var(--border);
+        }
+
+        /* Card body */
+        .card-body {
+            padding: 0.9rem 1.15rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        /* Mini summary grid */
+        .mini-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.4rem;
+        }
+
+        .mini-item {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 0.45rem;
+            padding: 0.45rem 0.5rem;
+            text-align: center;
+        }
+
+        .mini-label {
+            font-size: 0.62rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+            margin-bottom: 0.15rem;
+        }
+
+        .mini-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mini-val.green  { color: var(--green); }
+        .mini-val.blue   { color: var(--accent); }
+        .mini-val.teal   { color: #1e9166; }
+        .mini-val.orange { color: var(--orange); }
+        .mini-val.red    { color: var(--red); }
+
+        /* Counts */
+        .card-counts {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .count-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.2rem 0.55rem;
+            border-radius: 99px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text2);
+        }
+
+        .count-badge i { font-size: 0.62rem; color: var(--muted); }
+
+        /* Progress bars */
+        .progress-section { display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .prog-row { display: flex; flex-direction: column; gap: 0.25rem; }
+
+        .prog-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.72rem;
+        }
+
+        .prog-label { color: var(--muted); font-weight: 600; }
+        .prog-val   { font-family: 'DM Mono', monospace; color: var(--text2); font-size: 0.72rem; }
+
+        .prog-track {
+            height: 6px;
+            background: var(--bg2);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .prog-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: width 0.6s ease;
+        }
+
+        .prog-fill.blue  { background: var(--accent); }
+        .prog-fill.teal  { background: var(--green); }
+
+        /* PDF preview */
+        .card-pdf {
+            height: 140px;
+            background: var(--bg2);
+            overflow: hidden;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .card-pdf iframe {
+            width: 100%; height: 100%;
+            border: none;
+            pointer-events: none;
+        }
+
+        /* Observacion footer */
+        .card-obs {
+            padding: 0.55rem 1.1rem;
+            background: var(--surface2);
+            border-top: 1px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-style: italic;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.4rem;
+        }
+
+        .card-obs i { margin-top: 0.1rem; font-size: 0.65rem; flex-shrink: 0; }
+
+        /* empty / no results */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 5rem 2rem;
+            color: var(--muted);
+        }
+
+        .empty-state i { font-size: 2rem; display: block; margin-bottom: 0.75rem; opacity: 0.35; }
+        .empty-state p { font-size: 0.88rem; }
+
+        .no-results {
+            display: none;
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--muted);
+            padding: 4rem 2rem;
+            font-size: 0.85rem;
+        }
+
+        .no-results i { display: block; font-size: 1.5rem; margin-bottom: 0.5rem; opacity: 0.3; }
+
+        @media (max-width: 576px) {
+            .summary-item { border-right: none; border-bottom: 1px solid var(--border); }
+            .summary-item:last-child { border-bottom: none; }
+        }
+    </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
-    <div class="wrapper">
-        @include('partials.navbar')
-        @include('partials.sidebar')
-        <div class="content-wrapper" style="min-height: 100vh; background: transparent;">
+<div class="wrapper">
+    @include('partials.navbar')
+    @include('partials.sidebar')
+
+    <div class="content-wrapper">
+        <div class="content-header">
             <div class="container-fluid">
-                <div class="content-header">
-                    <div class="container-fluid">
-                        <div class="row mb-2 align-items-end">
-                            <div class="col-md-6 col-12 d-flex align-items-center">
-                                <h1 class="m-0">Presupuestos de la Obra</h1>
-                            </div>
-                            <div class="col-md-6 col-12">
-                                <form onsubmit="return false;" class="float-md-right w-100" autocomplete="off">
-                                    <div class="input-group">
-                                        <input type="text" id="searchPresupuesto" class="form-control" placeholder="Buscar presupuesto por clave, tipo o monto..." aria-label="Buscar presupuesto">
-                                        <div class="input-group-append">
-                                            <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                        </div>
-                                        <div class="titulo-box">
-                                            <a href="{{ route('obras.show', $obra) }}" class="btn btn-light" title="Volver al listado"><i class="fas fa-arrow-left mr-2"></i></a>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
+
+                <div class="ph">
+                    <div>
+                        <div class="ph-crumb">
+                            <i class="fas fa-hard-hat"></i>
+                            <a href="{{ route('obras.index') }}">Obras</a>
+                            <i class="fas fa-chevron-right"></i>
+                            <a href="{{ route('obras.show', $obra) }}">{{ $obra->nombre ?? '-' }}</a>
+                            <i class="fas fa-chevron-right"></i>
+                            Facturación
                         </div>
+                        <h1 class="ph-title">Facturación — <em>{{ $obra->nombre ?? '-' }}</em></h1>
+                        <p class="ph-sub">Seguimiento de presupuestos, facturas y cobros</p>
                     </div>
-                </div>
-                {{-- Cuadro de resumen general --}}
-                @php
-                    $presupuestadoTotal = $presupuestos->sum('monto_total');
-                    $facturadoTotal = $presupuestos->reduce(function($carry, $presupuesto) {
-                        return $carry + $presupuesto->facturasVenta->sum('monto');
-                    }, 0);
-                    $cobradoTotal = $presupuestos->reduce(function($carry, $presupuesto) {
-                        return $carry + $presupuesto->facturasVenta->reduce(function($carry2, $factura) {
-                            return $carry2 + $factura->recibosVenta->sum('monto');
-                        }, 0);
-                    }, 0);
-                    $saldoPorFacturar = $presupuestadoTotal - $facturadoTotal;
-                    $saldoPorCobrar = $facturadoTotal - $cobradoTotal;
-                @endphp
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card card-custom p-4" style="border-left: 8px solid #0d6efd;">
-                            <div class="row text-center">
-                                <div class="col-md-2 col-6 mb-2">
-                                    <div style="font-size:1.1rem; color:#495057;">Presupuestado</div>
-                                    <div style="font-size:1.3rem; font-weight:700; color:#1e7e34;">Gs. {{ number_format($presupuestadoTotal, 0, '', '.') }}</div>
-                                </div>
-                                <div class="col-md-2 col-6 mb-2">
-                                    <div style="font-size:1.1rem; color:#495057;">Facturado</div>
-                                    <div style="font-size:1.3rem; font-weight:700; color:#0d6efd;">Gs. {{ number_format($facturadoTotal, 0, '', '.') }}</div>
-                                </div>
-                                <div class="col-md-2 col-6 mb-2">
-                                    <div style="font-size:1.1rem; color:#495057;">Cobrado</div>
-                                    <div style="font-size:1.3rem; font-weight:700; color:#28a745;">Gs. {{ number_format($cobradoTotal, 0, '', '.') }}</div>
-                                </div>
-                                <div class="col-md-3 col-6 mb-2">
-                                    <div style="font-size:1.1rem; color:#495057;">Saldo por facturar</div>
-                                    <div style="font-size:1.3rem; font-weight:700; color:#e67e22;">Gs. {{ number_format($saldoPorFacturar, 0, '', '.') }}</div>
-                                </div>
-                                <div class="col-md-3 col-6 mb-2">
-                                    <div style="font-size:1.1rem; color:#495057;">Saldo por cobrar</div>
-                                    <div style="font-size:1.3rem; font-weight:700; color:#dc3545;">Gs. {{ number_format($saldoPorCobrar, 0, '', '.') }}</div>
-                                </div>
-                            </div>
+                    <div class="ph-right">
+                        <div class="search-wrap">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="search" class="search-bar" placeholder="Buscar presupuesto…" autocomplete="off">
                         </div>
+                        <a href="{{ route('obras.show', $obra) }}" class="btn">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </a>
                     </div>
                 </div>
-                    <div class="row" id="presupuestos-list">
-                        @forelse($presupuestos->reverse() as $presupuesto)
-                            @php
-                                $totalFacturado = $presupuesto->facturasVenta->sum('monto') ?? 0;
-                                $montoTotal = $presupuesto->monto_total ?? 0;
-                                $porcentaje = $montoTotal > 0 ? round(($totalFacturado / $montoTotal) * 100, 2) : 0;
-                                // Calcular cantidad total de recibos asociados a todas las facturas de este presupuesto
-                                $cantidadRecibos = $presupuesto->facturasVenta->reduce(function($carry, $factura) {
-                                    return $carry + $factura->recibosVenta->count();
-                                }, 0);
-                                // Calcular monto total recibido (sumando todos los recibos de todas las facturas)
-                                $montoRecibido = $presupuesto->facturasVenta->reduce(function($carry, $factura) {
-                                    return $carry + $factura->recibosVenta->sum('monto');
-                                }, 0);
-                                $porcentajeRecibido = $totalFacturado > 0 ? round(($montoRecibido / $totalFacturado) * 100, 2) : 0;
-                            @endphp
-                            <div class="col-md-4 mb-4 presupuesto-card-item" 
-                                data-search="{{
-                                    $presupuesto->clave . ' ' .
-                                    ($presupuesto->fecha_carga ? \Carbon\Carbon::parse($presupuesto->fecha_carga)->format('d/m/Y') : '') . ' ' .
-                                    (config('constantes.tipo_trabajo')[$presupuesto->tipo_trabajo] ?? '') . ' ' .
-                                    number_format($montoTotal, 0, '', '.') . ' ' .
-                                    ($presupuesto->observacion ?? '') . ' ' .
-                                    number_format($totalFacturado, 0, '', '.') . ' ' .
-                                    $porcentaje . ' ' .
-                                    $presupuesto->facturasVenta->count()
-                                }}">
-                                <a href="{{ route('factura_venta.index', ['presupuesto' => $presupuesto->id, 'obra' => $obra->id]) }}" style="text-decoration:none; color:inherit;">
-                                    <div class="card h-100 d-flex flex-column justify-content-between" style="border-radius:22px; min-height:540px; box-shadow:0 2px 16px rgba(0,0,0,0.11); transition:box-shadow .18s,transform .18s;">
-                                        <div class="card-body d-flex flex-column p-4">
-                                            <div class="mb-2 d-flex justify-content-between align-items-center">
-                                                <span class="fw-bold" style="font-size:1.5rem;">{{ $presupuesto->clave }}</span>
-                                                <span class="text-muted" style="font-size:1.1rem;">{{ $presupuesto->fecha_carga ? \Carbon\Carbon::parse($presupuesto->fecha_carga)->format('d/m/Y') : '' }}</span>
-                                            </div>
-                                            <div class="mb-2 text-center" style="font-size:1.15rem; font-weight:500;">
-                                                {{ config('constantes.tipo_trabajo')[$presupuesto->tipo_trabajo] ?? '' }}
-                                            </div>
-                                            <div class="mb-2 text-end" style="font-size:1.25rem; color:#1e7e34; font-weight:600;">Gs. {{ number_format($montoTotal, 0, '', '.') }}</div>
-                                            <div class="mb-2 text-center" style="font-size:1.05rem; color:#0d6efd;">
-                                                {{ $presupuesto->facturasVenta->count() }} factura{{ $presupuesto->facturasVenta->count() == 1 ? '' : 's' }}
-                                                <span style="margin: 0 8px;">|</span>
-                                                {{ $cantidadRecibos }} recibo{{ $cantidadRecibos == 1 ? '' : 's' }}
-                                            </div>
-                                            <div class="mb-2 text-center" style="font-size:1.05rem; color:#e67e22;">
-                                                @if(!empty($presupuesto->orden_trabajo))
-                                                    Orden de Trabajo: {{ $presupuesto->orden_trabajo }}
-                                                @else
-                                                    Orden Pendiente
-                                                @endif
-                                            </div>
-                                            {{-- Cuadro resumen individual --}}
-                                            <div class="mb-3">
-                                                <div class="card p-2" style="background:#f8f9fa; border-radius:12px; border-left:4px solid #0d6efd;">
-                                                    <div class="row text-center">
-                                                        <div class="col-6 col-md-4 mb-1">
-                                                            <div style="font-size:0.98rem; color:#495057;">Presupuestado</div>
-                                                            <div style="font-size:1.08rem; font-weight:600; color:#1e7e34;">Gs. {{ number_format($montoTotal, 0, '', '.') }}</div>
-                                                        </div>
-                                                        <div class="col-6 col-md-4 mb-1">
-                                                            <div style="font-size:0.98rem; color:#495057;">Facturado</div>
-                                                            <div style="font-size:1.08rem; font-weight:600; color:#0d6efd;">Gs. {{ number_format($totalFacturado, 0, '', '.') }}</div>
-                                                        </div>
-                                                        <div class="col-6 col-md-4 mb-1">
-                                                            <div style="font-size:0.98rem; color:#495057;">Cobrado</div>
-                                                            <div style="font-size:1.08rem; font-weight:600; color:#28a745;">Gs. {{ number_format($montoRecibido, 0, '', '.') }}</div>
-                                                        </div>
-                                                        <div class="col-6 col-md-6 mb-1">
-                                                            <div style="font-size:0.98rem; color:#495057;">Saldo por facturar</div>
-                                                            <div style="font-size:1.08rem; font-weight:600; color:#e67e22;">Gs. {{ number_format($montoTotal - $totalFacturado, 0, '', '.') }}</div>
-                                                        </div>
-                                                        <div class="col-6 col-md-6 mb-1">
-                                                            <div style="font-size:0.98rem; color:#495057;">Saldo por cobrar</div>
-                                                            <div style="font-size:1.08rem; font-weight:600; color:#dc3545;">Gs. {{ number_format($totalFacturado - $montoRecibido, 0, '', '.') }}</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            @if($presupuesto->presupuesto)
-                                                <div class="mb-3 text-center">
-                                                    <iframe src="{{ Storage::url('presupuestos/' . $presupuesto->presupuesto) }}" style="width:100%; height:180px; border-radius:10px; border:1px solid #e0e0e0;"></iframe>
-                                                </div>
-                                            @endif
-                                            @if($presupuesto->observacion)
-                                                <div class="mb-2 text-center" style="font-size:1.05rem; color:#6c757d;">{{ $presupuesto->observacion }}</div>
-                                            @endif
-                                            <div class="mt-auto">
-                                                <div class="mb-2">
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <span style="font-size:1.05rem;">Facturado</span>
-                                                        <span style="font-size:1.15rem; font-weight:600; color:#0d6efd;">Gs. {{ number_format($totalFacturado, 0, '', '.') }} ({{ $porcentaje }}%)</span>
-                                                    </div>
-                                                    <div class="progress" style="height: 20px; border-radius: 10px;">
-                                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ $porcentaje }}%; font-size:1.05rem; border-radius:10px;" aria-valuenow="{{ $porcentaje }}" aria-valuemin="0" aria-valuemax="100">
-                                                            {{ $porcentaje }}%
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between mt-1" style="font-size:1.05rem;">
-                                                        <span>Gs. {{ number_format($montoTotal, 0, '', '.') }}</span>
-                                                        <span>Gs. {{ number_format($totalFacturado, 0, '', '.') }}</span>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-2">
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <span style="font-size:1.05rem;">Cobrado</span>
-                                                        <span style="font-size:1.15rem; font-weight:600; color:#28a745;">Gs. {{ number_format($montoRecibido, 0, '', '.') }} ({{ $porcentajeRecibido }}%)</span>
-                                                    </div>
-                                                    <div class="progress" style="height: 20px; border-radius: 10px;">
-                                                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ $porcentajeRecibido }}%; font-size:1.05rem; border-radius:10px;" aria-valuenow="{{ $porcentajeRecibido }}" aria-valuemin="0" aria-valuemax="100">
-                                                            {{ $porcentajeRecibido }}%
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between mt-1" style="font-size:1.05rem;">
-                                                        <span>Gs. {{ number_format($totalFacturado, 0, '', '.') }}</span>
-                                                        <span>Gs. {{ number_format($montoRecibido, 0, '', '.') }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
-                        @empty
-                            <div class="col-12">
-                                <div class="alert alert-info">No hay presupuestos disponibles para esta obra.</div>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-                
+
             </div>
         </div>
-        @include('partials.footer')
+
+        <section class="content">
+            <div class="container-fluid">
+
+                {{-- Summary strip --}}
+                @php
+                    $presupuestadoTotal = $presupuestos->sum('monto_total');
+                    $facturadoTotal = $presupuestos->reduce(fn($c, $p) => $c + $p->facturasVenta->sum('monto'), 0);
+                    $cobradoTotal   = $presupuestos->reduce(fn($c, $p) =>
+                        $c + $p->facturasVenta->reduce(fn($c2, $f) => $c2 + $f->recibosVenta->sum('monto'), 0), 0);
+                    $saldoPorFacturar = $presupuestadoTotal - $facturadoTotal;
+                    $saldoPorCobrar   = $facturadoTotal - $cobradoTotal;
+                @endphp
+
+                <div class="summary-strip">
+                    <div class="summary-item">
+                        <span class="summary-label">Presupuestado</span>
+                        <span class="summary-val green">Gs. {{ number_format($presupuestadoTotal, 0, '', '.') }}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Facturado</span>
+                        <span class="summary-val blue">Gs. {{ number_format($facturadoTotal, 0, '', '.') }}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Cobrado</span>
+                        <span class="summary-val teal">Gs. {{ number_format($cobradoTotal, 0, '', '.') }}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Saldo por facturar</span>
+                        <span class="summary-val orange">Gs. {{ number_format($saldoPorFacturar, 0, '', '.') }}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Saldo por cobrar</span>
+                        <span class="summary-val red">Gs. {{ number_format($saldoPorCobrar, 0, '', '.') }}</span>
+                    </div>
+                </div>
+
+                {{-- Cards grid --}}
+                <div id="presupuestos-list">
+
+                    @forelse($presupuestos->reverse() as $presupuesto)
+                    @php
+                        $totalFacturado  = $presupuesto->facturasVenta->sum('monto') ?? 0;
+                        $montoTotal      = $presupuesto->monto_total ?? 0;
+                        $porcentaje      = $montoTotal > 0 ? round(($totalFacturado / $montoTotal) * 100, 1) : 0;
+                        $cantidadRecibos = $presupuesto->facturasVenta->reduce(fn($c, $f) => $c + $f->recibosVenta->count(), 0);
+                        $montoRecibido   = $presupuesto->facturasVenta->reduce(fn($c, $f) => $c + $f->recibosVenta->sum('monto'), 0);
+                        $porcRecibido    = $totalFacturado > 0 ? round(($montoRecibido / $totalFacturado) * 100, 1) : 0;
+                        $searchData      = strtolower(
+                            $presupuesto->clave . ' ' .
+                            ($presupuesto->fecha_carga ? \Carbon\Carbon::parse($presupuesto->fecha_carga)->format('d/m/Y') : '') . ' ' .
+                            (config('constantes.tipo_trabajo')[$presupuesto->tipo_trabajo] ?? '') . ' ' .
+                            number_format($montoTotal, 0, '', '.') . ' ' .
+                            ($presupuesto->observacion ?? '') . ' ' .
+                            ($presupuesto->orden_trabajo ?? '')
+                        );
+                    @endphp
+
+                    <a href="{{ route('factura_venta.index', ['presupuesto' => $presupuesto->id, 'obra' => $obra->id]) }}"
+                       class="presup-card"
+                       style="animation-delay:{{ $loop->index * 0.04 }}s"
+                       data-search="{{ $searchData }}">
+
+                        {{-- Card header --}}
+                        <div class="card-head">
+                            <div class="card-head-top">
+                                <span class="card-clave">{{ $presupuesto->clave }}</span>
+                                <span class="card-fecha">
+                                    <i class="far fa-calendar"></i>
+                                    {{ $presupuesto->fecha_carga ? \Carbon\Carbon::parse($presupuesto->fecha_carga)->format('d/m/Y') : '—' }}
+                                </span>
+                            </div>
+                            <div class="card-tipo">{{ config('constantes.tipo_trabajo')[$presupuesto->tipo_trabajo] ?? '—' }}</div>
+                            <div style="margin-top:0.4rem;">
+                                @if(!empty($presupuesto->orden_trabajo))
+                                    <span class="card-ot"><i class="fas fa-file-alt"></i> OT: {{ $presupuesto->orden_trabajo }}</span>
+                                @else
+                                    <span class="card-ot pending"><i class="fas fa-clock"></i> Orden pendiente</span>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Card body --}}
+                        <div class="card-body">
+
+                            {{-- Mini summary --}}
+                            <div class="mini-summary">
+                                <div class="mini-item">
+                                    <div class="mini-label">Presup.</div>
+                                    <div class="mini-val green">{{ number_format($montoTotal, 0, '', '.') }}</div>
+                                </div>
+                                <div class="mini-item">
+                                    <div class="mini-label">Facturado</div>
+                                    <div class="mini-val blue">{{ number_format($totalFacturado, 0, '', '.') }}</div>
+                                </div>
+                                <div class="mini-item">
+                                    <div class="mini-label">Cobrado</div>
+                                    <div class="mini-val teal">{{ number_format($montoRecibido, 0, '', '.') }}</div>
+                                </div>
+                                <div class="mini-item">
+                                    <div class="mini-label">× Facturar</div>
+                                    <div class="mini-val orange">{{ number_format($montoTotal - $totalFacturado, 0, '', '.') }}</div>
+                                </div>
+                                <div class="mini-item">
+                                    <div class="mini-label">× Cobrar</div>
+                                    <div class="mini-val red">{{ number_format($totalFacturado - $montoRecibido, 0, '', '.') }}</div>
+                                </div>
+                                <div class="mini-item">
+                                    <div class="mini-label">Fact. %</div>
+                                    <div class="mini-val blue">{{ $porcentaje }}%</div>
+                                </div>
+                            </div>
+
+                            {{-- Counts --}}
+                            <div class="card-counts">
+                                <span class="count-badge">
+                                    <i class="fas fa-file-invoice"></i>
+                                    {{ $presupuesto->facturasVenta->count() }} factura{{ $presupuesto->facturasVenta->count() == 1 ? '' : 's' }}
+                                </span>
+                                <span class="count-badge">
+                                    <i class="fas fa-receipt"></i>
+                                    {{ $cantidadRecibos }} recibo{{ $cantidadRecibos == 1 ? '' : 's' }}
+                                </span>
+                            </div>
+
+                            {{-- Progress bars --}}
+                            <div class="progress-section">
+                                <div class="prog-row">
+                                    <div class="prog-label-row">
+                                        <span class="prog-label">Facturado</span>
+                                        <span class="prog-val">{{ $porcentaje }}%</span>
+                                    </div>
+                                    <div class="prog-track">
+                                        <div class="prog-fill blue" style="width:{{ min($porcentaje, 100) }}%"></div>
+                                    </div>
+                                </div>
+                                <div class="prog-row">
+                                    <div class="prog-label-row">
+                                        <span class="prog-label">Cobrado</span>
+                                        <span class="prog-val">{{ $porcRecibido }}%</span>
+                                    </div>
+                                    <div class="prog-track">
+                                        <div class="prog-fill teal" style="width:{{ min($porcRecibido, 100) }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {{-- PDF preview --}}
+                        @if($presupuesto->presupuesto)
+                        <div class="card-pdf">
+                            <iframe src="{{ Storage::url('presupuestos/' . $presupuesto->presupuesto) }}" loading="lazy"></iframe>
+                        </div>
+                        @endif
+
+                        {{-- Observacion --}}
+                        @if($presupuesto->observacion)
+                        <div class="card-obs">
+                            <i class="fas fa-comment-alt"></i>
+                            {{ $presupuesto->observacion }}
+                        </div>
+                        @endif
+
+                    </a>
+                    @empty
+                    <div class="empty-state">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <p>No hay presupuestos disponibles para esta obra.</p>
+                    </div>
+                    @endforelse
+
+                    <div class="no-results" id="no-results">
+                        <i class="fas fa-search"></i>
+                        Sin resultados para tu búsqueda.
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
     </div>
+
+    @include('partials.footer')
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('search');
+    const cards = document.querySelectorAll('#presupuestos-list .presup-card');
+    const noRes = document.getElementById('no-results');
+
+    input.addEventListener('input', function () {
+        const q = this.value.toLowerCase().trim();
+        let vis = 0;
+
+        cards.forEach(card => {
+            const show = (card.dataset.search || '').includes(q);
+            card.style.display = show ? '' : 'none';
+            if (show) vis++;
+        });
+
+        noRes.style.display = (!vis && cards.length && q) ? 'block' : 'none';
+    });
+});
+</script>
 </body>
 </html>

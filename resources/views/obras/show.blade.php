@@ -5,208 +5,374 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Obra: {{ $obra->nombre }}</title>
     @include('partials.head')
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        .obra-card {
-            border-radius: 1.1rem;
-            box-shadow: 0 2px 12px 0 rgba(40,40,40,0.09);
-            border: 1.5px solid #e3e6ea;
-            background: #fff;
-            min-height: 420px;
-            max-width: 420px;
-            margin-left: auto;
-            margin-right: auto;
+        :root {
+            --bg:       #f0f3f7;
+            --bg2:      #e4e9f0;
+            --surface:  #f8fafc;
+            --surface2: #edf1f6;
+            --border:   #d8e0ea;
+            --border2:  #c4cfdc;
+            --text:     #1e2835;
+            --text2:    #445060;
+            --muted:    #8496aa;
+            --accent:   #2a6fdb;
+            --accent-s: #e8f0fc;
+            --accent-b: #1f5bbf;
+            --green:    #1e9166;
+            --green-s:  #e5f6f0;
+            --red:      #d94040;
+            --red-s:    #fdeaea;
+            --slate:    #4e6070;
+            --slate-s:  #edf1f4;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .content-wrapper { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .content-wrapper *:not(i):not([class*="fa"]):not([class*="icon"]):not(.nav-icon) {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .content-wrapper { background: var(--bg) !important; }
+
+        /* ══════════════════════════════
+           PAGE HEADER
+        ══════════════════════════════ */
+        .ph {
+            padding: 1.75rem 0 1.5rem;
             display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
         }
-        .obra-card .card-image {
-            background: #e9ecef;
-            height: 200px;
-            width: 100%;
-            object-fit: cover;
-            display: block;
-            padding: 0;
-            border: none;
-        }
-        .obra-card .card-text {
-            padding: 1.1rem 1.2rem 0.7rem 1.2rem;
-            flex: 1 1 auto;
+
+        .ph-crumb {
             display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
         }
-        .obra-card .card-title {
-            font-size: 1.13rem;
-            color: #222;
+
+        .ph-crumb a { color: var(--muted); text-decoration: none; }
+        .ph-crumb a:hover { color: var(--accent); }
+        .ph-crumb i { font-size: 0.58rem; }
+
+        .ph-title {
+            font-size: 1.65rem;
             font-weight: 700;
-            margin-bottom: 0.2rem;
-            letter-spacing: 0.1px;
+            color: var(--text);
+            letter-spacing: -0.4px;
+            line-height: 1.1;
+            word-break: break-word;
         }
-        .obra-card .card-desc {
-            color: #444;
-            font-size: 0.97rem;
-            margin-bottom: 0.1rem;
-            flex: 1 1 auto;
+
+        .ph-title em { font-style: normal; color: var(--accent); }
+
+        .ph-sub {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 0.3rem;
         }
-        .opciones-row {
-            margin-top: 2.5rem;
+
+        .ph-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
         }
+
+        /* ── Buttons ── */
+        .btn {
+            height: 38px;
+            padding: 0 1rem;
+            border-radius: 0.55rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.825rem;
+            font-weight: 600;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.14s;
+            white-space: nowrap;
+        }
+
+        .btn:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+
+        .btn-danger-soft {
+            background: var(--red-s);
+            border-color: #f5bcbc;
+            color: var(--red);
+        }
+        .btn-danger-soft:hover {
+            background: var(--red);
+            border-color: var(--red);
+            color: #fff;
+        }
+
+        .btn-edit {
+            background: var(--accent-s);
+            border-color: #b8d0f8;
+            color: var(--accent);
+        }
+        .btn-edit:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        /* ══════════════════════════════
+           OPTIONS GRID
+        ══════════════════════════════ */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
         .opcion-card {
-            border-radius: 1rem;
-            box-shadow: 0 1px 6px 0 rgba(40,40,40,0.07);
-            border: 1.2px solid #e3e6ea;
-            background: #f8fafd;
-            width: 100%;
-            min-width: 180px;
-            max-width: 220px;
-            min-height: 150px;
-            max-height: 150px;
-            margin-left: auto;
-            margin-right: auto;
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 0.85rem;
+            padding: 1.5rem 1rem 1.25rem;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 1.2rem 0.5rem;
+            gap: 0.75rem;
             text-decoration: none;
-            color: #222;
-            transition: box-shadow 0.13s, border-color 0.13s, background 0.13s;
-        }
-        .opcion-card:hover {
-            box-shadow: 0 4px 16px 0 rgba(40,40,40,0.13);
-            border-color: #bdbdbd;
-            background: #f1f3f6;
-            color: #222;
-        }
-        .opcion-card span {
-            font-size: 2.1rem;
-            margin-bottom: 0.5rem;
-        }
-        @media (max-width: 575.98px) {
-            .opcion-card {
-                min-width: 100%;
-                max-width: 100%;
-            }
-        }
-        .titulo-box {
-            background: #f4f6fb;
-            border-radius: 1.1rem;
-            border: 1.5px solid #e3e6ea;
-            padding: 1.2rem 2rem 1.2rem 1.5rem;
-            margin-bottom: 2.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .titulo-box h1 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #222;
-            letter-spacing: 0.2px;
-            margin: 0;
-            text-align: left;
+            color: var(--text);
+            text-align: center;
+            transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            animation: cardIn 0.22s ease both;
         }
 
+        .opcion-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 22px rgba(0,0,0,0.09);
+            border-color: var(--border2);
+            color: var(--text);
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: none; }
+        }
+
+        .opcion-icon {
+            width: 48px; height: 48px;
+            border-radius: 0.65rem;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .opcion-label {
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.3;
+        }
+
+        /* colour variants */
+        .ic-purple { background: #eeecf9; color: #7c6fcd; }
+        .ic-yellow  { background: #fef9ec; color: #d4920a; }
+        .ic-blue    { background: var(--accent-s); color: var(--accent); }
+        .ic-green   { background: var(--green-s); color: var(--green); }
+        .ic-orange  { background: #fff0eb; color: #d9622a; }
+        .ic-teal    { background: #e5f7fa; color: #0891a8; }
+        .ic-slate   { background: var(--slate-s); color: var(--slate); }
+
+        /* ══════════════════════════════
+           MODAL
+        ══════════════════════════════ */
+        .modal-content {
+            border-radius: 0.85rem;
+            border: 1.5px solid var(--border);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            background: var(--red-s);
+            border-bottom: 1px solid #f5bcbc;
+            padding: 1rem 1.25rem;
+        }
+
+        .modal-header .modal-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--red);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-body {
+            padding: 1.75rem 1.5rem;
+            text-align: center;
+        }
+
+        .modal-body .modal-icon {
+            width: 52px; height: 52px;
+            background: var(--red-s);
+            border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            color: var(--red);
+            margin-bottom: 1rem;
+        }
+
+        .modal-body p { font-size: 0.88rem; color: var(--text2); line-height: 1.5; }
+        .modal-body strong { color: var(--text); }
+
+        .modal-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border);
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            gap: 0.6rem;
+        }
+
+        .btn-modal-cancel {
+            background: var(--surface);
+            border-color: var(--border2);
+            color: var(--text2);
+        }
+        .btn-modal-cancel:hover { background: var(--surface2); color: var(--text); }
+
+        .btn-modal-delete {
+            background: var(--red);
+            border-color: var(--red);
+            color: #fff;
+        }
+        .btn-modal-delete:hover { background: #bf3535; border-color: #bf3535; color: #fff; }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
-    <div class="wrapper">
-        @include('partials.navbar')
-        @include('partials.sidebar')
-        <div class="content-wrapper">
-            <div class="content-header">
-                <div class="container-fluid">
-                    <div class="titulo-box">
-                        <h1>Obra: {{ $obra->nombre }}</h1>
-                        <div style="margin-left:auto;display:flex;gap:0.5rem;">
-                            <button type="button" class="btn btn-light" title="Eliminar Obra" data-bs-toggle="modal" data-bs-target="#modalEliminarObra">
-                                <i class="fas fa-trash-alt mr-2"></i>
-                            </button>
-                                    <!-- Modal de confirmación de eliminación -->
-                                    <div class="modal fade" id="modalEliminarObra" tabindex="-1" aria-labelledby="modalEliminarObraLabel" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content">
-                                                <div class="modal-header bg-danger text-white">
-                                                    <h5 class="modal-title" id="modalEliminarObraLabel"><i class="fas fa-exclamation-triangle me-2"></i>Confirmar eliminación</h5>
-                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                                                </div>
-                                                <div class="modal-body text-center">
-                                                    <p class="mb-3"><i class="fas fa-trash-alt fa-3x text-danger mb-2"></i></p>
-                                                    <p class="fw-bold">¿Estás seguro que quieres eliminar la obra <span class="text-danger">"{{ $obra->nombre }}"</span>?</p>
-                                                    <p class="text-muted">Esta acción no se puede deshacer.</p>
-                                                </div>
-                                                <div class="modal-footer justify-content-center">
-                                                    <form action="{{ route('obras.destroy', $obra->id) }}" method="POST">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
-                                                        <button type="submit" class="btn btn-danger px-4">Eliminar definitivamente</button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- Fin Modal -->
-                            <a href="{{ route('obras.edit', $obra->id) }}" class="btn btn-light" title="Editar Obra"><i class="fas fa-edit mr-2"></i></a>
-                            <a href="{{ route('obras.index') }}" class="btn btn-light" title="Volver al listado"><i class="fas fa-arrow-left mr-2"></i></a>
+<div class="wrapper">
+    @include('partials.navbar')
+    @include('partials.sidebar')
+
+    <div class="content-wrapper">
+        <div class="content-header">
+            <div class="container-fluid">
+
+                {{-- Header --}}
+                <div class="ph">
+                    <div>
+                        <div class="ph-crumb">
+                            <i class="fas fa-hard-hat"></i>
+                            <a href="{{ route('obras.index') }}">Obras</a>
+                            <i class="fas fa-chevron-right"></i>
+                            {{ $obra->nombre }}
                         </div>
+                        <h1 class="ph-title"><em>{{ $obra->nombre }}</em></h1>
+                        <p class="ph-sub">Panel de gestión de la obra</p>
+                    </div>
+                    <div class="ph-right">
+                        <a href="{{ route('obras.edit', $obra->id) }}" class="btn btn-edit">
+                            <i class="fas fa-pen"></i> Editar
+                        </a>
+                        <button type="button" class="btn btn-danger-soft" data-bs-toggle="modal" data-bs-target="#modalEliminarObra">
+                            <i class="fas fa-trash-alt"></i> Eliminar
+                        </button>
+                        <a href="{{ route('obras.index') }}" class="btn">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </a>
                     </div>
                 </div>
+
             </div>
-            <section class="content">
-                <div class="container-fluid d-flex flex-column align-items-center" style="min-height:60vh;">
-                    <div class="row w-100 justify-content-center mx-0 opciones-row">
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="{{ route('directorio.index', ['obra' => $obra->id]) }}" class="opcion-card">
-                                <span style="color:#6c63ff;"><i class="fas fa-folder-open"></i></span>
-                                <div>Directorio</div>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="{{ route('presupuesto_aprobado.index', $obra->id) }}" class="opcion-card">
-                                <span style="color:#fdcb6e;"><i class="fas fa-file-invoice-dollar"></i></span>
-                                <div>Presupuestos Aprobados</div>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="{{ route('pedidobra.index', $obra->id) }}" class="opcion-card">
-                                <span style="color:#0984e3;"><i class="fas fa-clipboard-list"></i></span>
-                                <div>Pedidos de Insumos</div>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="{{ route('contacto.index', $obra->id) }}" class="opcion-card">
-                                <span style="color:#00b894;"><i class="fas fa-address-book"></i></span>
-                                <div>Contactos</div>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="#" class="opcion-card">
-                                <span style="color:#e17055;"><i class="fas fa-boxes"></i></span>
-                                <div>Inventario</div>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="{{ route('factura_venta.show', $obra->id) }}" class="opcion-card">
-                                <span style="color:#00bcd4;"><i class="fas fa-file-invoice"></i></span>
-                                <div>Facturación</div>
-                            </a>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-stretch">
-                            <a href="#" class="opcion-card">
-                                <span style="color:#636e72;"><i class="fas fa-info-circle"></i></span>
-                                <div>Datos de la Obra</div>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </div>
-        @include('partials.footer')
+
+        <section class="content">
+            <div class="container-fluid">
+
+                <div class="options-grid">
+
+                    <a href="{{ route('directorio.index', ['obra' => $obra->id]) }}" class="opcion-card" style="animation-delay:0.04s">
+                        <div class="opcion-icon ic-purple"><i class="fas fa-folder-open"></i></div>
+                        <span class="opcion-label">Directorio</span>
+                    </a>
+
+                    <a href="{{ route('presupuesto_aprobado.index', $obra->id) }}" class="opcion-card" style="animation-delay:0.08s">
+                        <div class="opcion-icon ic-yellow"><i class="fas fa-file-invoice-dollar"></i></div>
+                        <span class="opcion-label">Presupuestos Aprobados</span>
+                    </a>
+
+                    <a href="{{ route('pedidobra.index', $obra->id) }}" class="opcion-card" style="animation-delay:0.12s">
+                        <div class="opcion-icon ic-blue"><i class="fas fa-clipboard-list"></i></div>
+                        <span class="opcion-label">Pedidos de Insumos</span>
+                    </a>
+
+                    <a href="{{ route('contacto.index', $obra->id) }}" class="opcion-card" style="animation-delay:0.16s">
+                        <div class="opcion-icon ic-green"><i class="fas fa-address-book"></i></div>
+                        <span class="opcion-label">Contactos</span>
+                    </a>
+
+                    <a href="#" class="opcion-card" style="animation-delay:0.20s">
+                        <div class="opcion-icon ic-orange"><i class="fas fa-boxes"></i></div>
+                        <span class="opcion-label">Inventario</span>
+                    </a>
+
+                    <a href="{{ route('factura_venta.show', $obra->id) }}" class="opcion-card" style="animation-delay:0.24s">
+                        <div class="opcion-icon ic-teal"><i class="fas fa-file-invoice"></i></div>
+                        <span class="opcion-label">Facturación</span>
+                    </a>
+
+                    <a href="#" class="opcion-card" style="animation-delay:0.28s">
+                        <div class="opcion-icon ic-slate"><i class="fas fa-info-circle"></i></div>
+                        <span class="opcion-label">Datos de la Obra</span>
+                    </a>
+
+                </div>
+
+            </div>
+        </section>
     </div>
+
+    @include('partials.footer')
+</div>
+
+{{-- Modal eliminar --}}
+<div class="modal fade" id="modalEliminarObra" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title"><i class="fas fa-exclamation-triangle"></i> Confirmar eliminación</span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-icon"><i class="fas fa-trash-alt"></i></div>
+                <p>¿Estás seguro que querés eliminar la obra</p>
+                <p><strong>"{{ $obra->nombre }}"</strong>?</p>
+                <p style="margin-top:0.5rem; font-size:0.8rem; color:var(--muted);">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <form action="{{ route('obras.destroy', $obra->id) }}" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="button" class="btn btn-modal-cancel" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-modal-delete"><i class="fas fa-trash-alt"></i> Eliminar definitivamente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 </body>
-
 </html>
-
