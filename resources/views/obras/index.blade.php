@@ -308,22 +308,6 @@
             margin-top: 0.15rem;
         }
 
-        /* ── Loader ── */
-        .loader {
-            display: none;
-            width: 28px; height: 28px;
-            border: 3px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-            margin: 3rem auto;
-            grid-column: 1 / -1;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
         /* ── Empty / no results ── */
         .empty-state {
             grid-column: 1 / -1;
@@ -407,7 +391,6 @@
 
                 {{-- Grid --}}
                 <div id="obras-grid">
-                    <div class="loader" id="loader"></div>
 
                     @forelse($obras->reverse() as $obra)
                     @php
@@ -492,35 +475,33 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const input   = document.getElementById('search');
-    const cards   = document.querySelectorAll('#obras-grid .obra-card');
-    const loader  = document.getElementById('loader');
-    const noRes   = document.getElementById('no-results');
+    const input = document.getElementById('search');
+    const cards = document.querySelectorAll('#obras-grid .obra-card');
+    const noRes = document.getElementById('no-results');
 
-    function filtrar() {
-        const q = input.value.trim().toLowerCase();
+    input.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
         let vis = 0;
 
         cards.forEach(card => {
-            const nombre      = card.dataset.nombre      || '';
+            const nombre       = card.dataset.nombre       || '';
             const presupuestos = card.dataset.presupuestos || '';
-            const ordenes     = card.dataset.ordenes     || '';
-            const contactos   = card.dataset.contactos   || '';
-            const todo        = nombre + ' ' + presupuestos + ' ' + ordenes + ' ' + contactos;
+            const ordenes      = card.dataset.ordenes      || '';
+            const contactos    = card.dataset.contactos    || '';
+            const todo         = nombre + ' ' + presupuestos + ' ' + ordenes + ' ' + contactos;
 
             const show = todo.includes(q);
             card.style.display = show ? '' : 'none';
             if (show) vis++;
 
-            // coincidencia tag
             const tag  = card.querySelector('.coincidencia-tag');
             const span = tag?.querySelector('span');
             if (tag && span) {
                 let label = '';
                 if (q && show) {
-                    if (nombre.includes(q))       label = 'Nombre';
-                    else if (contactos.includes(q)) label = 'Contacto';
-                    else if (ordenes.includes(q))   label = 'Orden de trabajo';
+                    if      (nombre.includes(q))       label = 'Nombre';
+                    else if (contactos.includes(q))    label = 'Contacto';
+                    else if (ordenes.includes(q))      label = 'Orden de trabajo';
                     else if (presupuestos.includes(q)) label = 'Presupuesto';
                 }
                 span.textContent = label;
@@ -528,20 +509,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        noRes.style.display = (!vis && cards.length && input.value) ? 'block' : 'none';
-    }
-
-    function filtrarConLoader() {
-        cards.forEach(c => c.style.display = 'none');
-        loader.style.display = 'block';
-        setTimeout(() => {
-            loader.style.display = 'none';
-            filtrar();
-        }, 400);
-    }
-
-    input.addEventListener('input', filtrar);
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') filtrarConLoader(); });
+        noRes.style.display = (!vis && cards.length && q) ? 'block' : 'none';
+    });
 });
 </script>
 </body>
