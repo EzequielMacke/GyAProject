@@ -3,19 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Factura de Venta</title>
+    <title>Editar Tableta</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-
-    @php
-        use App\Models\Modulo;
-        use App\Models\Permiso;
-        $permisos = Permiso::where('area_id', session('usuario_area_id'))->get();
-    @endphp
-    @if ($permisos->where('modulo_id', Modulo::where('nombre', 'pre_apr_ing')->first()->id ?? null)->where('agregar', 1)->isEmpty())
-        <script>window.location.href = "{{ url('/home') }}";</script>
-    @endif
-
     <style>
         :root {
             --bg:       #f0f3f7;
@@ -28,12 +18,6 @@
             --muted:    #8496aa;
             --accent:   #2a6fdb;
             --accent-b: #1f5bbf;
-            --accent-s: #e8f0fc;
-            --green:    #1e9166;
-            --green-s:  #e5f6f0;
-            --green-b:  #a8dcc9;
-            --red:      #d94040;
-            --red-s:    #fdeaea;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -66,7 +50,10 @@
         }
         .btn:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
         .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-        .btn-primary:hover { background: var(--accent-b); border-color: var(--accent-b); color: #fff; box-shadow: 0 4px 14px rgba(42,111,219,0.3); }
+        .btn-primary:hover {
+            background: var(--accent-b); border-color: var(--accent-b); color: #fff;
+            box-shadow: 0 4px 14px rgba(42,111,219,0.3);
+        }
 
         .form-card {
             background: var(--surface);
@@ -96,7 +83,6 @@
             display: block; font-size: 0.78rem; font-weight: 600;
             color: var(--text2); margin-bottom: 0.4rem;
         }
-        .field-label .req { color: var(--red); margin-left: 2px; }
         .field-input {
             font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem;
             background: var(--surface); border: 1.5px solid var(--border);
@@ -106,21 +92,7 @@
         }
         .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
         .field-input::placeholder { color: var(--muted); }
-
-        .field-value {
-            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem;
-            background: var(--surface2); border: 1.5px solid var(--border);
-            border-radius: 0.55rem; padding: 0.5rem 0.9rem;
-            color: var(--muted); width: 100%; min-height: 38px;
-            display: flex; align-items: center;
-        }
-
-        .presupuesto-chip {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            background: var(--accent-s); border: 1.5px solid #c3d7f7;
-            border-radius: 0.55rem; padding: 0.5rem 0.9rem;
-            font-size: 0.85rem; font-weight: 600; color: var(--accent); width: 100%;
-        }
+        textarea.field-input { resize: vertical; min-height: 100px; }
 
         .error-list {
             background: #fef2f2; border: 1.5px solid #fca5a5;
@@ -141,27 +113,19 @@
                 <div class="ph">
                     <div>
                         <div class="ph-crumb">
-                            <i class="fas fa-hard-hat"></i>
-                            <a href="{{ route('obras.index') }}">Obras</a>
-                            @if($obra)
-                                <i class="fas fa-chevron-right"></i>
-                                <a href="{{ route('obras.show', $obra->id) }}">{{ $obra->nombre }}</a>
-                            @endif
-                            @if($presupuesto)
-                                <i class="fas fa-chevron-right"></i>
-                                <a href="{{ route('factura_venta.index', ['presupuesto' => $presupuesto->id, 'obra' => $obra->id]) }}">Facturas</a>
-                            @endif
+                            <i class="fas fa-home"></i> Inicio
                             <i class="fas fa-chevron-right"></i>
-                            Editar
+                            <a href="{{ route('tabletas.index') }}">Tabletas</a>
+                            <i class="fas fa-chevron-right"></i> Editar
                         </div>
-                        <h1 class="ph-title">Editar <em>factura de venta</em></h1>
-                        <p class="ph-sub">{{ $factura->nro_factura }} — {{ $presupuesto->clave ?? '' }}</p>
+                        <h1 class="ph-title">Editar <em>tableta</em></h1>
+                        <p class="ph-sub">Modificá los datos de la tableta {{ $tableta->clave }}</p>
                     </div>
                     <div class="ph-right">
-                        <button type="submit" form="form-factura" class="btn btn-primary">
+                        <button type="submit" form="form-create" class="btn btn-primary">
                             <i class="fas fa-save"></i> Guardar
                         </button>
-                        <a href="{{ route('factura_venta.index', ['presupuesto' => $presupuesto->id, 'obra' => $obra->id]) }}" class="btn">
+                        <a href="{{ route('tabletas.index') }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
                     </div>
@@ -175,70 +139,60 @@
                 @if ($errors->any())
                 <div class="error-list">
                     <ul>
-                        @foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
                     </ul>
                 </div>
                 @endif
 
-                <form id="form-factura" action="{{ route('factura_venta.update', $factura->id) }}" method="POST">
+                <form id="form-create" action="{{ route('tabletas.update', $tableta->id) }}" method="POST">
                     @csrf
                     @method('PUT')
-                    <input type="hidden" name="obra_id" value="{{ $obra?->id ?? '' }}">
-                    <input type="hidden" name="presupuesto_aprobado_id" value="{{ $presupuesto?->id ?? '' }}">
 
-                    {{-- Info del presupuesto --}}
                     <div class="form-card">
                         <div class="form-card-header">
-                            <i class="fas fa-file-invoice-dollar"></i> Información del presupuesto
+                            <i class="fas fa-tablet-alt"></i> Datos de la tableta
                         </div>
                         <div class="form-card-body">
                             <div class="fields-grid">
                                 <div>
-                                    <label class="field-label">Clave</label>
-                                    <div class="presupuesto-chip">
-                                        <i class="fas fa-tag"></i> {{ $presupuesto?->clave ?? '—' }}
-                                    </div>
+                                    <label class="field-label" for="clave">Clave</label>
+                                    <input type="text" id="clave" name="clave" class="field-input"
+                                           placeholder="Ej: TAB-001" required value="{{ old('clave', $tableta->clave) }}">
                                 </div>
                                 <div>
-                                    <label class="field-label">Fecha de carga</label>
-                                    <div class="field-value">
-                                        {{ $presupuesto?->fecha_carga ? \Carbon\Carbon::parse($presupuesto->fecha_carga)->format('d/m/Y') : '—' }}
-                                    </div>
+                                    <label class="field-label" for="nombre">Nombre</label>
+                                    <input type="text" id="nombre" name="nombre" class="field-input"
+                                           placeholder="Ej: Tableta Samsung" value="{{ old('nombre', $tableta->nombre) }}">
                                 </div>
                                 <div>
-                                    <label class="field-label">Monto presupuesto</label>
-                                    <div class="field-value">
-                                        {{ number_format($presupuesto?->monto_total ?? 0, 0, '', '.') }}
-                                    </div>
+                                    <label class="field-label" for="modelo">Modelo</label>
+                                    <input type="text" id="modelo" name="modelo" class="field-input"
+                                           placeholder="Ej: Galaxy Tab A7" value="{{ old('modelo', $tableta->modelo) }}">
+                                </div>
+                                <div>
+                                    <label class="field-label" for="serie">Serie</label>
+                                    <input type="text" id="serie" name="serie" class="field-input"
+                                           placeholder="Ej: S123456789" value="{{ old('serie', $tableta->serie) }}">
+                                </div>
+                                <div>
+                                    <label class="field-label" for="sim">SIM</label>
+                                    <input type="text" id="sim" name="sim" class="field-input"
+                                           placeholder="Ej: 8955..." value="{{ old('sim', $tableta->sim) }}">
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Datos de la factura --}}
                     <div class="form-card">
                         <div class="form-card-header">
-                            <i class="fas fa-receipt"></i> Datos de la factura
+                            <i class="fas fa-sticky-note"></i> Observaciones
                         </div>
                         <div class="form-card-body">
-                            <div class="fields-grid">
-                                <div>
-                                    <label class="field-label" for="nro_factura">Número de factura <span class="req">*</span></label>
-                                    <input type="text" name="nro_factura" id="nro_factura" class="field-input"
-                                           value="{{ old('nro_factura', $factura->nro_factura) }}" required>
-                                </div>
-                                <div>
-                                    <label class="field-label" for="concepto">Concepto <span class="req">*</span></label>
-                                    <input type="text" name="concepto" id="concepto" class="field-input"
-                                           placeholder="Descripción del concepto"
-                                           value="{{ old('concepto', $factura->concepto) }}" required>
-                                </div>
-                                <div>
-                                    <label class="field-label" for="monto">Monto <span class="req">*</span></label>
-                                    <input type="text" name="monto" id="monto" class="field-input"
-                                           value="{{ old('monto', number_format($factura->monto, 0, '', '.')) }}" required>
-                                </div>
-                            </div>
+                            <label class="field-label" for="observacion">Observación</label>
+                            <textarea id="observacion" name="observacion" class="field-input"
+                                      placeholder="Ej: Entregar con cargador">{{ old('observacion', $tableta->observacion) }}</textarea>
                         </div>
                     </div>
 
@@ -250,19 +204,5 @@
 
     @include('partials.footer')
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const monto = document.getElementById('monto');
-    if (monto) {
-        monto.addEventListener('input', function () {
-            let value = this.value.replace(/\./g, '');
-            if (!isNaN(value) && value !== '') {
-                this.value = Number(value).toLocaleString('de-DE');
-            }
-        });
-    }
-});
-</script>
 </body>
 </html>

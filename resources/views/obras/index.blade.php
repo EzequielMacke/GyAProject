@@ -191,18 +191,17 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            text-decoration: none;
+            cursor: pointer;
             color: var(--text);
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
-            animation: cardIn 0.25s ease both;
+            animation: cardIn 0.2s ease both;
         }
 
         .obra-card:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 24px rgba(0,0,0,0.09);
             border-color: var(--border2);
-            color: var(--text);
         }
 
         @keyframes cardIn {
@@ -210,13 +209,11 @@
             to   { opacity: 1; transform: none; }
         }
 
-        /* map / placeholder */
+        /* map */
         .card-map {
             height: 175px;
             width: 100%;
             display: block;
-            object-fit: cover;
-            background: var(--bg2);
             border: none;
             flex-shrink: 0;
         }
@@ -231,6 +228,7 @@
             gap: 0.4rem;
             color: var(--muted);
             font-size: 0.78rem;
+            flex-shrink: 0;
         }
 
         .card-map-placeholder i { font-size: 1.4rem; opacity: 0.35; }
@@ -261,6 +259,7 @@
         }
 
         .card-date i { font-size: 0.6rem; }
+        .card-date-rel { color: var(--muted); font-size: 0.7rem; }
 
         .coincidencia-tag {
             display: none;
@@ -392,75 +391,11 @@
                 {{-- Grid --}}
                 <div id="obras-grid">
 
-                    @forelse($obras->reverse() as $obra)
-                    @php
-                        $contactos         = \App\Models\Contacto::where('obra_id', $obra->id)->pluck('nombre')->implode(' ');
-                        $ordenesTrabajo    = $obra->presupuestos->pluck('orden_trabajo')->implode(' ');
-                        $presupuestosNames = $obra->presupuestos->pluck('clave')->implode(' ');
-                        $lat = null; $lng = null;
-                        if (!empty($obra->direccion) && preg_match('/maps\?q=([-0-9.]+),([-0-9.]+)/', $obra->direccion, $m)) {
-                            $lat = $m[1]; $lng = $m[2];
-                        }
-                    @endphp
-
-                    <a href="{{ route('obras.show', $obra->id) }}"
-                       class="obra-card"
-                       style="animation-delay:{{ $loop->index * 0.04 }}s"
-                       data-nombre="{{ strtolower($obra->nombre) }}"
-                       data-presupuestos="{{ strtolower($presupuestosNames) }}"
-                       data-ordenes="{{ strtolower($ordenesTrabajo) }}"
-                       data-contactos="{{ strtolower($contactos) }}">
-
-                        {{-- Map / placeholder --}}
-                        @if($lat && $lng)
-                        <iframe class="card-map"
-                            src="https://www.google.com/maps?q={{ $lat }},{{ $lng }}&hl=es&z=14&output=embed"
-                            frameborder="0" allowfullscreen loading="lazy"></iframe>
-                        @else
-                        <div class="card-map-placeholder">
-                            <i class="fas fa-map-marker-alt"></i>
-                            Sin ubicación
-                        </div>
-                        @endif
-
-                        {{-- Body --}}
-                        <div class="card-body">
-                            <div class="card-name">{{ $obra->nombre }}</div>
-                            <div class="card-date">
-                                <i class="far fa-clock"></i>
-                                {{ \Carbon\Carbon::parse($obra->created_at)->diffForHumans() }}
-                            </div>
-                            <div class="coincidencia-tag" id="coin-{{ $obra->id }}">
-                                <i class="fas fa-check-circle"></i>
-                                <span></span>
-                            </div>
-                        </div>
-
-                        {{-- Stats footer --}}
-                        <div class="card-stats">
-                            <div class="card-stat">
-                                <div class="card-stat-val">{{ $obra->presupuestos->count() }}</div>
-                                <div class="card-stat-lbl">Presupuestos</div>
-                            </div>
-                            <div class="card-stat">
-                                <div class="card-stat-val">{{ \App\Models\Pedido_para_obra::where('obra_id', $obra->id)->count() }}</div>
-                                <div class="card-stat-lbl">Pedidos</div>
-                            </div>
-                            <div class="card-stat">
-                                <div class="card-stat-val">{{ $obra->directorios->count() }}</div>
-                                <div class="card-stat-lbl">Usuarios</div>
-                            </div>
-                        </div>
-
-                    </a>
-                    @empty
-                    <div class="empty-state">
+                    <div class="empty-state" id="empty-state" style="display:none">
                         <i class="fas fa-hard-hat"></i>
                         <p>No hay obras registradas.</p>
                     </div>
-                    @endforelse
-
-                    <div class="no-results" id="no-results">
+                    <div class="no-results" id="no-results" style="display:none">
                         <i class="fas fa-search"></i>
                         Sin resultados para tu búsqueda.
                     </div>
@@ -474,42 +409,96 @@
 </div>
 
 <script>
+const OBRAS = {!! json_encode($obrasData) !!};
+
+function renderCard(obra) {
+    const div = document.createElement('div');
+    div.className = 'obra-card';
+    const mapHtml = obra.map_url
+        ? `<iframe class="card-map" src="${obra.map_url}" allowfullscreen loading="lazy"></iframe>`
+        : `<div class="card-map-placeholder"><i class="fas fa-map-marker-alt"></i>Sin ubicación</div>`;
+    div.innerHTML = mapHtml + `
+        <div class="card-body">
+            <div class="card-name">${obra.nombre}</div>
+            <div class="card-date">
+                <i class="fas fa-plus-circle"></i>
+                Creado: ${obra.created_at_fmt}
+                <span class="card-date-rel">(${obra.created_at_human})</span>
+            </div>
+            <div class="card-date">
+                <i class="fas fa-pencil-alt"></i>
+                Modificado: ${obra.updated_at_fmt}
+                <span class="card-date-rel">(${obra.updated_at_human})</span>
+            </div>
+            <div class="coincidencia-tag" id="coin-${obra.id}" style="display:none">
+                <i class="fas fa-check-circle"></i>
+                <span></span>
+            </div>
+        </div>
+        <div class="card-stats">
+            <div class="card-stat">
+                <div class="card-stat-val">${obra.presupuestos_count}</div>
+                <div class="card-stat-lbl">Presupuestos</div>
+            </div>
+            <div class="card-stat">
+                <div class="card-stat-val">${obra.pedidos_count}</div>
+                <div class="card-stat-lbl">Pedidos</div>
+            </div>
+            <div class="card-stat">
+                <div class="card-stat-val">${obra.directorios_count}</div>
+                <div class="card-stat-lbl">Usuarios</div>
+            </div>
+        </div>`;
+    div.addEventListener('click', function(e) {
+        if (!e.target.closest('iframe')) window.location.href = obra.url;
+    });
+    return div;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
-    const input = document.getElementById('search');
-    const cards = document.querySelectorAll('#obras-grid .obra-card');
-    const noRes = document.getElementById('no-results');
+    const grid      = document.getElementById('obras-grid');
+    const input     = document.getElementById('search');
+    const noRes     = document.getElementById('no-results');
+    const emptyState= document.getElementById('empty-state');
 
+    // Renderizar todas las cards al inicio
+    const cardEls = OBRAS.map((obra) => {
+        const el  = renderCard(obra, 0);
+        const tag  = el.querySelector('.coincidencia-tag');
+        const span = tag.querySelector('span');
+        grid.insertBefore(el, noRes);
+        return { el, obra, tag, span };
+    });
+
+    if (OBRAS.length === 0) emptyState.style.display = '';
+
+    // Filtrado
+    let debounceTimer;
     input.addEventListener('input', function () {
-        const q = this.value.trim().toLowerCase();
-        let vis = 0;
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            const q = this.value.trim().toLowerCase();
+            let vis = 0;
 
-        cards.forEach(card => {
-            const nombre       = card.dataset.nombre       || '';
-            const presupuestos = card.dataset.presupuestos || '';
-            const ordenes      = card.dataset.ordenes      || '';
-            const contactos    = card.dataset.contactos    || '';
-            const todo         = nombre + ' ' + presupuestos + ' ' + ordenes + ' ' + contactos;
+            cardEls.forEach(({ el, obra, tag, span }) => {
+                const show = !q || obra.search.includes(q);
+                el.style.display = show ? '' : 'none';
+                if (show) vis++;
 
-            const show = todo.includes(q);
-            card.style.display = show ? '' : 'none';
-            if (show) vis++;
-
-            const tag  = card.querySelector('.coincidencia-tag');
-            const span = tag?.querySelector('span');
-            if (tag && span) {
                 let label = '';
                 if (q && show) {
-                    if      (nombre.includes(q))       label = 'Nombre';
-                    else if (contactos.includes(q))    label = 'Contacto';
-                    else if (ordenes.includes(q))      label = 'Orden de trabajo';
-                    else if (presupuestos.includes(q)) label = 'Presupuesto';
+                    const f = obra.search_fields;
+                    if      (f.nombre.includes(q))       label = 'Nombre';
+                    else if (f.contactos.includes(q))    label = 'Contacto';
+                    else if (f.ordenes.includes(q))      label = 'Orden de trabajo';
+                    else if (f.presupuestos.includes(q)) label = 'Presupuesto';
                 }
                 span.textContent = label;
                 tag.style.display = label ? 'flex' : 'none';
-            }
-        });
+            });
 
-        noRes.style.display = (!vis && cards.length && q) ? 'block' : 'none';
+            noRes.style.display = (!vis && OBRAS.length && q) ? 'block' : 'none';
+        }, 100);
     });
 });
 </script>

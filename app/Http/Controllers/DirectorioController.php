@@ -48,4 +48,10 @@ class DirectorioController extends Controller
 
         return redirect()->route('directorio.index', $obra->id)->with('success', 'Usuarios agregados al directorio exitosamente.');
     }
+
+    public function destroy(Obra $obra, Directorio $directorio)
+    {
+        $directorio->delete();
+        return redirect()->route('directorio.index', $obra->id)->with('success', 'Usuario eliminado del directorio.');
+    }
 }

@@ -258,6 +258,76 @@
         }
 
         .no-results-row i { display: block; font-size: 1.3rem; margin-bottom: 0.4rem; opacity: 0.3; }
+
+        /* ── Delete btn ── */
+        .btn-danger-sm {
+            height: 30px;
+            padding: 0 0.65rem;
+            border-radius: 0.4rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1.5px solid #fca5a5;
+            background: #fef2f2;
+            color: #dc2626;
+            cursor: pointer;
+            transition: all 0.13s;
+        }
+        .btn-danger-sm:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 0.85rem;
+            padding: 1.75rem;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+            animation: modalIn 0.18s ease;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to   { opacity: 1; transform: none; }
+        }
+        .modal-icon {
+            width: 44px; height: 44px;
+            border-radius: 0.6rem;
+            background: #fef2f2;
+            color: #dc2626;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+        .modal-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 0.35rem; }
+        .modal-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 1.25rem; line-height: 1.5; }
+        .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+        .btn-cancel {
+            height: 36px; padding: 0 1rem; border-radius: 0.5rem;
+            border: 1.5px solid var(--border); background: var(--surface);
+            color: var(--text2); font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; transition: all 0.13s;
+        }
+        .btn-cancel:hover { background: var(--surface2); }
+        .btn-confirm-del {
+            height: 36px; padding: 0 1rem; border-radius: 0.5rem;
+            border: 1.5px solid #dc2626; background: #dc2626;
+            color: #fff; font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; transition: all 0.13s;
+        }
+        .btn-confirm-del:hover { background: #b91c1c; border-color: #b91c1c; }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -309,12 +379,13 @@
                                 <th class="row-num">#</th>
                                 <th>Usuario</th>
                                 <th>Fecha</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($directorios as $directorio)
                             @php $initials = mb_strtoupper(mb_substr($directorio->usuario->nombre ?? '-', 0, 2)); @endphp
-                            <tr style="animation-delay:{{ $loop->index * 0.04 }}s">
+                            <tr>
                                 <td class="row-num">{{ str_pad($loop->iteration, 2, '0', STR_PAD_LEFT) }}</td>
                                 <td>
                                     <div class="user-cell">
@@ -325,13 +396,19 @@
                                 <td>
                                     <div class="date-cell">
                                         <i class="far fa-calendar"></i>
-                                        {{ $directorio->fecha }}
+                                        {{ \Carbon\Carbon::parse($directorio->fecha)->format('d/m/Y') }}
                                     </div>
+                                </td>
+                                <td style="text-align:right;">
+                                    <button type="button" class="btn-danger-sm"
+                                        onclick="confirmarEliminar({{ $directorio->id }}, '{{ addslashes($directorio->usuario->nombre ?? '-') }}')">
+                                        <i class="fas fa-user-minus"></i> Quitar
+                                    </button>
                                 </td>
                             </tr>
                             @empty
                             <tr class="empty-row">
-                                <td colspan="3">
+                                <td colspan="4">
                                     <i class="fas fa-users"></i>
                                     No hay usuarios en el directorio.
                                 </td>
@@ -339,7 +416,7 @@
                             @endforelse
 
                             <tr class="no-results-row" id="no-results">
-                                <td colspan="3">
+                                <td colspan="4">
                                     <i class="fas fa-search"></i>
                                     Sin resultados para tu búsqueda.
                                 </td>
@@ -355,25 +432,64 @@
     @include('partials.footer')
 </div>
 
+{{-- Modal confirmar eliminación --}}
+<div class="modal-overlay" id="modal-eliminar">
+    <div class="modal-box">
+        <div class="modal-icon"><i class="fas fa-user-minus"></i></div>
+        <div class="modal-title">Quitar usuario</div>
+        <div class="modal-sub" id="modal-msg">¿Seguro que querés quitar a este usuario del directorio?</div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn-confirm-del" onclick="ejecutarEliminar()">Sí, quitar</button>
+        </div>
+    </div>
+</div>
+
+<form id="form-eliminar" method="POST" style="display:none;">
+    @csrf
+    @method('DELETE')
+</form>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const input   = document.getElementById('search');
-    const rows    = document.querySelectorAll('#directorio-table tbody tr:not(.empty-row):not(.no-results-row)');
-    const noRes   = document.getElementById('no-results');
+    const input = document.getElementById('search');
+    const rows  = document.querySelectorAll('#directorio-table tbody tr:not(.empty-row):not(.no-results-row)');
+    const noRes = document.getElementById('no-results');
 
     input.addEventListener('input', function () {
         const q = this.value.toLowerCase().trim();
         let vis = 0;
-
         rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            const show = text.includes(q);
+            const show = row.textContent.toLowerCase().includes(q);
             row.style.display = show ? '' : 'none';
             if (show) vis++;
         });
-
         if (noRes) noRes.style.display = (!vis && rows.length && q) ? 'table-row' : 'none';
     });
+});
+
+let _directorioId = null;
+
+function confirmarEliminar(id, nombre) {
+    _directorioId = id;
+    document.getElementById('modal-msg').textContent = `¿Seguro que querés quitar a "${nombre}" del directorio?`;
+    document.getElementById('modal-eliminar').classList.add('active');
+}
+
+function cerrarModal() {
+    document.getElementById('modal-eliminar').classList.remove('active');
+    _directorioId = null;
+}
+
+function ejecutarEliminar() {
+    if (!_directorioId) return;
+    const form = document.getElementById('form-eliminar');
+    form.action = `/directorio/{{ $obra->id }}/${_directorioId}`;
+    form.submit();
+}
+
+document.getElementById('modal-eliminar').addEventListener('click', function(e) {
+    if (e.target === this) cerrarModal();
 });
 </script>
 </body>

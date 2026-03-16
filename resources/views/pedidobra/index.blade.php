@@ -298,12 +298,16 @@
                 <div class="ph">
                     <div>
                         <div class="ph-crumb">
-                            <i class="fas fa-home"></i>
-                            <a href="{{ url('/home') }}">Inicio</a>
+                            <i class="fas fa-hard-hat"></i>
+                            <a href="{{ route('obras.index') }}">Obras</a>
                             <i class="fas fa-chevron-right"></i>
-                            Pedidos para Obra
+                            @if($obraModel)
+                                <a href="{{ route('obras.show', $obra) }}">{{ $obraModel->nombre }}</a>
+                                <i class="fas fa-chevron-right"></i>
+                            @endif
+                            Pedidos
                         </div>
-                        <h1 class="ph-title">Pedidos para <em>Obra</em></h1>
+                        <h1 class="ph-title">Pedidos para <em>{{ $obraModel->nombre ?? 'Obra' }}</em></h1>
                         <p class="ph-sub">Listado de todos los pedidos de insumos registrados</p>
                     </div>
                     <div class="ph-right">
@@ -312,7 +316,7 @@
                             <input type="text" id="search" class="search-bar" placeholder="Buscar pedido…" autocomplete="off">
                         </div>
                         @if($puedeAgregar)
-                        <a href="{{ route('pedidobra.create') }}" class="btn btn-primary" id="agregar-pedido-btn">
+                        <a href="{{ route('pedidobra.create', $obra) }}" class="btn btn-primary" id="agregar-pedido-btn">
                             <i class="fas fa-plus"></i> Nuevo pedido
                         </a>
                         @endif
@@ -429,7 +433,7 @@
                                     <td>
                                         <div class="td-actions">
                                             @if($puedeEditar)
-                                            <a href="#"
+                                            <a href="{{ route('pedidobra.edit', $pedobra->id) }}"
                                                class="btn btn-icon btn-edit editar-btn"
                                                data-usuario-id="{{ $pedobra->usuario_id }}"
                                                data-area="{{ session('usuario_area') }}"

@@ -28,5 +28,9 @@ class Pedido_para_obra extends Model
     {
         return $this->hasMany(Pedido_para_obra_detalle::class);
     }
+    public function presupuesto()
+    {
+        return $this->belongsTo(\App\Models\PresupuestoAprobado::class, 'presupuesto_aprobado_id');
+    }
 }
 

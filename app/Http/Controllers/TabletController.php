@@ -95,6 +95,26 @@ class TabletController extends Controller
         }
     }
 
+    public function edit($id)
+    {
+        $tableta = Tableta::findOrFail($id);
+        return view('tablet.edit', compact('tableta'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $tableta = Tableta::findOrFail($id);
+        $tableta->update([
+            'clave'       => $request->input('clave'),
+            'nombre'      => $request->input('nombre'),
+            'modelo'      => $request->input('modelo'),
+            'serie'       => $request->input('serie'),
+            'sim'         => $request->input('sim'),
+            'observacion' => $request->input('observacion'),
+        ]);
+        return redirect()->route('tabletas.index')->with('success', 'Tableta actualizada correctamente.');
+    }
+
     public function thanks()
     {
         return view('tablet.thanks');

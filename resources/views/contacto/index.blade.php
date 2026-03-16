@@ -353,11 +353,11 @@
                             <i class="fas fa-hard-hat"></i>
                             <a href="{{ route('obras.index') }}">Obras</a>
                             <i class="fas fa-chevron-right"></i>
-                            <a href="{{ route('obras.show', $obra) }}">{{ $obra->nombre ?? '-' }}</a>
+                            <a href="{{ route('obras.show', $obra) }}">{{ $obraModel->nombre ?? '-' }}</a>
                             <i class="fas fa-chevron-right"></i>
                             Contactos
                         </div>
-                        <h1 class="ph-title">Contactos — <em>{{ $obra->nombre ?? '-' }}</em></h1>
+                        <h1 class="ph-title">Contactos — <em>{{ $obraModel->nombre ?? '-' }}</em></h1>
                         <p class="ph-sub">Personas y empresas vinculadas a esta obra</p>
                     </div>
                     <div class="ph-right">

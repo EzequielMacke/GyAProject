@@ -76,10 +76,12 @@ Route::put('/obras/{id}/update', [ObrasController::class , 'update'])->name('obr
 Route::delete('/obras/{id}/destroy', [ObrasController::class , 'destroy'])->name('obras.destroy');
 
 // Ruta para la vista de carga de pedidos de obras
-Route::get('/pedidobra/cargar', [PedobraController::class , 'create'])->name('pedidobra.create');
+Route::get('/pedidobra/cargar/{obra?}', [PedobraController::class , 'create'])->name('pedidobra.create');
 Route::post('/pedidobra', [PedobraController::class , 'store'])->name('pedidobra.store');
 Route::get('/pedidobra/index/{obra?}', [PedobraController::class , 'index'])->name('pedidobra.index');
 Route::get('/pedidobra/{id}/show', [PedobraController::class , 'show'])->name('pedidobra.show');
+Route::get('/pedidobra/{id}/edit', [PedobraController::class , 'edit'])->name('pedidobra.edit');
+Route::put('/pedidobra/{id}/update', [PedobraController::class , 'update'])->name('pedidobra.update');
 Route::get('/recargar_insumos', [PedobraController::class , 'getInsumos'])->name('insumos.recargar');
 Route::get('/recargar_obras', [PedobraController::class , 'getObras'])->name('obras.recargar');
 Route::get('/pedidobra/duplicar/{id}', [PedobraController::class , 'duplicar'])->name('pedidobra.duplicar');
@@ -139,6 +141,7 @@ Route::get('/documentos/{id}/reemplazar-marcadores', [DocumentosController::clas
 Route::get('/directorio/{obra}', [DirectorioController::class , 'index'])->name('directorio.index');
 Route::get('/directorio/{obra}/create', [DirectorioController::class , 'create'])->name('directorio.create');
 Route::post('/directorio/{obra}', [DirectorioController::class , 'store'])->name('directorio.store');
+Route::delete('/directorio/{obra}/{directorio}', [DirectorioController::class , 'destroy'])->name('directorio.destroy');
 
 //Ruta para contactos
 Route::get('/contacto/{obra}', [ContactoController::class , 'index'])->name('contacto.index');
@@ -163,6 +166,8 @@ Route::get('/tabletas/generar-qrs', [TabletController::class , 'generarQrs'])->n
 Route::get('/tabletas/assign/{clave}', [TabletController::class , 'assignShow'])->name('tabletas.assign.show');
 Route::post('/tabletas/assign/{clave}', [TabletController::class , 'assignRetiro'])->name('tabletas.assign.retiro');
 Route::post('/tabletas/devolucion/{clave}', [TabletController::class , 'devolucion'])->name('tabletas.devolucion');
+Route::get('/tabletas/{id}/edit', [TabletController::class , 'edit'])->name('tabletas.edit');
+Route::put('/tabletas/{id}', [TabletController::class , 'update'])->name('tabletas.update');
 Route::get('/tabletas/thanks', [TabletController::class , 'thanks'])->name('tabletas.thanks');
 Route::get('/tabletas/report', [TabletController::class , 'report'])->name('tabletas.report');
 

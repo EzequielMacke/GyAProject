@@ -466,7 +466,7 @@
                         );
                     @endphp
 
-                    <a href="#"
+                    <a href="{{ route('tabletas.edit', $tableta->id) }}"
                        class="tablet-card{{ $sinDevolucion ? ' sin-devolucion' : '' }}"
                        style="animation-delay:{{ $loop->index * 0.04 }}s"
                        data-search="{{ $searchData }}">

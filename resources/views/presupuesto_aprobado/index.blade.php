@@ -245,6 +245,7 @@
             overflow: hidden;
             position: relative;
             flex-shrink: 0;
+            cursor: pointer;
         }
 
         .card-preview iframe {
@@ -475,16 +476,15 @@
                        style="animation-delay:{{ $loop->index * 0.04 }}s"
                        data-search="{{ strtolower($presupuesto->clave . ' ' . ($presupuesto->obra->nombre ?? '') . ' ' . (\Illuminate\Support\Arr::get(config('constantes.tipo_trabajo'), $presupuesto->tipo_trabajo, ''))) }}">
 
-                        <div class="card-preview">
+                        <div class="card-preview"
+                             onclick="event.preventDefault(); event.stopPropagation(); abrirModal('{{ Storage::url('presupuestos/'.$presupuesto->presupuesto) }}', '{{ $presupuesto->clave }}')">
                             <iframe
                                 src="{{ Storage::url('presupuestos/'.$presupuesto->presupuesto) }}"
                                 loading="lazy">
                             </iframe>
-                            <button type="button" class="expand-btn"
-                                title="Ver en pantalla completa"
-                                onclick="event.preventDefault(); event.stopPropagation(); abrirModal('{{ Storage::url('presupuestos/'.$presupuesto->presupuesto) }}', '{{ $presupuesto->clave }}')">
+                            <div class="expand-btn" title="Ver en pantalla completa">
                                 <i class="fas fa-expand"></i>
-                            </button>
+                            </div>
                         </div>
 
                         <div class="card-body">

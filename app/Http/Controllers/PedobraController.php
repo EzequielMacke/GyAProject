@@ -13,7 +13,7 @@ class PedobraController extends Controller
 {
     public function show($id)
     {
-        $pedido = Pedido_para_obra::with('detalles.insumo')->findOrFail($id);
+        $pedido = Pedido_para_obra::with('detalles.insumo', 'obra', 'usuario', 'presupuesto')->findOrFail($id);
         $estados = config('constantes.estado_de_insumo');
         $estados_label = config('constantes.estado_de_insumo_btn');
         return view('pedidobra.show', compact('pedido','estados','estados_label'));
@@ -21,11 +21,14 @@ class PedobraController extends Controller
     public function index($obra = null)
     {
         $query = Pedido_para_obra::query();
+        $obraModel = null;
         if ($obra) {
+            $obraModel = Obra::find($obra);
             $query->where('obra_id', $obra);
         } else {
             $obraId = Auth::user()->obra_id ?? null;
             if ($obraId) {
+                $obraModel = Obra::find($obraId);
                 $query->where('obra_id', $obraId);
             } else {
                 $query->whereNull('obra_id');
@@ -34,22 +37,25 @@ class PedobraController extends Controller
         $pedobras = $query->get();
         $estados = config('constantes.estado_de_pedido');
         $estados_label = config('constantes.estado_de_pedido_btn');
-        return view('pedidobra.index', compact('pedobras', 'estados','estados_label','obra'));
+        return view('pedidobra.index', compact('pedobras', 'estados', 'estados_label', 'obra') + ['obraModel' => $obraModel]);
     }
     public function getInsumos()
     {
         $insumos = Insumo::all();
         return response()->json($insumos);
     }
-    public function create()
+    public function create($obra = null)
     {
         $ultimoPedido = Pedido_para_obra::latest()->first();
         $nuevoIdPedido = $ultimoPedido ? $ultimoPedido->id + 1 : 1;
-        $pedidobras = Pedido_para_obra::all();
         $insumos = Insumo::all();
-        $obras = Obra::all();
         $unidadesMedida = config('constantes.unidad_medida');
-        return view('pedidobra.create', compact('pedidobras','insumos','nuevoIdPedido','obras','unidadesMedida'));
+        $obraModel = $obra ? Obra::find($obra) : null;
+        $presupuestos = $obra
+            ? \App\Models\PresupuestoAprobado::where('obra_id', $obra)->get()
+            : collect();
+        $kits = \App\Models\Kit::with('detalles.insumo')->get();
+        return view('pedidobra.create', compact('insumos', 'nuevoIdPedido', 'unidadesMedida', 'obra', 'obraModel', 'presupuestos', 'kits'));
     }
     public function store(Request $request)
     {
@@ -60,6 +66,7 @@ class PedobraController extends Controller
         ]);
         $pedidoObra = Pedido_para_obra::create([
             'obra_id' => $request->obra,
+            'presupuesto_aprobado_id' => $request->presupuesto_aprobado_id ?: null,
             'fecha_pedido' => $request->fecha_pedido,
             'fecha_entrega' => $request->fecha_entrega,
             'observacion' => $request->observacion,
@@ -81,15 +88,19 @@ class PedobraController extends Controller
             ]);
         }
 
-        return redirect()->route('pedidobra.index')->with('success', 'Pedido creado exitosamente.');
+        return redirect()->route('pedidobra.index', $request->obra)->with('success', 'Pedido creado exitosamente.');
     }
     public function edit($id)
     {
         $pedido = Pedido_para_obra::with('detalles.insumo')->findOrFail($id);
         $insumos = Insumo::all();
-        $obras = Obra::all();
         $unidadesMedida = config('constantes.unidad_medida');
-        return view('pedidobra.edit', compact('pedido', 'insumos', 'obras', 'unidadesMedida'));
+        $obraModel = $pedido->obra_id ? Obra::find($pedido->obra_id) : null;
+        $presupuestos = $pedido->obra_id
+            ? \App\Models\PresupuestoAprobado::where('obra_id', $pedido->obra_id)->get()
+            : collect();
+        $kits = \App\Models\Kit::with('detalles.insumo')->get();
+        return view('pedidobra.edit', compact('pedido', 'insumos', 'unidadesMedida', 'obraModel', 'presupuestos', 'kits'));
     }
     public function getObras()
     {
@@ -137,7 +148,7 @@ class PedobraController extends Controller
             $pedidoObra->estado = 2;
         }
         $pedidoObra->save();
-        return redirect()->route('pedidobra.index')->with('success', 'Pedido actualizado exitosamente.');
+        return redirect()->route('pedidobra.index', $request->obra)->with('success', 'Pedido actualizado exitosamente.');
     }
     public function duplicar($id)
     {
@@ -148,6 +159,8 @@ class PedobraController extends Controller
         $insumosOriginales = $pedidoOriginal->detalles;
         $insumos = Insumo::all();
         $totalInsumos = $pedidoOriginal->total_insumo;
+        $kits = \App\Models\Kit::with('detalles.insumo')->get();
+        $todasPresupuestos = \App\Models\PresupuestoAprobado::all();
         return view('pedidobra.duplicate', [
             'pedido' => $nuevoPedido,
             'insumos' => $insumosOriginales,
@@ -155,6 +168,9 @@ class PedobraController extends Controller
             'obras' => Obra::all(),
             'nuevoIdPedido' => Pedido_para_obra::max('id') + 1,
             'totalInsumos' => $totalInsumos,
+            'kits' => $kits,
+            'todasPresupuestos' => $todasPresupuestos,
+            'unidadesMedida' => config('constantes.unidad_medida'),
         ]);
     }
 }

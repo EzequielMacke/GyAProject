@@ -29,5 +29,13 @@ class Obra extends Model
     {
         return $this->hasMany(Directorio::class, 'obra_id');
     }
+    public function contactos()
+    {
+        return $this->hasMany(Contacto::class, 'obra_id');
+    }
+    public function pedidosParaObra()
+    {
+        return $this->hasMany(Pedido_para_obra::class, 'obra_id');
+    }
 }
 

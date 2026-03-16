@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Contacto;
+use App\Models\Obra;
 use App\Models\PresupuestoAprobado;
 use Illuminate\Http\Request;
 
@@ -11,20 +12,24 @@ class ContactoController extends Controller
     public function index(Request $request, $obra = null)
     {
         $query = Contacto::query();
+        $obraModel = null;
         if ($obra) {
+            $obraModel = Obra::find($obra);
             $query->where('obra_id', $obra);
         }
         $contactos = $query->get();
-        return view('contacto.index', compact('contactos', 'obra'));
+        return view('contacto.index', compact('contactos', 'obra', 'obraModel'));
     }
 
     public function create($obra = null)
     {
         $presupuestos = collect();
+        $obraModel = null;
         if ($obra) {
+            $obraModel = Obra::find($obra);
             $presupuestos = PresupuestoAprobado::where('obra_id', $obra)->get();
         }
-        return view('contacto.create', compact('obra', 'presupuestos'));
+        return view('contacto.create', compact('obra', 'obraModel', 'presupuestos'));
     }
 
     public function store(Request $request)
@@ -56,8 +61,9 @@ class ContactoController extends Controller
     {
         $contacto = Contacto::findOrFail($id);
         $obra = $contacto->obra_id;
+        $obraModel = $obra ? Obra::find($obra) : null;
         $presupuestos = PresupuestoAprobado::where('obra_id', $obra)->get();
-        return view('contacto.edit', compact('contacto', 'obra', 'presupuestos'));
+        return view('contacto.edit', compact('contacto', 'obra', 'obraModel', 'presupuestos'));
     }
 
     public function update(Request $request, $id)

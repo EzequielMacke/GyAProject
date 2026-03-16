@@ -14,14 +14,16 @@ class PresupuestoaprobadoController extends Controller
     public function index(Request $request, $obra = null)
     {
         $query = PresupuestoAprobado::with('usuario');
+        $obraModel = null;
         if ($obra) {
+            $obraModel = Obra::findOrFail($obra);
             $query->where('obra_id', $obra);
         }
         $presupuestos = $query->get();
         $estados = config('constantes.estado_de_presupuestos');
         $estados_label = config('constantes.estado_de_presupuestos_btn');
         $tipo_trabajo = config('constantes.tipo_trabajo');
-        return view('presupuesto_aprobado.index', compact('presupuestos', 'estados', 'estados_label','tipo_trabajo', 'obra'));
+        return view('presupuesto_aprobado.index', compact('presupuestos', 'estados', 'estados_label', 'tipo_trabajo') + ['obra' => $obraModel]);
     }
 
     public function create($obra = null)
@@ -115,7 +117,7 @@ class PresupuestoaprobadoController extends Controller
         if ($presupuesto->estado == 2) {
             return redirect('/home')->with('error', 'No se puede editar un presupuesto aprobado.');
         }
-        $obra = $presupuesto->obra_id;
+        $obra = $presupuesto->obra_id ? Obra::findOrFail($presupuesto->obra_id) : null;
         return view('presupuesto_aprobado.edit', compact('presupuesto', 'obra'));
     }
     public function update(Request $request, $id)
