@@ -6,20 +6,6 @@
     <title>Pedidos para Obra</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-    @php
-        use App\Models\Modulo;
-        use App\Models\Permiso;
-        $permisos = Permiso::where('area_id', session('usuario_area_id'))->get();
-        $puedeVer     = $permisos->where('modulo_id', Modulo::where('nombre', 'ped_obr_ing')->first()->id ?? null)->where('ver', 1)->isNotEmpty();
-        $puedeAgregar = $permisos->where('modulo_id', Modulo::where('nombre', 'ped_obr_ing')->first()->id ?? null)->where('agregar', 1)->isNotEmpty();
-        $puedeEditar  = $permisos->where('modulo_id', Modulo::where('nombre', 'ped_obr_ing')->first()->id ?? null)->where('editar', 1)->isNotEmpty();
-    @endphp
-
-    @if (!$puedeVer)
-        <script>window.location.href = "{{ url('/home') }}";</script>
-    @endif
-
     <style>
         :root {
             --bg:        #f0f3f7;
@@ -315,11 +301,9 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="search" class="search-bar" placeholder="Buscar pedido…" autocomplete="off">
                         </div>
-                        @if($puedeAgregar)
                         <a href="{{ route('pedidobra.create', $obra) }}" class="btn btn-primary" id="agregar-pedido-btn">
                             <i class="fas fa-plus"></i> Nuevo pedido
                         </a>
-                        @endif
                         <a href="{{ route('obras.show', $obra) }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
@@ -342,9 +326,9 @@
 
                 {{-- Stats --}}
                 @php
-                    $total     = $pedobras->count();
+                    $total      = $pedobras->count();
                     $pendientes = $pedobras->where('estado', '1')->count();
-                    $entregados = $pedobras->where('estado', '3')->count();
+                    $preparados = $pedobras->where('estado', '2')->count();
                 @endphp
                 <div class="stats-row">
                     <div class="stat-card">
@@ -362,10 +346,10 @@
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-icon green"><i class="fas fa-box-open"></i></div>
                         <div>
-                            <div class="stat-val">{{ $entregados }}</div>
-                            <div class="stat-lbl">Entregados</div>
+                            <div class="stat-val">{{ $preparados }}</div>
+                            <div class="stat-lbl">Preparados</div>
                         </div>
                     </div>
                 </div>
@@ -377,7 +361,6 @@
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Obra</th>
                                     <th>Creado por</th>
                                     <th>F. Pedido</th>
                                     <th>F. Entrega</th>
@@ -412,7 +395,6 @@
                                 @endphp
                                 <tr style="animation-delay:{{ $loop->index * 0.03 }}s">
                                     <td class="td-id">#{{ str_pad($pedobra->id, 4, '0', STR_PAD_LEFT) }}</td>
-                                    <td class="td-obra">{{ $pedobra->obra->nombre }}</td>
                                     <td>{{ $pedobra->usuario->nombre }}</td>
                                     <td class="td-date">{{ $pedobra->fecha_pedido ? \Carbon\Carbon::parse($pedobra->fecha_pedido)->format('d/m/Y') : '—' }}</td>
                                     <td class="td-date">{{ $pedobra->fecha_entrega ? \Carbon\Carbon::parse($pedobra->fecha_entrega)->format('d/m/Y') : '—' }}</td>
@@ -432,7 +414,6 @@
                                     </td>
                                     <td>
                                         <div class="td-actions">
-                                            @if($puedeEditar)
                                             <a href="{{ route('pedidobra.edit', $pedobra->id) }}"
                                                class="btn btn-icon btn-edit editar-btn"
                                                data-usuario-id="{{ $pedobra->usuario_id }}"
@@ -440,25 +421,22 @@
                                                title="Editar">
                                                 <i class="fas fa-pen"></i>
                                             </a>
-                                            @endif
                                             <a href="{{ route('pedidobra.show', $pedobra->id) }}"
                                                class="btn btn-icon btn-view"
                                                title="Ver detalle">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            @if($puedeAgregar)
                                             <a href="{{ route('pedidobra.duplicar', $pedobra->id) }}"
                                                class="btn btn-icon btn-dup"
                                                title="Duplicar">
                                                 <i class="fas fa-copy"></i>
                                             </a>
-                                            @endif
                                         </div>
                                     </td>
                                 </tr>
                                 @empty
                                 <tr class="empty-row">
-                                    <td colspan="11">
+                                    <td colspan="10">
                                         <i class="fas fa-box-open"></i>
                                         No hay pedidos registrados.
                                     </td>

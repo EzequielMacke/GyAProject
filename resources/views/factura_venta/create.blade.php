@@ -6,16 +6,6 @@
     <title>Cargar Factura de Venta</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-
-    @php
-        use App\Models\Modulo;
-        use App\Models\Permiso;
-        $permisos = Permiso::where('area_id', session('usuario_area_id'))->get();
-    @endphp
-    @if ($permisos->where('modulo_id', Modulo::where('nombre', 'pre_apr_ing')->first()->id ?? null)->where('agregar', 1)->isEmpty())
-        <script>window.location.href = "{{ url('/home') }}";</script>
-    @endif
-
     <style>
         :root {
             --bg:       #f0f3f7;
@@ -198,6 +188,12 @@
                                     <label class="field-label">Clave</label>
                                     <div class="presupuesto-chip">
                                         <i class="fas fa-tag"></i> {{ $presupuesto?->clave ?? '—' }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="field-label">Orden de trabajo</label>
+                                    <div class="presupuesto-chip">
+                                        <i class="fas fa-clipboard-list"></i> {{ $presupuesto?->orden_trabajo ?? '—' }}
                                     </div>
                                 </div>
                                 <div>

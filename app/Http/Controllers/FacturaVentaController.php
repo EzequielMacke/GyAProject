@@ -116,5 +116,17 @@ class FacturaVentaController extends Controller
         return redirect()->route('factura_venta.index', ['presupuesto' => $factura->presupuesto_aprobado_id, 'obra' => $factura->obra_id])
             ->with('success', 'Factura de venta actualizada correctamente.');
     }
-    
+
+    public function search()
+    {
+        $presupuestos = PresupuestoAprobado::with('obra')
+            ->whereNotNull('orden_trabajo')
+            ->where('orden_trabajo', '!=', '')
+            ->get();
+        $estados     = config('constantes.estado_de_presupuestos');
+        $estados_btn = config('constantes.estado_de_presupuestos_btn');
+        $tipos       = config('constantes.tipo_trabajo');
+        return view('factura_venta.search', compact('presupuestos', 'estados', 'estados_btn', 'tipos'));
+    }
+
 }

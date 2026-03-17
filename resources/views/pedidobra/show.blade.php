@@ -293,6 +293,7 @@
                                     <th>Unidad</th>
                                     <th style="width:110px;">Cantidad</th>
                                     <th style="width:120px;">Estado</th>
+                                    <th>Comentario</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -316,10 +317,13 @@
                                                 {{ $estados[$detalle->confirmado] ?? 'Desconocido' }}
                                             </span>
                                         </td>
+                                        <td style="font-size:0.78rem; color:var(--muted); font-style:italic;">
+                                            {{ $detalle->comentario ?? '—' }}
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" style="text-align:center; color:var(--muted); padding:2rem; font-size:0.82rem;">
+                                        <td colspan="6" style="text-align:center; color:var(--muted); padding:2rem; font-size:0.82rem;">
                                             <i class="fas fa-box-open" style="font-size:1.3rem; opacity:0.25; display:block; margin-bottom:0.4rem;"></i>
                                             Sin insumos registrados
                                         </td>

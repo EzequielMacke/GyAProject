@@ -120,6 +120,7 @@ class PedobraController extends Controller
         $pedidoObra = Pedido_para_obra::findOrFail($id);
         $pedidoObra->update([
             'obra_id' => $request->obra,
+            'presupuesto_aprobado_id' => $request->presupuesto_aprobado_id ?: null,
             'fecha_entrega' => $request->fecha_entrega,
             'observacion' => $request->observacion,
             'total_insumo' => $request->contador_insumos,

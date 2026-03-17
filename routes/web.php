@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AgendamientoController;
+use App\Http\Controllers\AsignarOrdenController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContactoController;
@@ -151,6 +152,7 @@ Route::get('/contacto/{id}/edit', [ContactoController::class , 'edit'])->name('c
 Route::put('/contacto/{id}', [ContactoController::class , 'update'])->name('contacto.update');
 
 // Rutas para facturas de venta
+Route::get('/factura_venta/buscar', [FacturaVentaController::class, 'search'])->name('factura_venta.search');
 Route::get('/factura_venta/cargar/{presupuesto?}/{obra?}', [FacturaVentaController::class , 'create'])->name('factura_venta.create');
 Route::post('/factura_venta', [FacturaVentaController::class , 'store'])->name('factura_venta.store');
 Route::get('/factura_venta/obra/{obraId}/presupuestos', [FacturaVentaController::class , 'show'])->name('factura_venta.show');
@@ -185,3 +187,9 @@ Route::get('/mantenimiento/show', [MantenimientoController::class , 'show'])->na
 Route::get('/kits/index', [KitController::class , 'index'])->name('kits.index');
 Route::get('/kits/create', [KitController::class , 'create'])->name('kits.create');
 Route::post('/kits/store', [KitController::class , 'store'])->name('kits.store');
+
+
+//Ruta para asignar orden de trabajo a presupuestos aprobados
+Route::get('/asignar-orden', [AsignarOrdenController::class, 'index'])->name('asignar_orden.index');
+Route::get('/asignar-orden/{id}/edit', [AsignarOrdenController::class, 'edit'])->name('asignar_orden.edit');
+Route::put('/asignar-orden/{id}', [AsignarOrdenController::class, 'update'])->name('asignar_orden.update');

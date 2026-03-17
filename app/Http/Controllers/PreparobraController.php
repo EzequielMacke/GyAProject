@@ -18,7 +18,7 @@ class PreparobraController extends Controller
     }
     public function show($id)
     {
-        $pedido = Pedido_para_obra::with('detalles.insumo')->findOrFail($id);
+        $pedido = Pedido_para_obra::with('detalles.insumo', 'obra', 'usuario', 'presupuesto')->findOrFail($id);
         $estados = config('constantes.estado_de_insumo');
         $estados_label = config('constantes.estado_de_insumo_btn');
         $usuarioIds = $pedido->detalles->pluck('usuario_id')->unique()->filter();
@@ -29,6 +29,7 @@ class PreparobraController extends Controller
     {
         $pedido = Pedido_para_obra::findOrFail($id);
         $userId = Auth::id();
+        $comentarios = $request->comentario ?? [];
         foreach ($pedido->detalles as $detalle) {
             if (in_array($detalle->id, $request->confirmado ?? [])) {
                 $detalle->confirmado = 2;
@@ -37,16 +38,13 @@ class PreparobraController extends Controller
                 $detalle->confirmado = 1;
                 $detalle->usuario_id = null;
             }
+            $detalle->comentario = $comentarios[$detalle->id] ?? null;
             $detalle->save();
         }
         $insumosConfirmados = $pedido->detalles()->where('confirmado', 2)->count();
         $pedido->insumo_confirmado = $insumosConfirmados;
         $pedido->insumo_faltante = $pedido->total_insumo - $insumosConfirmados;
-        if ($insumosConfirmados == $pedido->total_insumo) {
-            $pedido->estado = 2;
-        } else {
-            $pedido->estado = 1;
-        }
+        $pedido->estado = ($insumosConfirmados == $pedido->total_insumo) ? 2 : 1;
         $pedido->save();
         return redirect()->route('preparobra.index')
             ->with('success', 'Estado de los insumos actualizado exitosamente.');

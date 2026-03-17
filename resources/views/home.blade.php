@@ -163,7 +163,7 @@
                         <span class="opcion-label">Vehículos</span>
                     </a>
 
-                    <a href="#" class="opcion-card" style="animation-delay:0.16s">
+                    <a href="{{ route('permisos.index') }}" class="opcion-card" style="animation-delay:0.16s">
                         <div class="opcion-icon ic-orange"><i class="fas fa-user-shield"></i></div>
                         <span class="opcion-label">Permisos</span>
                     </a>
@@ -186,6 +186,21 @@
                     <a href="#" class="opcion-card" style="animation-delay:0.28s">
                         <div class="opcion-icon ic-blue"><i class="fas fa-chart-bar"></i></div>
                         <span class="opcion-label">Reportes</span>
+                    </a>
+
+                    <a href="{{ route('preparobra.index') }}" class="opcion-card" style="animation-delay:0.31s">
+                        <div class="opcion-icon ic-teal"><i class="fas fa-boxes"></i></div>
+                        <span class="opcion-label">Preparar Pedidos</span>
+                    </a>
+
+                    <a href="{{ route('asignar_orden.index') }}" class="opcion-card" style="animation-delay:0.34s">
+                        <div class="opcion-icon ic-blue"><i class="fas fa-clipboard-list"></i></div>
+                        <span class="opcion-label">Orden de Trabajo</span>
+                    </a>
+
+                    <a href="{{ route('factura_venta.search') }}" class="opcion-card" style="animation-delay:0.37s">
+                        <div class="opcion-icon ic-green"><i class="fas fa-file-invoice-dollar"></i></div>
+                        <span class="opcion-label">Facturación</span>
                     </a>
 
                 </div>
