@@ -285,6 +285,37 @@
             font-weight: 500;
         }
 
+        .card-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-top: 0.35rem;
+            padding-top: 0.45rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .card-meta-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.4rem;
+            font-size: 0.74rem;
+            color: var(--text2);
+        }
+
+        .card-meta-row i {
+            font-size: 0.65rem;
+            color: var(--muted);
+            margin-top: 0.15rem;
+            flex-shrink: 0;
+            width: 12px;
+            text-align: center;
+        }
+
+        .card-meta-row span {
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
         /* Card footer */
         .card-footer-row {
             display: flex;
@@ -453,11 +484,13 @@
                 <div id="cards-grid">
 
                     {{-- Add card --}}
+                    @permiso('pre_apr', 'agregar')
                     <a href="{{ route('presupuesto_aprobado.create', $obra) }}" class="add-card">
                         <div class="add-card-icon"><i class="fas fa-plus"></i></div>
                         <span class="add-card-label">Agregar presupuesto</span>
                         <span class="add-card-sub">Nuevo registro</span>
                     </a>
+                    @endpermiso
 
                     {{-- Budget cards --}}
                     @foreach($presupuestos->reverse() as $presupuesto)
@@ -480,6 +513,27 @@
                         <div class="card-body">
                             <div class="card-name">{{ $presupuesto->clave }}</div>
                             <div class="card-tipo">{{ config('constantes.tipo_trabajo')[$presupuesto->tipo_trabajo] ?? 'Desconocido' }}</div>
+
+                            <div class="card-meta">
+                                @if($presupuesto->ubicacion)
+                                <div class="card-meta-row">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>{{ $presupuesto->ubicacion }}</span>
+                                </div>
+                                @endif
+                                @if($presupuesto->orden_trabajo)
+                                <div class="card-meta-row">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    <span>OT: {{ $presupuesto->orden_trabajo }}</span>
+                                </div>
+                                @endif
+                                @if($presupuesto->observacion)
+                                <div class="card-meta-row">
+                                    <i class="fas fa-sticky-note"></i>
+                                    <span>{{ Str::limit($presupuesto->observacion, 80) }}</span>
+                                </div>
+                                @endif
+                            </div>
                         </div>
 
                         <div class="card-footer-row">

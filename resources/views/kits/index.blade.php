@@ -459,9 +459,11 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="search" class="search-bar" placeholder="Buscar kits…" autocomplete="off">
                         </div>
+                        @permiso('kit', 'agregar')
                         <a href="{{ route('kits.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Nuevo kit
                         </a>
+                        @endpermiso
                         <a href="{{ route('mantenimiento.show') }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>

@@ -49,6 +49,7 @@ class FacturaVentaController extends Controller
         $data = $request->only([
             'nro_factura',
             'concepto',
+            'razon_social',
             'monto',
             'presupuesto_aprobado_id',
             'obra_id',
@@ -91,6 +92,7 @@ class FacturaVentaController extends Controller
         $data = $request->only([
             'nro_factura',
             'concepto',
+            'razon_social',
             'monto',
         ]);
         // Limpiar monto (eliminar puntos de miles)

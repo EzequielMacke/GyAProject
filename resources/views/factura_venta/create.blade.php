@@ -236,6 +236,11 @@
                                            placeholder="Descripción del concepto" value="{{ old('concepto') }}" required>
                                 </div>
                                 <div>
+                                    <label class="field-label" for="razon_social">Razón social</label>
+                                    <input type="text" name="razon_social" id="razon_social" class="field-input"
+                                           placeholder="Nombre o razón social" value="{{ old('razon_social') }}">
+                                </div>
+                                <div>
                                     <label class="field-label" for="monto">Monto <span class="req">*</span></label>
                                     <input type="text" name="monto" id="monto" class="field-input"
                                            placeholder="0" value="{{ old('monto') }}" required>

@@ -35,11 +35,11 @@
                         <div class="col-sm-6">
                             <h1 class="m-0">Listado de Insumos</h1>
                         </div>
-                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'ins')->first()->id ?? null)->where('agregar', 1)->isNotEmpty())
+                        @permiso('ins', 'agregar')
                         <div class="col-sm-6">
                             <a href="{{ route('insumos.create') }}" class="btn btn-primary float-right" id="agregar-insumo-btn">Agregar Insumo</a>
                         </div>
-                        @endif
+                        @endpermiso
                     </div>
                 </div>
             </div>

@@ -50,7 +50,7 @@
 
         /* SEARCH BAR */
         .search-wrap {
-            position: relative; max-width: 320px; width: 100%;
+            position: relative; width: 260px; transition: width 0.22s;
         }
         .search-wrap i {
             position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%);
@@ -62,9 +62,36 @@
             border: 1.5px solid var(--border); border-radius: 0.55rem;
             background: var(--surface); color: var(--text); outline: none;
             transition: border-color 0.15s, box-shadow 0.15s;
+            height: 36px;
         }
         .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
+        .search-wrap:focus-within { width: 320px; }
         .search-input::placeholder { color: var(--muted); }
+
+        /* BACK BUTTON */
+        .btn-back {
+            height: 36px;
+            padding: 0 1rem;
+            border-radius: 0.55rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.825rem;
+            font-weight: 600;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.14s;
+            white-space: nowrap;
+        }
+        .btn-back:hover {
+            border-color: var(--border2);
+            background: var(--surface2);
+            color: var(--text);
+        }
 
         /* ESTADO BADGE */
         .estado-badge {
@@ -182,9 +209,14 @@
                         <h1 class="ph-title">Cargar <em>facturas de venta</em></h1>
                         <p class="ph-sub">{{ $presupuestos->count() }} presupuesto{{ $presupuestos->count() != 1 ? 's' : '' }} con orden de trabajo asignada</p>
                     </div>
-                    <div class="search-wrap">
-                        <i class="fas fa-search"></i>
-                        <input type="text" class="search-input" id="searchInput" placeholder="Buscar por clave, obra u OT…">
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <div class="search-wrap">
+                            <i class="fas fa-search"></i>
+                            <input type="text" class="search-input" id="searchInput" placeholder="Buscar por clave, obra u OT…">
+                        </div>
+                        <a href="{{ url('/home') }}" class="btn-back">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </a>
                     </div>
                 </div>
             </div>

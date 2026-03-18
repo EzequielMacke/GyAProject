@@ -301,9 +301,11 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="search" class="search-bar" placeholder="Buscar pedido…" autocomplete="off">
                         </div>
+                        @permiso('ped_ins', 'agregar')
                         <a href="{{ route('pedidobra.create', $obra) }}" class="btn btn-primary" id="agregar-pedido-btn">
                             <i class="fas fa-plus"></i> Nuevo pedido
                         </a>
+                        @endpermiso
                         <a href="{{ route('obras.show', $obra) }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
@@ -414,6 +416,7 @@
                                     </td>
                                     <td>
                                         <div class="td-actions">
+                                            @permiso('ped_ins', 'editar')
                                             <a href="{{ route('pedidobra.edit', $pedobra->id) }}"
                                                class="btn btn-icon btn-edit editar-btn"
                                                data-usuario-id="{{ $pedobra->usuario_id }}"
@@ -421,6 +424,7 @@
                                                title="Editar">
                                                 <i class="fas fa-pen"></i>
                                             </a>
+                                            @endpermiso
                                             <a href="{{ route('pedidobra.show', $pedobra->id) }}"
                                                class="btn btn-icon btn-view"
                                                title="Ver detalle">

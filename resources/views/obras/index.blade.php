@@ -355,9 +355,11 @@
                             <input type="text" id="search" class="search-bar"
                                    placeholder="Buscar obra, presupuesto, contacto…" autocomplete="off">
                         </div>
+                        @permiso('obr', 'agregar')
                         <a href="{{ route('obras.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Nueva obra
                         </a>
+                        @endpermiso
                         <a href="{{ route('home') }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>

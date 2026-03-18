@@ -529,11 +529,13 @@
                 <div id="cards-grid">
 
                     {{-- Add card --}}
+                    @permiso('fac', 'agregar')
                     <a href="{{ route('factura_venta.create', ['presupuesto' => $presupuesto?->id ?? null, 'obra' => $obra?->id ?? null]) }}" class="add-card">
                         <div class="add-card-icon"><i class="fas fa-plus"></i></div>
                         <span class="add-card-label">Agregar factura</span>
                         <span class="add-card-sub">Nuevo registro</span>
                     </a>
+                    @endpermiso
 
                     {{-- Factura cards --}}
                     @foreach($facturas->reverse() as $factura)
@@ -569,6 +571,11 @@
                             </div>
                             @if($factura->concepto)
                             <div class="card-concepto">{{ $factura->concepto }}</div>
+                            @endif
+                            @if($factura->razon_social)
+                            <div class="card-concepto" style="color: var(--muted); font-size: 0.75rem;">
+                                <i class="fas fa-building" style="font-size: 0.65rem; margin-right: 0.25rem;"></i>{{ $factura->razon_social }}
+                            </div>
                             @endif
                         </div>
 
@@ -616,17 +623,21 @@
 
                         {{-- Footer: edit link + recibos button --}}
                         <div class="card-action">
+                            @permiso('fac', 'agregar')
                             <a href="{{ route('recibo_venta.index', ['presupuesto' => $factura->presupuesto_aprobado_id, 'obra' => $factura->obra_id, 'factura' => $factura->id]) }}"
                                class="btn btn-green"
                                onclick="event.stopPropagation()">
                                 <i class="fas fa-receipt"></i> Agregar recibo
                             </a>
+                            @endpermiso
+                            @permiso('fac', 'editar')
                             <a href="{{ route('factura_venta.edit', $factura->id) }}"
                                class="btn"
                                style="margin-left:0.4rem;"
                                onclick="event.stopPropagation()">
                                 <i class="fas fa-pen"></i> Editar
                             </a>
+                            @endpermiso
                         </div>
 
                     </div>

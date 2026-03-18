@@ -284,12 +284,16 @@
                         <p class="ph-sub">Panel de gestión de la obra</p>
                     </div>
                     <div class="ph-right">
+                        @permiso('obr', 'editar')
                         <a href="{{ route('obras.edit', $obra->id) }}" class="btn btn-edit">
                             <i class="fas fa-pen"></i> Editar
                         </a>
+                        @endpermiso
+                        @permiso('obr', 'eliminar')
                         <button type="button" class="btn btn-danger-soft" data-bs-toggle="modal" data-bs-target="#modalEliminarObra">
                             <i class="fas fa-trash-alt"></i> Eliminar
                         </button>
+                        @endpermiso
                         <a href="{{ route('obras.index') }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
@@ -304,40 +308,54 @@
 
                 <div class="options-grid">
 
+                    @permiso('dir', 'ver')
                     <a href="{{ route('directorio.index', ['obra' => $obra->id]) }}" class="opcion-card" style="animation-delay:0.04s">
                         <div class="opcion-icon ic-purple"><i class="fas fa-folder-open"></i></div>
                         <span class="opcion-label">Directorio</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('pre_apr', 'ver')
                     <a href="{{ route('presupuesto_aprobado.index', $obra->id) }}" class="opcion-card" style="animation-delay:0.08s">
                         <div class="opcion-icon ic-yellow"><i class="fas fa-file-invoice-dollar"></i></div>
                         <span class="opcion-label">Presupuestos Aprobados</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('ped_ins', 'ver')
                     <a href="{{ route('pedidobra.index', $obra->id) }}" class="opcion-card" style="animation-delay:0.12s">
                         <div class="opcion-icon ic-blue"><i class="fas fa-clipboard-list"></i></div>
                         <span class="opcion-label">Pedidos de Insumos</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('con', 'ver')
                     <a href="{{ route('contacto.index', $obra->id) }}" class="opcion-card" style="animation-delay:0.16s">
                         <div class="opcion-icon ic-green"><i class="fas fa-address-book"></i></div>
                         <span class="opcion-label">Contactos</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('inv', 'ver')
                     <a href="#" class="opcion-card" style="animation-delay:0.20s">
                         <div class="opcion-icon ic-orange"><i class="fas fa-boxes"></i></div>
                         <span class="opcion-label">Inventario</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('fac', 'ver')
                     <a href="{{ route('factura_venta.show', $obra->id) }}" class="opcion-card" style="animation-delay:0.24s">
                         <div class="opcion-icon ic-teal"><i class="fas fa-file-invoice"></i></div>
                         <span class="opcion-label">Facturación</span>
                     </a>
+                    @endpermiso
 
-                    <a href="#" class="opcion-card" style="animation-delay:0.28s">
+                    @permiso('dat', 'ver')
+                    <a href="{{ route('obra_info.show', $obra->id) }}" class="opcion-card" style="animation-delay:0.28s">
                         <div class="opcion-icon ic-slate"><i class="fas fa-info-circle"></i></div>
                         <span class="opcion-label">Datos de la Obra</span>
                     </a>
+                    @endpermiso
 
                 </div>
 
@@ -363,12 +381,14 @@
                 <p style="margin-top:0.5rem; font-size:0.8rem; color:var(--muted);">Esta acción no se puede deshacer.</p>
             </div>
             <div class="modal-footer">
+                @permiso('obr', 'eliminar')
                 <form action="{{ route('obras.destroy', $obra->id) }}" method="POST">
                     @csrf
                     @method('DELETE')
                     <button type="button" class="btn btn-modal-cancel" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-modal-delete"><i class="fas fa-trash-alt"></i> Eliminar definitivamente</button>
                 </form>
+                @endpermiso
             </div>
         </div>
     </div>

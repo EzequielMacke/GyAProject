@@ -143,65 +143,89 @@
 
                 <div class="options-grid">
 
+                    @permiso('obr', 'ver')
                     <a href="{{ route('obras.index') }}" class="opcion-card" style="animation-delay:0.04s">
                         <div class="opcion-icon ic-purple"><i class="fas fa-building"></i></div>
                         <span class="opcion-label">Obras</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('tab', 'ver')
                     <a href="{{ route('tabletas.index') }}" class="opcion-card" style="animation-delay:0.07s">
                         <div class="opcion-icon ic-violet"><i class="fas fa-tablet-alt"></i></div>
                         <span class="opcion-label">Tablets</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('equ', 'ver')
                     <a href="#" class="opcion-card" style="animation-delay:0.10s">
                         <div class="opcion-icon ic-green"><i class="fas fa-tools"></i></div>
                         <span class="opcion-label">Equipos</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('veh', 'ver')
                     <a href="#" class="opcion-card" style="animation-delay:0.13s">
                         <div class="opcion-icon ic-yellow"><i class="fas fa-truck"></i></div>
                         <span class="opcion-label">Vehículos</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('per', 'ver')
                     <a href="{{ route('permisos.index') }}" class="opcion-card" style="animation-delay:0.16s">
                         <div class="opcion-icon ic-orange"><i class="fas fa-user-shield"></i></div>
                         <span class="opcion-label">Permisos</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('usu', 'ver')
                     <a href="#" class="opcion-card" style="animation-delay:0.19s">
                         <div class="opcion-icon ic-slate"><i class="fas fa-users"></i></div>
                         <span class="opcion-label">Usuarios</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('her', 'ver')
                     <a href="#" class="opcion-card" style="animation-delay:0.22s">
                         <div class="opcion-icon ic-teal"><i class="fas fa-hammer"></i></div>
                         <span class="opcion-label">Herramientas</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('man', 'ver')
                     <a href="{{ route('mantenimiento.show') }}" class="opcion-card" style="animation-delay:0.25s">
                         <div class="opcion-icon ic-pink"><i class="fas fa-wrench"></i></div>
                         <span class="opcion-label">Mantenimiento</span>
                     </a>
+                    @endpermiso
 
-                    <a href="#" class="opcion-card" style="animation-delay:0.28s">
-                        <div class="opcion-icon ic-blue"><i class="fas fa-chart-bar"></i></div>
-                        <span class="opcion-label">Reportes</span>
-                    </a>
-
+                    @permiso('pre_ped', 'ver')
                     <a href="{{ route('preparobra.index') }}" class="opcion-card" style="animation-delay:0.31s">
                         <div class="opcion-icon ic-teal"><i class="fas fa-boxes"></i></div>
                         <span class="opcion-label">Preparar Pedidos</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('asi_ord', 'ver')
                     <a href="{{ route('asignar_orden.index') }}" class="opcion-card" style="animation-delay:0.34s">
                         <div class="opcion-icon ic-blue"><i class="fas fa-clipboard-list"></i></div>
                         <span class="opcion-label">Orden de Trabajo</span>
                     </a>
+                    @endpermiso
 
+                    @permiso('car_fac', 'ver')
                     <a href="{{ route('factura_venta.search') }}" class="opcion-card" style="animation-delay:0.37s">
                         <div class="opcion-icon ic-green"><i class="fas fa-file-invoice-dollar"></i></div>
                         <span class="opcion-label">Facturación</span>
                     </a>
+                    @endpermiso
+
+                    @permiso('rep', 'ver')
+                    <a href="#" class="opcion-card" style="animation-delay:0.40s">
+                        <div class="opcion-icon ic-blue"><i class="fas fa-chart-bar"></i></div>
+                        <span class="opcion-label">Reportes</span>
+                    </a>
+                    @endpermiso
 
                 </div>
 

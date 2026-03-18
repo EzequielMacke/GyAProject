@@ -53,7 +53,7 @@ class ReciboController extends Controller
     {
         $recibo = new RecibidoVenta();
         $recibo->nro_recibo = $request->input('nro_recibo');
-        $recibo->fecha_emision = now();
+        $recibo->fecha_emision = $request->input('fecha_emision') ?: now();
         $recibo->concepto = $request->input('concepto');
         $recibo->monto = str_replace('.', '', $request->input('monto'));
         $recibo->factura_id = $request->input('factura_id');
@@ -82,7 +82,7 @@ class ReciboController extends Controller
     {
         $recibo = RecibidoVenta::findOrFail($id);
         $recibo->nro_recibo = $request->input('nro_recibo');
-        $recibo->fecha_emision = now();
+        $recibo->fecha_emision = $request->input('fecha_emision') ?: now();
         $recibo->concepto = $request->input('concepto');
         $recibo->monto = str_replace('.', '', $request->input('monto'));
         $recibo->save();

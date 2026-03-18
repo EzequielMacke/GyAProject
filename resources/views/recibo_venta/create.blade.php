@@ -205,7 +205,7 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="field-label">Saldo factura</label>
+                                    <label class="field-label">Saldo por cobrar</label>
                                     <div class="field-value" style="color: var(--green); font-weight: 600;">
                                         {{ isset($factura) ? number_format($factura->monto - $factura->recibosVenta->sum('monto'), 0, '', '.') : '—' }}
                                     </div>
@@ -225,6 +225,11 @@
                                     <label class="field-label" for="nro_recibo">Número de recibo <span class="req">*</span></label>
                                     <input type="text" name="nro_recibo" id="nro_recibo" class="field-input"
                                            value="{{ old('nro_recibo', '001-001-0000001') }}" required>
+                                </div>
+                                <div>
+                                    <label class="field-label" for="fecha_emision">Fecha de emisión <span class="req">*</span></label>
+                                    <input type="date" name="fecha_emision" id="fecha_emision" class="field-input"
+                                           value="{{ old('fecha_emision', now()->format('Y-m-d')) }}" required>
                                 </div>
                                 <div>
                                     <label class="field-label" for="concepto">Concepto <span class="req">*</span></label>

@@ -379,15 +379,19 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="search" class="search-bar" placeholder="Buscar tableta…" autocomplete="off">
                         </div>
+                        @permiso('tab', 'agregar')
                         <a href="{{ route('tabletas.create') }}" class="btn btn-green">
                             <i class="fas fa-plus"></i> Nueva tablet
                         </a>
+                        @endpermiso
+                        @permiso('tab', 'eliminar')
                         <a href="{{ route('tabletas.report') }}" class="btn">
                             <i class="fas fa-file-alt"></i> Reportes
                         </a>
                         <a href="{{ route('tabletas.generarQrs') }}" class="btn">
                             <i class="fas fa-qrcode"></i> Generar QR
                         </a>
+                        @endpermiso
                         <a href="{{ route('home') }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
@@ -466,10 +470,16 @@
                         );
                     @endphp
 
+                    @if(app(\App\Services\PermisoService::class)->puede('tab', 'editar'))
                     <a href="{{ route('tabletas.edit', $tableta->id) }}"
                        class="tablet-card{{ $sinDevolucion ? ' sin-devolucion' : '' }}"
                        style="animation-delay:{{ $loop->index * 0.04 }}s"
                        data-search="{{ $searchData }}">
+                    @else
+                    <div class="tablet-card{{ $sinDevolucion ? ' sin-devolucion' : '' }}"
+                         style="animation-delay:{{ $loop->index * 0.04 }}s; cursor:default;"
+                         data-search="{{ $searchData }}">
+                    @endif
 
                         {{-- Icon header --}}
                         <div class="card-icon-header {{ $sinDevolucion ? 'unavailable' : 'available' }}">
@@ -533,7 +543,11 @@
 
                         </div>
 
+                    @if(app(\App\Services\PermisoService::class)->puede('tab', 'editar'))
                     </a>
+                    @else
+                    </div>
+                    @endif
                     @endforeach
 
                     @endif

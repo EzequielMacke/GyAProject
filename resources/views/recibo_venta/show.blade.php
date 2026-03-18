@@ -515,6 +515,7 @@
                 <div id="cards-grid">
 
                     {{-- Add card --}}
+                    @permiso('fac', 'agregar')
                     <a href="{{ route('recibo_venta.create', [
                         'presupuesto' => $presupuesto?->id ?? null,
                         'obra'        => $obra?->id ?? null,
@@ -524,6 +525,7 @@
                         <span class="add-card-label">Agregar recibo</span>
                         <span class="add-card-sub">Nuevo registro</span>
                     </a>
+                    @endpermiso
 
                     {{-- Recibo cards --}}
                     @foreach($recibos->reverse() as $recibo)
@@ -601,9 +603,11 @@
 
                         {{-- Footer --}}
                         <div class="card-action">
+                            @permiso('fac', 'editar')
                             <a href="{{ route('recibo_venta.edit', $recibo->id) }}" class="btn">
                                 <i class="fas fa-pen"></i> Editar
                             </a>
+                            @endpermiso
                         </div>
 
                     </div>

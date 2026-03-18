@@ -15,6 +15,7 @@ class FacturaVenta extends Model
         'nro_factura',
         'fecha_emision',
         'concepto',
+        'razon_social',
         'monto',
         'saldo',
         'presupuesto_aprobado_id',

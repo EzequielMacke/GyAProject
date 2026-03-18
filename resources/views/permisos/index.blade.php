@@ -297,9 +297,11 @@
                         </div>
 
                         <div class="card-footer-row">
+                            @permiso('per', 'editar')
                             <a href="{{ route('permisos.edit', $permiso->id) }}" class="edit-btn">
                                 <i class="fas fa-pen"></i> Editar permisos
                             </a>
+                            @endpermiso
                         </div>
 
                     </div>

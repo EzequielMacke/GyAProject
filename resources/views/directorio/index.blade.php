@@ -357,9 +357,11 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="search" class="search-bar" placeholder="Buscar usuario…" autocomplete="off">
                         </div>
+                        @permiso('dir', 'agregar')
                         <a href="{{ route('directorio.create', $obra->id) }}" class="btn btn-primary">
                             <i class="fas fa-user-plus"></i> Agregar usuario
                         </a>
+                        @endpermiso
                         <a href="{{ route('obras.show', ['id' => $obra->id]) }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
@@ -400,10 +402,12 @@
                                     </div>
                                 </td>
                                 <td style="text-align:right;">
+                                    @permiso('dir', 'eliminar')
                                     <button type="button" class="btn-danger-sm"
                                         onclick="confirmarEliminar({{ $directorio->id }}, '{{ addslashes($directorio->usuario->nombre ?? '-') }}')">
                                         <i class="fas fa-user-minus"></i> Quitar
                                     </button>
+                                    @endpermiso
                                 </td>
                             </tr>
                             @empty

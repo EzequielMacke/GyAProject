@@ -376,11 +376,13 @@
                 <div id="cards-grid">
 
                     {{-- Add card --}}
+                    @permiso('con', 'agregar')
                     <a href="{{ route('contacto.create', $obra) }}" class="add-card">
                         <div class="add-card-icon"><i class="fas fa-user-plus"></i></div>
                         <span class="add-card-label">Agregar contacto</span>
                         <span class="add-card-sub">Nuevo registro</span>
                     </a>
+                    @endpermiso
 
                     {{-- Contact cards --}}
                     @foreach($contactos->reverse() as $contacto)
