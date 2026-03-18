@@ -56,6 +56,9 @@ Route::post('/login', [AuthController::class , 'login'])->name('login');
 Route::post('/logout', [AuthController::class , 'logout'])->name('logout');
 
 Route::get('/home', function () {
+    if (!session('usuario_area_id')) {
+        return redirect()->route('welcome');
+    }
     return view('home');
 })->name('home');
 
@@ -293,4 +296,4 @@ Route::middleware('permiso:dat,ver')->group(function () {
 });
 
 // ── Buscador global (sin restricción de módulo) ───────────────────────────────
-Route::get('/buscar', [SearchController::class, 'search'])->name('search.global');
+Route::middleware('permiso:obr,ver')->get('/buscar', [SearchController::class, 'search'])->name('search.global');

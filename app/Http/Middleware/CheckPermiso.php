@@ -21,7 +21,8 @@ class CheckPermiso
         $areaId = session('usuario_area_id');
 
         if (!$areaId) {
-            return $next($request);
+            return redirect()->route('welcome')
+                ->with('error', 'Debes iniciar sesión para acceder.');
         }
 
         $moduloId = Modulo::where('nombre', $modulo)->value('id');
