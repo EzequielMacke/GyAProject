@@ -249,11 +249,12 @@ Route::middleware('permiso:fac,editar')->group(function () {
 // ── Tabletas ──────────────────────────────────────────────────────────────────
 Route::middleware('permiso:tab,ver')->group(function () {
     Route::get('/tabletas/index', [TabletController::class, 'index'])->name('tabletas.index');
-    Route::get('/tabletas/thanks', [TabletController::class, 'thanks'])->name('tabletas.thanks');
+    });
     Route::get('/tabletas/assign/{clave}', [TabletController::class, 'assignShow'])->name('tabletas.assign.show');
+    Route::get('/tabletas/thanks', [TabletController::class, 'thanks'])->name('tabletas.thanks');
     Route::post('/tabletas/assign/{clave}', [TabletController::class, 'assignRetiro'])->name('tabletas.assign.retiro');
     Route::post('/tabletas/devolucion/{clave}', [TabletController::class, 'devolucion'])->name('tabletas.devolucion');
-});
+
 Route::middleware('permiso:tab,eliminar')->group(function () {
     Route::get('/tabletas/generar-qrs', [TabletController::class, 'generarQrs'])->name('tabletas.generarQrs');
     Route::get('/tabletas/report', [TabletController::class, 'report'])->name('tabletas.report');
