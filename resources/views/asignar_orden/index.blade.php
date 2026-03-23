@@ -299,7 +299,7 @@
                     </div>
                     @else
                     <div class="cards-grid">
-                        @foreach($sinOrden as $pres)
+                        @foreach($sinOrden->reverse() as $pres)
                         @php
                             $badgeClass = match($estados_btn[$pres->estado] ?? '') {
                                 'danger'  => 'badge-danger',
@@ -392,7 +392,7 @@
                     </div>
                     @else
                     <div class="cards-grid">
-                        @foreach($conOrden as $pres)
+                        @foreach($conOrden->reverse() as $pres)
                         @php
                             $badgeClass = match($estados_btn[$pres->estado] ?? '') {
                                 'danger'  => 'badge-danger',
