@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mantenimiento</title>
     @include('partials.head')
+    @php
+        use App\Models\Modulo;
+        use App\Models\Permiso;
+        $permisos = Permiso::where('area_id', session('usuario_area_id'))->get();
+    @endphp
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -185,10 +190,12 @@
             <div class="container-fluid">
                 <div class="options-grid">
 
-                    <a href="#" class="opcion-card" style="animation-delay:0.04s">
+                    @if ($permisos->where('modulo_id', Modulo::where('nombre', 'ins')->first()->id ?? null)->where('ver', 1)->isNotEmpty())
+                    <a href="{{ route('insumos.index') }}" class="opcion-card" style="animation-delay:0.04s">
                         <div class="opcion-icon ic-green"><i class="fas fa-cubes"></i></div>
                         <span class="opcion-label">Insumos</span>
                     </a>
+                    @endif
 
                     <a href="{{ route('kits.index') }}" class="opcion-card" style="animation-delay:0.08s">
                         <div class="opcion-icon ic-brown"><i class="fas fa-box"></i></div>
