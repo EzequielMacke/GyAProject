@@ -232,7 +232,7 @@
                 </div>
                 @else
                 <div class="cards-grid" id="cardsGrid">
-                    @foreach($presupuestos as $i => $pres)
+                    @foreach($presupuestos->reverse() as $i => $pres)
                     @php
                         $badgeClass = match($estados_btn[$pres->estado] ?? '') {
                             'danger'  => 'badge-danger',
