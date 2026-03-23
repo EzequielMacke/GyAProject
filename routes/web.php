@@ -41,6 +41,11 @@ Route::get('/incriptar', function () {
     return 'Contraseñas encriptadas correctamente';
 });
 
+Route::get('/admin-a-obras', function () {
+    Artisan::call('admin:add-to-obras');
+    return 'Admin agregado a todas las obras correctamente';
+});
+
 Route::get('/test-conexion', function () {
     try {
         DB::connection()->getPdo();
