@@ -46,6 +46,26 @@ Route::get('/admin-a-obras', function () {
     return 'Admin agregado a todas las obras correctamente';
 });
 
+Route::get('/agregar-obra/{usuario_id}', function ($usuario_id) {
+    $obras = \App\Models\Obra::whereDoesntHave('directorios', function ($query) use ($usuario_id) {
+        $query->where('usuario_id', $usuario_id);
+    })->get();
+
+    if ($obras->isEmpty()) {
+        return "El usuario {$usuario_id} ya está en todas las obras.";
+    }
+
+    foreach ($obras as $obra) {
+        \App\Models\Directorio::create([
+            'obra_id'    => $obra->id,
+            'usuario_id' => $usuario_id,
+            'fecha'      => now(),
+        ]);
+    }
+
+    return "Usuario {$usuario_id} agregado a {$obras->count()} obras correctamente.";
+});
+
 Route::get('/test-conexion', function () {
     try {
         DB::connection()->getPdo();
