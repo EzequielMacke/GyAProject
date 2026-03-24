@@ -431,7 +431,7 @@
                         @foreach($pendientes as $pedobra)
                         <div class="pedido-card"
                              style="animation-delay:{{ $loop->index * 0.04 }}s"
-                             data-search="{{ strtolower(($pedobra->obra->nombre ?? '') . ' ' . ($pedobra->usuario->nombre ?? '') . ' ' . ($pedobra->presupuesto->clave ?? '') . ' ' . ($pedobra->presupuesto->orden_trabajo ?? '') . ' ' . ($pedobra->observacion ?? '')) }}">
+                             data-search="{{ strtolower($pedobra->id . ' ' . ($pedobra->obra->nombre ?? '') . ' ' . ($pedobra->usuario->nombre ?? '') . ' ' . ($pedobra->presupuesto->clave ?? '') . ' ' . ($pedobra->presupuesto->orden_trabajo ?? '') . ' ' . ($pedobra->observacion ?? '')) }}">
 
                             <div class="card-head">
                                 <div>
@@ -447,6 +447,11 @@
                             </div>
 
                             <div class="card-body">
+                                <div class="detail-row">
+                                    <i class="fas fa-hashtag"></i>
+                                    <span class="detail-label">ID Pedido</span>
+                                    <span class="detail-value mono">#{{ $pedobra->id }}</span>
+                                </div>
                                 <div class="detail-row">
                                     <i class="fas fa-file-alt"></i>
                                     <span class="detail-label">Presupuesto</span>
@@ -520,7 +525,7 @@
                         @foreach($preparados as $pedobra)
                         <div class="pedido-card"
                              style="animation-delay:{{ $loop->index * 0.04 }}s"
-                             data-search="{{ strtolower(($pedobra->obra->nombre ?? '') . ' ' . ($pedobra->usuario->nombre ?? '') . ' ' . ($pedobra->presupuesto->clave ?? '') . ' ' . ($pedobra->presupuesto->orden_trabajo ?? '') . ' ' . ($pedobra->observacion ?? '')) }}">
+                             data-search="{{ strtolower($pedobra->id . ' ' . ($pedobra->obra->nombre ?? '') . ' ' . ($pedobra->usuario->nombre ?? '') . ' ' . ($pedobra->presupuesto->clave ?? '') . ' ' . ($pedobra->presupuesto->orden_trabajo ?? '') . ' ' . ($pedobra->observacion ?? '')) }}">
 
                             <div class="card-head">
                                 <div>
@@ -536,6 +541,11 @@
                             </div>
 
                             <div class="card-body">
+                                <div class="detail-row">
+                                    <i class="fas fa-hashtag"></i>
+                                    <span class="detail-label">ID Pedido</span>
+                                    <span class="detail-value mono">#{{ $pedobra->id }}</span>
+                                </div>
                                 <div class="detail-row">
                                     <i class="fas fa-file-alt"></i>
                                     <span class="detail-label">Presupuesto</span>
