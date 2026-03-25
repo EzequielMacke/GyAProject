@@ -308,6 +308,34 @@
         .badge-soon { background: #fef9ec; color: #d4920a; }
         .badge-late { background: #fdeef5; color: #c0507a; }
 
+        /* PDF MODAL */
+        .pdf-modal-box {
+            background: var(--surface); border-radius: 0.9rem;
+            padding: 1.25rem; width: 94vw; max-width: 900px;
+            height: 82vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            animation: modalIn 0.2s ease;
+        }
+        .pdf-modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 0.85rem;
+        }
+        .pdf-modal-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+        .pdf-modal-close {
+            width: 30px; height: 30px; border-radius: 0.45rem;
+            border: 1.5px solid var(--border); background: var(--surface2);
+            color: var(--text2); cursor: pointer; font-size: 0.85rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.14s;
+        }
+        .pdf-modal-close:hover { background: var(--border); color: var(--text); }
+        .pdf-iframe {
+            width: 100%; flex: 1; min-height: 0;
+            border: 1.5px solid var(--border); border-radius: 0.55rem;
+            flex: 1; min-height: 0;
+        }
+
         /* ALERT */
         .alert-success {
             background: var(--green-s); border: 1px solid #a8dcc9;
@@ -491,6 +519,7 @@
                                             @endif
                                             <th>Facturado</th>
                                             <th>Cobrado</th>
+                                            <th></th>
                                             @if($puedeVerFac)
                                                 <th></th>
                                             @endif
@@ -633,6 +662,21 @@
                                                     </div>
                                                 </td>
 
+                                                <!-- Ver PDF presupuesto -->
+                                                <td>
+                                                    @if($presupuesto->presupuesto)
+                                                    <button class="btn btn-sm btn-view-presupuesto"
+                                                            data-pdf-url="{{ Storage::url('presupuestos/' . $presupuesto->presupuesto) }}"
+                                                            data-clave="{{ $presupuesto->clave }}">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </button>
+                                                    @else
+                                                    <button class="btn btn-sm" disabled title="Sin PDF" style="opacity:.4">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </button>
+                                                    @endif
+                                                </td>
+
                                                 @if($puedeVerFac)
                                                 <td>
                                                     <a href="{{ route('factura_venta.index', [$presupuesto->id, $presupuesto->obra_id]) }}"
@@ -679,7 +723,7 @@
                                             </tr>
                                             @if($avance?->observacion)
                                             <tr class="obs-row" data-obs-row>
-                                                <td colspan="{{ ($puedeEditar ? 10 : 8) + ($puedeVerFac ? 1 : 0) }}" class="obs-cell">
+                                                <td colspan="{{ ($puedeEditar ? 11 : 9) + ($puedeVerFac ? 1 : 0) }}" class="obs-cell">
                                                     <i class="fas fa-comment-alt"></i> {{ $avance->observacion }}
                                                 </td>
                                             </tr>
@@ -697,6 +741,20 @@
     </div>
 
     @include('partials.footer')
+</div>
+
+{{-- Modal ver PDF presupuesto --}}
+<div class="modal-backdrop" id="pdf-presupuesto-modal">
+    <div class="pdf-modal-box">
+        <div class="pdf-modal-header">
+            <div class="pdf-modal-title">
+                <i class="fas fa-file-pdf" style="color:#e03e3e;margin-right:0.4rem"></i>
+                <span id="pdf-modal-clave"></span>
+            </div>
+            <button class="pdf-modal-close" id="pdf-modal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <iframe id="pdf-iframe" class="pdf-iframe" src=""></iframe>
+    </div>
 </div>
 
 {{-- Modal edición --}}
@@ -736,6 +794,26 @@
 @endif
 
 <script>
+    // Modal PDF presupuesto
+    const pdfModal  = document.getElementById('pdf-presupuesto-modal');
+    const pdfIframe = document.getElementById('pdf-iframe');
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-view-presupuesto');
+        if (!btn) return;
+        document.getElementById('pdf-modal-clave').textContent = btn.dataset.clave || '';
+        pdfIframe.src = btn.dataset.pdfUrl;
+        pdfModal.classList.add('open');
+    });
+
+    document.getElementById('pdf-modal-close').addEventListener('click', () => {
+        pdfModal.classList.remove('open');
+        pdfIframe.src = '';
+    });
+    pdfModal.addEventListener('click', e => {
+        if (e.target === pdfModal) { pdfModal.classList.remove('open'); pdfIframe.src = ''; }
+    });
+
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', function () {
