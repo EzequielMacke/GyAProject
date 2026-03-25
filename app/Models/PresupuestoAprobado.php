@@ -48,4 +48,14 @@ class PresupuestoAprobado extends Model
     {
         return $this->hasMany(\App\Models\FacturaVenta::class, 'presupuesto_aprobado_id');
     }
+
+    public function situacionAvances()
+    {
+        return $this->hasMany(\App\Models\SituacionAvance::class, 'presupuesto_aprobado_id');
+    }
+
+    public function recibosVenta()
+    {
+        return $this->hasMany(\App\Models\RecibidoVenta::class, 'presupuesto_aprobado_id');
+    }
 }

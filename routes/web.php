@@ -23,6 +23,7 @@ use App\Http\Controllers\ReciboController;
 use App\Http\Controllers\TabletController;
 use App\Http\Controllers\TrabajosaprobadosController;
 use App\Http\Controllers\UsuariosController;
+use App\Http\Controllers\SituacionAvanceController;
 use App\Http\Controllers\ValidarpresupuestoController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -319,6 +320,14 @@ Route::middleware('permiso:asi_ord,editar')->group(function () {
 // ── Datos / Resumen de obra ───────────────────────────────────────────────────
 Route::middleware('permiso:dat,ver')->group(function () {
     Route::get('/obras/{id}/informacion', [ObraInfoController::class, 'show'])->name('obra_info.show');
+});
+
+// ── Situación de avance ───────────────────────────────────────────────────────
+Route::middleware('permiso:sit_ava,ver')->group(function () {
+    Route::get('/situacion_avance', [SituacionAvanceController::class, 'index'])->name('situacion_avance.index');
+});
+Route::middleware('permiso:sit_ava,agregar')->group(function () {
+    Route::put('/situacion_avance/{id}', [SituacionAvanceController::class, 'update'])->name('situacion_avance.update');
 });
 
 // ── Buscador global (sin restricción de módulo) ───────────────────────────────

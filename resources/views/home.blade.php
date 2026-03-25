@@ -220,8 +220,15 @@
                     </a>
                     @endpermiso
 
+                    @permiso('sit_ava', 'ver')
+                    <a href="{{ route('situacion_avance.index') }}" class="opcion-card" style="animation-delay:0.40s">
+                        <div class="opcion-icon ic-teal"><i class="fas fa-tasks"></i></div>
+                        <span class="opcion-label">Situación de Avances</span>
+                    </a>
+                    @endpermiso
+
                     @permiso('rep', 'ver')
-                    <a href="#" class="opcion-card" style="animation-delay:0.40s">
+                    <a href="#" class="opcion-card" style="animation-delay:0.43s">
                         <div class="opcion-icon ic-blue"><i class="fas fa-chart-bar"></i></div>
                         <span class="opcion-label">Reportes</span>
                     </a>
