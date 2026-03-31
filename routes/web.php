@@ -105,6 +105,10 @@ Route::middleware('permiso:usu,agregar')->group(function () {
     Route::get('/usuarios/cargar', [UsuariosController::class, 'create'])->name('usuarios.create');
     Route::post('/usuarios', [UsuariosController::class, 'store'])->name('usuarios.store');
 });
+Route::middleware('permiso:usu,editar')->group(function () {
+    Route::get('/usuarios/{id}/editar', [UsuariosController::class, 'edit'])->name('usuarios.edit');
+    Route::put('/usuarios/{id}', [UsuariosController::class, 'update'])->name('usuarios.update');
+});
 
 // ── Obras ─────────────────────────────────────────────────────────────────────
 Route::middleware('permiso:obr,ver')->group(function () {
@@ -306,6 +310,10 @@ Route::middleware('permiso:kit,ver')->group(function () {
 Route::middleware('permiso:kit,agregar')->group(function () {
     Route::get('/kits/create', [KitController::class, 'create'])->name('kits.create');
     Route::post('/kits/store', [KitController::class, 'store'])->name('kits.store');
+});
+Route::middleware('permiso:kit,editar')->group(function () {
+    Route::get('/kits/{id}/edit', [KitController::class, 'edit'])->name('kits.edit');
+    Route::put('/kits/{id}', [KitController::class, 'update'])->name('kits.update');
 });
 
 // ── Asignar orden de trabajo ──────────────────────────────────────────────────

@@ -218,6 +218,8 @@
             border-color: var(--border2);
         }
 
+        .kit-card[data-url] { cursor: pointer; }
+
         @keyframes cardIn {
             from { opacity: 0; transform: translateY(8px); }
             to   { opacity: 1; transform: none; }
@@ -515,7 +517,9 @@
                         $initials = mb_strtoupper(mb_substr($kit->descripcion, 0, 2));
                     @endphp
 
-                    <div class="kit-card" style="animation-delay:{{ $loop->index * 0.05 }}s">
+                    <div class="kit-card"
+                         style="animation-delay:{{ $loop->index * 0.05 }}s"
+                         @permiso('kit', 'editar') data-url="{{ route('kits.edit', $kit->id) }}" @endpermiso>
 
                         <div class="card-stripe {{ $on ? '' : 'off' }}"></div>
 
@@ -612,6 +616,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (show) vis++;
         });
         noRes.style.display = (!vis && cards.length) ? 'block' : 'none';
+    });
+
+    cards.forEach(c => {
+        if (c.dataset.url) {
+            c.addEventListener('click', function () {
+                window.location.href = this.dataset.url;
+            });
+        }
     });
 });
 </script>

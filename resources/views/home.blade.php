@@ -179,7 +179,7 @@
                     @endpermiso
 
                     @permiso('usu', 'ver')
-                    <a href="#" class="opcion-card" style="animation-delay:0.19s">
+                    <a href="{{ route('usuarios.index') }}" class="opcion-card" style="animation-delay:0.19s">
                         <div class="opcion-icon ic-slate"><i class="fas fa-users"></i></div>
                         <span class="opcion-label">Usuarios</span>
                     </a>

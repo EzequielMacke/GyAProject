@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuevo Usuario</title>
+    <title>Editar Usuario</title>
     @includeIf('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -23,7 +23,6 @@
             --green:    #1e9166;
             --green-s:  #e5f6f0;
             --red:      #c0392b;
-            --red-s:    #fdf0ee;
             --slate:    #4e6070;
             --slate-s:  #edf1f4;
         }
@@ -70,14 +69,13 @@
             background: var(--accent-b); border-color: var(--accent-b); color: #fff;
             box-shadow: 0 4px 14px rgba(42,111,219,0.3);
         }
-        .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
         .btn-secondary { background: var(--slate-s); border-color: var(--border2); color: var(--slate); }
         .btn-secondary:hover { background: var(--border); color: var(--text); }
 
         /* LAYOUT */
         .page-grid {
             display: grid;
-            grid-template-columns: 1fr 320px;
+            grid-template-columns: 1fr 300px;
             gap: 1.25rem;
             align-items: start;
         }
@@ -133,6 +131,8 @@
         .field-input::placeholder { color: var(--muted); }
         .field-input.error { border-color: var(--red); box-shadow: 0 0 0 3px rgba(192,57,43,0.1); }
 
+        .field-note { font-size: 0.71rem; color: var(--muted); margin-top: 0.3rem; }
+
         .field-hint {
             display: none; align-items: center; gap: 0.3rem;
             font-size: 0.72rem; margin-top: 0.35rem; color: var(--red);
@@ -145,7 +145,7 @@
             padding-top: 1.5rem; border-top: 1px solid var(--border); margin-top: 1.5rem;
         }
 
-        /* PANEL */
+        /* INFO PANEL */
         .panel {
             background: var(--surface);
             border: 1.5px solid var(--border);
@@ -166,58 +166,30 @@
             font-size: 0.68rem; flex-shrink: 0;
         }
         .panel-header-text { font-size: 0.78rem; font-weight: 700; color: var(--text); }
-        .panel-count {
-            margin-left: auto;
-            font-family: 'DM Mono', monospace;
-            font-size: 0.66rem; font-weight: 500;
-            color: var(--accent); background: var(--accent-s);
-            padding: 0.1rem 0.42rem; border-radius: 0.28rem;
+
+        .panel-body { padding: 1.1rem; display: flex; flex-direction: column; gap: 0.85rem; }
+
+        .avatar-big {
+            width: 56px; height: 56px; border-radius: 0.65rem;
+            background: var(--accent-s); color: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; font-weight: 700; letter-spacing: -0.5px;
+            margin-bottom: 0.1rem;
         }
 
-        .panel-search-wrap {
-            padding: 0.75rem 1.1rem;
-            border-bottom: 1px solid var(--border);
-            position: relative;
-        }
-        .panel-search-wrap i {
-            position: absolute; left: 1.75rem; top: 50%;
-            transform: translateY(-50%);
-            color: var(--muted); font-size: 0.7rem; pointer-events: none;
-        }
-        .panel-search {
-            width: 100%; height: 34px;
-            padding: 0 0.75rem 0 2rem;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 0.8rem; color: var(--text);
-            background: var(--bg); border: 1.5px solid var(--border);
-            border-radius: 0.45rem; outline: none;
-            transition: border-color 0.15s, box-shadow 0.15s;
-        }
-        .panel-search::placeholder { color: var(--muted); }
-        .panel-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
+        .info-row { display: flex; flex-direction: column; gap: 0.2rem; }
+        .info-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); }
+        .info-value { font-size: 0.855rem; color: var(--text2); font-weight: 500; }
 
-        .panel-list {
-            list-style: none;
-            max-height: 380px;
-            overflow-y: auto;
-            padding: 0.4rem 0;
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 0.32rem;
+            font-size: 0.68rem; font-weight: 700;
+            letter-spacing: 0.3px; text-transform: uppercase;
+            padding: 0.24rem 0.6rem; border-radius: 99px;
         }
-        .panel-list li {
-            display: flex; align-items: center; gap: 0.55rem;
-            padding: 0.5rem 1.1rem;
-            font-size: 0.83rem; color: var(--text2);
-            transition: background 0.1s;
-        }
-        .panel-list li:hover { background: var(--surface2); }
-        .panel-list li i { font-size: 0.45rem; color: var(--muted); }
-        .panel-list li.hidden { display: none; }
-        .li-area { font-size: 0.72rem; color: var(--muted); margin-left: auto; }
-
-        .panel-empty {
-            padding: 2rem 1.1rem; text-align: center;
-            color: var(--muted); font-size: 0.82rem; display: none;
-        }
-        .panel-empty i { display: block; font-size: 1.2rem; opacity: 0.3; margin-bottom: 0.4rem; }
+        .status-badge i { font-size: 0.45rem; }
+        .status-badge.on  { background: var(--green-s); color: var(--green); }
+        .status-badge.off { background: var(--surface2); color: var(--muted); }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -235,10 +207,10 @@
                             <i class="fas fa-home"></i> Inicio
                             <i class="fas fa-chevron-right"></i>
                             <a href="{{ route('usuarios.index') }}">Usuarios</a>
-                            <i class="fas fa-chevron-right"></i> Nuevo
+                            <i class="fas fa-chevron-right"></i> Editar
                         </div>
-                        <h1 class="ph-title">Nuevo <em>Usuario</em></h1>
-                        <p class="ph-sub">Completá los datos para registrar el usuario</p>
+                        <h1 class="ph-title">Editar <em>{{ $usuario->nombre }}</em></h1>
+                        <p class="ph-sub">Modificá los datos del usuario</p>
                     </div>
                     <div class="ph-right">
                         <a href="{{ route('usuarios.index') }}" class="btn" id="volver-btn">
@@ -255,14 +227,15 @@
                 <div class="page-grid">
 
                     {{-- Form --}}
-                    <form action="{{ route('usuarios.store') }}" method="POST">
+                    <form action="{{ route('usuarios.update', $usuario->id) }}" method="POST">
                         @csrf
+                        @method('PUT')
                         <div class="form-card">
                             <div class="form-card-stripe"></div>
                             <div class="form-card-body">
 
                                 <div class="section-heading">
-                                    <div class="section-heading-icon"><i class="fas fa-user-plus"></i></div>
+                                    <div class="section-heading-icon"><i class="fas fa-user-pen"></i></div>
                                     <span class="section-heading-text">Datos del usuario</span>
                                 </div>
 
@@ -279,34 +252,46 @@
                                     <div class="field-full">
                                         <label class="field-label" for="usuario">Nombre de usuario</label>
                                         <input type="text" class="field-input" id="usuario" name="usuario"
-                                               placeholder="Ej: juan.perez" required autocomplete="off"
-                                               value="{{ old('usuario') }}">
+                                               required autocomplete="off"
+                                               value="{{ old('usuario', $usuario->nombre) }}">
                                     </div>
 
                                     <div>
-                                        <label class="field-label" for="contraseña">Contraseña</label>
+                                        <label class="field-label" for="contraseña">Nueva contraseña</label>
                                         <input type="password" class="field-input" id="contraseña" name="contraseña"
-                                               placeholder="••••••••" required>
+                                               placeholder="Dejar en blanco para no cambiar">
+                                        <span class="field-note">Opcional — solo completar para cambiar</span>
                                     </div>
 
                                     <div>
                                         <label class="field-label" for="rep_contraseña">Repetir contraseña</label>
                                         <input type="password" class="field-input" id="rep_contraseña" name="rep_contraseña"
-                                               placeholder="••••••••" required>
+                                               placeholder="••••••••">
                                         <span class="field-hint" id="hint-pass">
                                             <i class="fas fa-triangle-exclamation"></i>
                                             Las contraseñas no coinciden.
                                         </span>
                                     </div>
 
-                                    <div class="field-full">
+                                    <div>
                                         <label class="field-label" for="area_id">Área</label>
                                         <select class="field-input" id="area_id" name="area_id" required>
-                                            <option value="">Seleccioná un área…</option>
                                             @foreach($areas as $area)
                                                 <option value="{{ $area->id }}"
-                                                    {{ (old('area_id', 2) == $area->id) ? 'selected' : '' }}>
+                                                    {{ old('area_id', $usuario->area_id) == $area->id ? 'selected' : '' }}>
                                                     {{ $area->descripcion }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="field-label" for="estado">Estado</label>
+                                        <select class="field-input" id="estado" name="estado" required>
+                                            @foreach($estados as $valor => $etiqueta)
+                                                <option value="{{ $valor }}"
+                                                    {{ old('estado', $usuario->estado) == $valor ? 'selected' : '' }}>
+                                                    {{ $etiqueta }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -315,8 +300,8 @@
                                 </div>
 
                                 <div class="form-actions">
-                                    <button type="submit" class="btn btn-primary" id="guardarBtn" disabled>
-                                        <i class="fas fa-floppy-disk"></i> Guardar usuario
+                                    <button type="submit" class="btn btn-primary" id="guardarBtn">
+                                        <i class="fas fa-floppy-disk"></i> Guardar cambios
                                     </button>
                                     <a href="{{ route('usuarios.index') }}" class="btn btn-secondary">
                                         Cancelar
@@ -327,29 +312,38 @@
                         </div>
                     </form>
 
-                    {{-- Existing users panel --}}
+                    {{-- Info panel --}}
                     <div class="panel">
                         <div class="panel-header">
-                            <div class="panel-header-icon"><i class="fas fa-users"></i></div>
-                            <span class="panel-header-text">Usuarios existentes</span>
-                            <span class="panel-count" id="panel-count">{{ count($usuarios) }}</span>
+                            <div class="panel-header-icon"><i class="fas fa-circle-info"></i></div>
+                            <span class="panel-header-text">Información actual</span>
                         </div>
-                        <div class="panel-search-wrap">
-                            <i class="fas fa-search"></i>
-                            <input type="text" class="panel-search" id="panel-search" placeholder="Filtrar…" autocomplete="off">
-                        </div>
-                        <ul class="panel-list" id="panel-list">
-                            @foreach($usuarios->reverse() as $usu)
-                            <li data-name="{{ strtolower($usu->nombre) }}">
-                                <i class="fas fa-circle"></i>
-                                {{ $usu->nombre }}
-                                <span class="li-area">{{ $usu->area->descripcion ?? '—' }}</span>
-                            </li>
-                            @endforeach
-                        </ul>
-                        <div class="panel-empty" id="panel-empty">
-                            <i class="fas fa-search"></i>
-                            Sin resultados.
+                        <div class="panel-body">
+                            @php $initials = mb_strtoupper(mb_substr($usuario->nombre, 0, 2)); @endphp
+                            <div class="avatar-big">{{ $initials }}</div>
+
+                            <div class="info-row">
+                                <span class="info-label">ID</span>
+                                <span class="info-value" style="font-family:'DM Mono',monospace">#{{ str_pad($usuario->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Usuario</span>
+                                <span class="info-value">{{ $usuario->nombre }}</span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Área</span>
+                                <span class="info-value">{{ $usuario->area->descripcion ?? '—' }}</span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">Estado actual</span>
+                                <span class="status-badge {{ $usuario->estado == 1 ? 'on' : 'off' }}">
+                                    <i class="fas fa-circle"></i>
+                                    {{ $estados[$usuario->estado] ?? '—' }}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -363,49 +357,30 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const usuarioInput = document.getElementById('usuario');
     const passInput    = document.getElementById('contraseña');
     const repPassInput = document.getElementById('rep_contraseña');
-    const areaSelect   = document.getElementById('area_id');
     const guardarBtn   = document.getElementById('guardarBtn');
     const hintPass     = document.getElementById('hint-pass');
-    const panelSearch  = document.getElementById('panel-search');
-    const panelList    = document.getElementById('panel-list');
-    const panelEmpty   = document.getElementById('panel-empty');
-    const panelCount   = document.getElementById('panel-count');
-    const totalItems   = panelList.querySelectorAll('li').length;
-
-    usuarioInput.focus();
 
     function validar() {
-        const passOk    = passInput.value === repPassInput.value;
-        const allFilled = usuarioInput.value && passInput.value && repPassInput.value && areaSelect.value;
+        const pass    = passInput.value;
+        const repPass = repPassInput.value;
 
-        hintPass.classList.toggle('visible', repPassInput.value !== '' && !passOk);
-        repPassInput.classList.toggle('error', repPassInput.value !== '' && !passOk);
+        if (pass === '' && repPass === '') {
+            hintPass.classList.remove('visible');
+            repPassInput.classList.remove('error');
+            guardarBtn.disabled = false;
+            return;
+        }
 
-        guardarBtn.disabled = !(allFilled && passOk);
+        const passOk = pass === repPass;
+        hintPass.classList.toggle('visible', repPass !== '' && !passOk);
+        repPassInput.classList.toggle('error', repPass !== '' && !passOk);
+        guardarBtn.disabled = !passOk;
     }
 
-    usuarioInput.addEventListener('input', validar);
     passInput.addEventListener('input', validar);
     repPassInput.addEventListener('input', validar);
-    areaSelect.addEventListener('change', validar);
-
-    function filterPanel(q) {
-        const items = panelList.querySelectorAll('li');
-        let vis = 0;
-        items.forEach(li => {
-            const show = li.dataset.name.includes(q.toLowerCase().trim());
-            li.classList.toggle('hidden', !show);
-            if (show) vis++;
-        });
-        panelEmpty.style.display = (!vis && totalItems) ? 'block' : 'none';
-        panelCount.textContent = vis;
-    }
-
-    usuarioInput.addEventListener('input', function () { filterPanel(this.value); });
-    panelSearch.addEventListener('input', function () { filterPanel(this.value); });
 
     document.addEventListener('keydown', function (e) {
         if (e.ctrlKey && e.key === '2') {
