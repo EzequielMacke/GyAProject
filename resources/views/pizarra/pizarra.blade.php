@@ -32,6 +32,8 @@
         #btnGrid     { background: #2a5a3a; }
         #btnSnap     { background: #2a3a6a; }
         #btnMeasures { background: #3a2a6a; }
+        #btnZoomOut, #btnZoomIn   { padding: 4px 10px; font-size: 15px; font-weight: bold; }
+        #btnZoomReset { background: #1e3a5f; font-family: monospace; min-width: 48px; }
 
         /* ── Dimension input overlay ── */
         #dimOverlay {
@@ -132,6 +134,11 @@
     <button id="btnMeasures" title="Mostrar/ocultar medidas (M)">📐 Medidas</button>
 
     <div class="sep"></div>
+    <button id="btnZoomOut"   title="Alejar (−)">−</button>
+    <button id="btnZoomReset" title="Restablecer zoom (0)">100%</button>
+    <button id="btnZoomIn"    title="Acercar (+)">+</button>
+
+    <div class="sep"></div>
     <button id="btnUndo">↩ Deshacer</button>
     <button id="btnClear">🗑 Limpiar</button>
 </div>
@@ -195,10 +202,17 @@ let origCopy    = null;
 let gridOn       = true;
 let snapOn       = true;
 let GRID         = 20;
-let snapLines    = [];   // [{axis:'x'|'y', value}]
+let snapLines    = [];
 let showMeasures = false;
-let PIXELS_PER_M = 20;   // 1 grid cell = 1 metre by default
-let drawStartPos = null; // first click position for active shape
+let PIXELS_PER_M = 20;
+let drawStartPos = null;
+
+// ── Viewport (zoom + pan) ─────────────────────────────────────────────────────
+let viewX    = 0, viewY    = 0, viewZoom = 1;
+let isPanning = false, panStartX = 0, panStartY = 0, panStartVX = 0, panStartVY = 0;
+let spaceDown = false;
+let lastPinchDist = null, lastPinchMid = null;
+const DPR = window.devicePixelRatio || 1;
 
 const HANDLE_SZ = 8;
 const SNAP_TOL  = 10;
@@ -208,13 +222,45 @@ const dimOverlay = document.getElementById('dimOverlay');
 const dimVal     = document.getElementById('dimVal');
 const dimLive    = document.getElementById('dimLive');
 
-// ── Resize canvas ─────────────────────────────────────────────────────────────
+// ── Resize canvas (DPR-aware) ─────────────────────────────────────────────────
 function resizeCanvas() {
-    const tb  = document.getElementById('toolbar').offsetHeight;
-    const cb  = document.getElementById('cmdBar').offsetHeight;
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight - tb - cb;
+    const tb   = document.getElementById('toolbar').offsetHeight;
+    const cb   = document.getElementById('cmdBar').offsetHeight;
+    const cssW = window.innerWidth;
+    const cssH = window.innerHeight - tb - cb;
+    canvas.style.width  = cssW + 'px';
+    canvas.style.height = cssH + 'px';
+    canvas.width  = Math.round(cssW * DPR);
+    canvas.height = Math.round(cssH * DPR);
     render();
+}
+
+// ── Viewport helpers ──────────────────────────────────────────────────────────
+function screenToWorld(sx, sy) {
+    return { x: (sx - viewX) / viewZoom, y: (sy - viewY) / viewZoom };
+}
+function worldToScreen(wx, wy) {
+    return { x: wx * viewZoom + viewX, y: wy * viewZoom + viewY };
+}
+function getPosScreen(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+}
+
+const btnZoomReset = document.getElementById('btnZoomReset');
+function updateZoomUI() {
+    if (btnZoomReset) btnZoomReset.textContent = Math.round(viewZoom * 100) + '%';
+}
+function zoomAt(factor, cx, cy) {   // cx,cy in CSS screen coords
+    viewZoom = Math.max(0.05, Math.min(30, viewZoom * factor));
+    viewX    = cx + (viewX - cx) * factor;
+    viewY    = cy + (viewY - cy) * factor;
+    updateZoomUI(); render();
+}
+function resetZoom() {
+    viewX = 0; viewY = 0; viewZoom = 1;
+    updateZoomUI(); render();
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
@@ -228,18 +274,26 @@ function saveHistory() {
 // ── Grid ──────────────────────────────────────────────────────────────────────
 function drawGrid() {
     if (!gridOn) return;
+    // Visible world bounds
+    const cssW = canvas.width / DPR, cssH = canvas.height / DPR;
+    const wx0 = Math.floor((-viewX) / viewZoom / GRID) * GRID;
+    const wy0 = Math.floor((-viewY) / viewZoom / GRID) * GRID;
+    const wx1 = Math.ceil((cssW - viewX) / viewZoom / GRID) * GRID;
+    const wy1 = Math.ceil((cssH - viewY) / viewZoom / GRID) * GRID;
+    const lw = 1 / viewZoom;   // 1 screen pixel in world units
+
     ctx.save();
     ctx.strokeStyle = 'rgba(140,140,200,0.18)';
-    ctx.lineWidth = 0.5;
+    ctx.lineWidth = lw * 0.5;
     ctx.beginPath();
-    for (let x = 0; x <= canvas.width;  x += GRID) { ctx.moveTo(x,0); ctx.lineTo(x, canvas.height); }
-    for (let y = 0; y <= canvas.height; y += GRID) { ctx.moveTo(0,y); ctx.lineTo(canvas.width, y); }
+    for (let x = wx0; x <= wx1; x += GRID) { ctx.moveTo(x, wy0); ctx.lineTo(x, wy1); }
+    for (let y = wy0; y <= wy1; y += GRID) { ctx.moveTo(wx0, y); ctx.lineTo(wx1, y); }
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(140,140,200,0.35)';
-    ctx.lineWidth = 0.8;
+    ctx.strokeStyle = 'rgba(140,140,200,0.38)';
+    ctx.lineWidth = lw * 0.8;
     ctx.beginPath();
-    for (let x = 0; x <= canvas.width;  x += GRID*5) { ctx.moveTo(x,0); ctx.lineTo(x, canvas.height); }
-    for (let y = 0; y <= canvas.height; y += GRID*5) { ctx.moveTo(0,y); ctx.lineTo(canvas.width, y); }
+    for (let x = wx0; x <= wx1; x += GRID*5) { ctx.moveTo(x, wy0); ctx.lineTo(x, wy1); }
+    for (let y = wy0; y <= wy1; y += GRID*5) { ctx.moveTo(wx0, y); ctx.lineTo(wx1, y); }
     ctx.stroke();
     ctx.restore();
 }
@@ -247,14 +301,18 @@ function drawGrid() {
 // ── Snap guides ───────────────────────────────────────────────────────────────
 function drawSnapGuides() {
     if (!snapLines.length) return;
+    const cssW = canvas.width / DPR, cssH = canvas.height / DPR;
+    const wx0 = (-viewX) / viewZoom, wy0 = (-viewY) / viewZoom;
+    const wx1 = (cssW - viewX) / viewZoom, wy1 = (cssH - viewY) / viewZoom;
+    const iz = 1 / viewZoom;
     ctx.save();
     ctx.strokeStyle = 'rgba(224,64,251,0.75)';
-    ctx.lineWidth = 1.2;
-    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1.2 * iz;
+    ctx.setLineDash([5 * iz, 4 * iz]);
     for (const l of snapLines) {
         ctx.beginPath();
-        if (l.axis === 'x') { ctx.moveTo(l.value, 0); ctx.lineTo(l.value, canvas.height); }
-        else                 { ctx.moveTo(0, l.value); ctx.lineTo(canvas.width, l.value); }
+        if (l.axis === 'x') { ctx.moveTo(l.value, wy0); ctx.lineTo(l.value, wy1); }
+        else                 { ctx.moveTo(wx0, l.value); ctx.lineTo(wx1, l.value); }
         ctx.stroke();
     }
     ctx.setLineDash([]);
@@ -331,7 +389,13 @@ function snapForMove(origObj, dx, dy) {
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function render() {
+    // Reset to identity, clear full physical canvas
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Apply DPR + viewport transform: world → screen → physical px
+    ctx.setTransform(DPR * viewZoom, 0, 0, DPR * viewZoom, DPR * viewX, DPR * viewY);
+
     drawGrid();
     for (const obj of objects) drawObject(obj);
     if (currentObj) drawObject(currentObj);
@@ -423,19 +487,20 @@ function getLiveDim(obj) {
     return pxToM(w) + ' × ' + pxToM(h);
 }
 
-function positionDimOverlay(canvasX, canvasY) {
+// canvasScreenX/Y are CSS pixel coords relative to canvas element
+function positionDimOverlay(canvasScreenX, canvasScreenY) {
     const cr = canvas.getBoundingClientRect();
-    let ox = cr.left + canvasX + 18;
-    let oy = cr.top  + canvasY - 38;
+    let ox = cr.left + canvasScreenX + 18;
+    let oy = cr.top  + canvasScreenY - 38;
     ox = Math.min(ox, window.innerWidth  - dimOverlay.offsetWidth  - 8);
     oy = Math.max(oy, cr.top + 4);
     dimOverlay.style.left = ox + 'px';
     dimOverlay.style.top  = oy + 'px';
 }
 
-function showDimOverlay(canvasX, canvasY) {
+function showDimOverlay(canvasScreenX, canvasScreenY) {
     dimOverlay.classList.add('show');
-    positionDimOverlay(canvasX, canvasY);
+    positionDimOverlay(canvasScreenX, canvasScreenY);
     dimLive.textContent = getLiveDim(currentObj);
 }
 
@@ -619,39 +684,37 @@ function getControlPoints(obj) {
 }
 
 function drawControlPoint(cp) {
+    const iz = 1 / viewZoom;   // world units per screen pixel
     ctx.save();
     if (cp.kind === 'vertex') {
-        // Filled diamond (rotated square)
         ctx.fillStyle   = '#1E88E5';
         ctx.strokeStyle = 'white';
-        ctx.lineWidth   = 1.5;
+        ctx.lineWidth   = 1.5 * iz;
         ctx.save();
         ctx.translate(cp.x, cp.y);
         ctx.rotate(Math.PI / 4);
-        ctx.fillRect(-4.5, -4.5, 9, 9);
-        ctx.strokeRect(-4.5, -4.5, 9, 9);
+        ctx.fillRect(-4.5*iz, -4.5*iz, 9*iz, 9*iz);
+        ctx.strokeRect(-4.5*iz, -4.5*iz, 9*iz, 9*iz);
         ctx.restore();
     } else if (cp.kind === 'midpoint') {
-        // Hollow circle
         ctx.fillStyle   = 'white';
         ctx.strokeStyle = '#1E88E5';
-        ctx.lineWidth   = 1.5;
+        ctx.lineWidth   = 1.5 * iz;
         ctx.beginPath();
-        ctx.arc(cp.x, cp.y, 4.5, 0, Math.PI * 2);
+        ctx.arc(cp.x, cp.y, 4.5 * iz, 0, Math.PI * 2);
         ctx.fill(); ctx.stroke();
-    } else { // center
-        // Green circle with crosshair
+    } else {
         ctx.fillStyle   = '#43A047';
         ctx.strokeStyle = 'white';
-        ctx.lineWidth   = 1.5;
+        ctx.lineWidth   = 1.5 * iz;
         ctx.beginPath();
-        ctx.arc(cp.x, cp.y, 5.5, 0, Math.PI * 2);
+        ctx.arc(cp.x, cp.y, 5.5 * iz, 0, Math.PI * 2);
         ctx.fill(); ctx.stroke();
         ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-        ctx.lineWidth   = 1;
+        ctx.lineWidth   = iz;
         ctx.beginPath();
-        ctx.moveTo(cp.x - 8, cp.y); ctx.lineTo(cp.x + 8, cp.y);
-        ctx.moveTo(cp.x, cp.y - 8); ctx.lineTo(cp.x, cp.y + 8);
+        ctx.moveTo(cp.x - 8*iz, cp.y); ctx.lineTo(cp.x + 8*iz, cp.y);
+        ctx.moveTo(cp.x, cp.y - 8*iz); ctx.lineTo(cp.x, cp.y + 8*iz);
         ctx.stroke();
     }
     ctx.restore();
@@ -659,13 +722,13 @@ function drawControlPoint(cp) {
 
 // ── Selection overlay ─────────────────────────────────────────────────────────
 function drawSelectionOverlay(obj) {
+    const iz = 1 / viewZoom;
     ctx.save();
-    // Light dashed bounding box (secondary visual)
     const b = getBBox(obj);
     ctx.strokeStyle = 'rgba(30,136,229,0.3)';
-    ctx.lineWidth   = 1;
-    ctx.setLineDash([4, 3]);
-    ctx.strokeRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8);
+    ctx.lineWidth   = iz;
+    ctx.setLineDash([4*iz, 3*iz]);
+    ctx.strokeRect(b.x - 4*iz, b.y - 4*iz, b.w + 8*iz, b.h + 8*iz);
     ctx.setLineDash([]);
     ctx.restore();
 
@@ -712,8 +775,9 @@ function hitTest(obj,px,py) {
 }
 
 function hitControlPoint(obj, px, py) {
+    const hitR = 10 / viewZoom;  // 10 screen-px in world units
     for (const cp of getControlPoints(obj))
-        if (Math.hypot(px - cp.x, py - cp.y) <= 10) return cp.id;
+        if (Math.hypot(px - cp.x, py - cp.y) <= hitR) return cp.id;
     return null;
 }
 
@@ -776,22 +840,74 @@ function applyControlPointDrag(obj, orig, cpId, sx, sy) {
 
 // ── Pointer helpers ───────────────────────────────────────────────────────────
 function getPos(e) {
-    const r=canvas.getBoundingClientRect(), src=e.touches?e.touches[0]:e;
-    return {x:src.clientX-r.left, y:src.clientY-r.top};
+    const s = getPosScreen(e);
+    return screenToWorld(s.x, s.y);
 }
 
 // ── Canvas events ─────────────────────────────────────────────────────────────
 canvas.addEventListener('mousedown',  onStart);
 canvas.addEventListener('mousemove',  onMove);
 canvas.addEventListener('mouseup',    onStop);
-canvas.addEventListener('mouseleave', onLeave);   // only cancels pen drag
-canvas.addEventListener('touchstart', onStart, {passive:false});
-canvas.addEventListener('touchmove',  onMove,  {passive:false});
-canvas.addEventListener('touchend',   onStop);
+canvas.addEventListener('mouseleave', onLeave);
+canvas.addEventListener('contextmenu', e => e.preventDefault()); // suppress right-click menu
+canvas.addEventListener('touchstart', onTouchStart, {passive:false});
+canvas.addEventListener('touchmove',  onTouchMove,  {passive:false});
+canvas.addEventListener('touchend',   onTouchEnd);
+
+// ── Touch handlers (pinch zoom + single-touch draw) ───────────────────────────
+function onTouchStart(e) {
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        lastPinchDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+        lastPinchMid  = { x:(e.touches[0].clientX+e.touches[1].clientX)/2 - canvas.getBoundingClientRect().left,
+                          y:(e.touches[0].clientY+e.touches[1].clientY)/2 - canvas.getBoundingClientRect().top };
+        return;
+    }
+    onStart(e);
+}
+function onTouchMove(e) {
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        const dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+        const rect  = canvas.getBoundingClientRect();
+        const mid   = { x:(e.touches[0].clientX+e.touches[1].clientX)/2 - rect.left,
+                        y:(e.touches[0].clientY+e.touches[1].clientY)/2 - rect.top };
+        if (lastPinchDist) {
+            const factor = dist / lastPinchDist;
+            viewX = mid.x + (viewX - lastPinchMid.x) * factor + (mid.x - lastPinchMid.x);
+            viewY = mid.y + (viewY - lastPinchMid.y) * factor + (mid.y - lastPinchMid.y);
+            viewZoom = Math.max(0.05, Math.min(30, viewZoom * factor));
+            updateZoomUI(); render();
+        }
+        lastPinchDist = dist; lastPinchMid = mid;
+        return;
+    }
+    lastPinchDist = null;
+    onMove(e);
+}
+function onTouchEnd(e) { lastPinchDist = null; onStop(e); }
+
+// ── Mouse wheel zoom ──────────────────────────────────────────────────────────
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+    zoomAt(e.deltaY < 0 ? 1.12 : 1/1.12, cx, cy);
+}, {passive: false});
 
 function onStart(e) {
     e.preventDefault();
-    const raw = getPos(e);
+    const screen = getPosScreen(e);
+    const raw    = screenToWorld(screen.x, screen.y);
+
+    // ── Pan: middle mouse OR space+left drag ──────────────────────────────────
+    if (e.button === 1 || (spaceDown && e.button === 0)) {
+        isPanning = true;
+        panStartX = screen.x; panStartY = screen.y;
+        panStartVX = viewX;   panStartVY = viewY;
+        canvas.style.cursor = 'grabbing';
+        return;
+    }
 
     if (tool === 'select') {
         if (selectedObj) {
@@ -839,7 +955,7 @@ function onStart(e) {
             drawStartPos = {x: snapped.x, y: snapped.y};
             drawing = true;
             snapLines = snapped.lines || [];
-            showDimOverlay(raw.x, raw.y);
+            showDimOverlay(screen.x, screen.y);
         }
         return;
     }
@@ -853,7 +969,16 @@ function onStart(e) {
 }
 
 function onMove(e) {
-    const raw = getPos(e);
+    const screen = getPosScreen(e);
+    const raw    = screenToWorld(screen.x, screen.y);
+
+    // ── Pan ───────────────────────────────────────────────────────────────────
+    if (isPanning) {
+        e.preventDefault();
+        viewX = panStartVX + (screen.x - panStartX);
+        viewY = panStartVY + (screen.y - panStartY);
+        render(); return;
+    }
 
     if (tool === 'select') {
         if (dragMode && selectedObj) {
@@ -898,26 +1023,29 @@ function onMove(e) {
         currentObj.x2 = s.x; currentObj.y2 = s.y;
         snapLines = s.lines;
     }
-    showDimOverlay(raw.x, raw.y);
+    showDimOverlay(screen.x, screen.y);
     render();
 }
 
 function onStop() {
+    if (isPanning) {
+        isPanning = false;
+        canvas.style.cursor = spaceDown ? 'grab' : ({select:'default',eraser:'cell'}[tool]||'crosshair');
+        return;
+    }
     if (tool === 'select') {
         snapLines=[]; dragMode=null; dragStart=null; origCopy=null;
         render(); return;
     }
-    // Shapes finalize on second click (onStart), not on mouseup
     if (tool !== 'pen' && tool !== 'eraser') return;
-    // Pen / eraser: finalize on mouseup
     if (!drawing) return;
     drawing=false; snapLines=[];
     if (currentObj) { objects.push(currentObj); currentObj=null; }
     render();
 }
 
-// Leave canvas: only interrupt pen/eraser drag, never shapes
 function onLeave() {
+    if (isPanning) { onStop(); return; }
     if ((tool==='pen' || tool==='eraser') && drawing) onStop();
 }
 
@@ -937,12 +1065,17 @@ function showEditPanel() {
 function hideEditPanel() { editPanel.classList.remove('show'); }
 function updateEditPanelPos() {
     if (!selectedObj||!editPanel.classList.contains('show')) return;
-    const b=getBBox(selectedObj), cr=canvas.getBoundingClientRect();
-    let px=cr.left+b.x+b.w/2-editPanel.offsetWidth/2;
-    let py=cr.top+b.y-editPanel.offsetHeight-12;
-    if(py<cr.top+4) py=cr.top+b.y+b.h+12;
-    px=Math.max(8,Math.min(window.innerWidth-editPanel.offsetWidth-8,px));
-    editPanel.style.left=px+'px'; editPanel.style.top=Math.max(8,py)+'px';
+    const b  = getBBox(selectedObj);
+    const cr = canvas.getBoundingClientRect();
+    const tl = worldToScreen(b.x, b.y);
+    const br = worldToScreen(b.x + b.w, b.y + b.h);
+    const sw = br.x - tl.x, sh = br.y - tl.y;
+    let px = cr.left + tl.x + sw/2 - editPanel.offsetWidth/2;
+    let py = cr.top  + tl.y - editPanel.offsetHeight - 12;
+    if (py < cr.top + 4) py = cr.top + tl.y + sh + 12;
+    px = Math.max(8, Math.min(window.innerWidth - editPanel.offsetWidth - 8, px));
+    editPanel.style.left = px + 'px';
+    editPanel.style.top  = Math.max(8, py) + 'px';
 }
 epColor.addEventListener('input',()=>{ if(selectedObj){selectedObj.color=epColor.value;render();} });
 epSize.addEventListener('input',()=>{ if(selectedObj){selectedObj.lineWidth=+epSize.value;render();} });
@@ -1001,6 +1134,9 @@ function toggleMeasures() {
 document.getElementById('btnGrid').addEventListener('click', toggleGrid);
 document.getElementById('btnSnap').addEventListener('click', toggleSnap);
 document.getElementById('btnMeasures').addEventListener('click', toggleMeasures);
+document.getElementById('btnZoomIn').addEventListener('click',    () => zoomAt(1.25, canvas.width/DPR/2, canvas.height/DPR/2));
+document.getElementById('btnZoomOut').addEventListener('click',   () => zoomAt(1/1.25, canvas.width/DPR/2, canvas.height/DPR/2));
+document.getElementById('btnZoomReset').addEventListener('click', () => resetZoom());
 
 document.getElementById('btnClear').addEventListener('click',()=>{
     saveHistory(); objects=[]; selectedObj=null; hideEditPanel(); render();
@@ -1021,6 +1157,17 @@ document.addEventListener('keydown', e => {
         saveHistory(); objects=objects.filter(o=>o!==selectedObj);
         selectedObj=null; hideEditPanel(); render();
     }
+    // Space = pan mode
+    if (e.key === ' ' && !e.ctrlKey && !e.metaKey && document.activeElement !== cmdInput && document.activeElement !== dimVal) {
+        e.preventDefault();
+        spaceDown = true;
+        if (!isPanning && !drawing) canvas.style.cursor = 'grab';
+    }
+    // Zoom shortcuts
+    if ((e.key === '+' || e.key === '=') && !e.ctrlKey) { const c=canvas.width/DPR/2; zoomAt(1.25, c, canvas.height/DPR/2); }
+    if ((e.key === '-' || e.key === '_') && !e.ctrlKey) { const c=canvas.width/DPR/2; zoomAt(1/1.25, c, canvas.height/DPR/2); }
+    if (e.key === '0' && !e.ctrlKey) resetZoom();
+
     if (e.key==='Escape') {
         if (drawing && currentObj) {
             // Cancel shape in progress
@@ -1045,6 +1192,13 @@ document.addEventListener('keydown', e => {
     if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo();}
 });
 
+document.addEventListener('keyup', e => {
+    if (e.key === ' ') {
+        spaceDown = false;
+        if (!isPanning) canvas.style.cursor = {select:'default',eraser:'cell'}[tool]||'crosshair';
+    }
+});
+
 // ── Command bar ───────────────────────────────────────────────────────────────
 const COMMANDS = [
     {keys:['rect','rec','rectangulo','r'],  action:()=>setTool('rect'),     desc:'Herramienta rectángulo'},
@@ -1061,6 +1215,7 @@ const COMMANDS = [
     {keys:['snap','x'],                      action:()=>toggleSnap(),        desc:'Activar/desactivar snap'},
     {keys:['clear','limpiar','limp'],        action:()=>{ saveHistory();objects=[];selectedObj=null;hideEditPanel();render(); }, desc:'Limpiar pizarra'},
     {keys:['undo','deshacer','z'],           action:()=>doUndo(),            desc:'Deshacer'},
+    {keys:['zoom'],                          action:(args)=>{ if(args&&!isNaN(+args)){const f=+args/100; const c=canvas.width/DPR/2; viewZoom=Math.max(0.05,Math.min(30,f)); viewX=c*(1-viewZoom); viewY=(canvas.height/DPR/2)*(1-viewZoom); updateZoomUI(); render();} else resetZoom(); }, desc:'Zoom: zoom <porcentaje> o zoom para resetear'},
     {keys:['help','ayuda','?'],              action:()=>showHelp(),          desc:'Mostrar comandos disponibles'},
 ];
 
