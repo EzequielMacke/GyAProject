@@ -340,3 +340,9 @@ Route::middleware('permiso:sit_ava,agregar')->group(function () {
 
 // ── Buscador global (sin restricción de módulo) ───────────────────────────────
 Route::middleware('permiso:obr,ver')->get('/buscar', [SearchController::class, 'search'])->name('search.global');
+
+
+//ruta de pizarra
+Route::get('/pizarra', function () {
+    return view('pizarra.pizarra');
+})->name('pizarra');
