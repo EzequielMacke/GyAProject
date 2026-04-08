@@ -346,3 +346,8 @@ Route::middleware('permiso:obr,ver')->get('/buscar', [SearchController::class, '
 Route::get('/pizarra', function () {
     return view('pizarra.pizarra');
 })->name('pizarra');
+
+//ruta de pizarrav2
+Route::get('/pizarrav2', function () {
+    return view('pizarra.pizarrav2');
+})->name('pizarra.v2');
