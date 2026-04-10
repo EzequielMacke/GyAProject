@@ -137,8 +137,8 @@ class PresupuestoaprobadoController extends Controller
         $presupuesto->monto_total = $request->monto_total ? str_replace('.', '', $request->monto_total) : null;
         $presupuesto->observacion = $request->observacion;
 
-        $presupuestoPath = $presupuesto->presupuesto;
-        $conformidadPath = $presupuesto->conformidad;
+        $presupuestoPath = 'public/presupuestos/' . $presupuesto->presupuesto;
+        $conformidadPath = $presupuesto->conformidad ? 'public/conformidades/' . $presupuesto->conformidad : null;
 
         if ($request->hasFile('presupuesto')) {
             $presupuestoFile = $request->file('presupuesto');
