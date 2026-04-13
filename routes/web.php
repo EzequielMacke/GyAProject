@@ -264,9 +264,6 @@ Route::middleware('permiso:fac,ver')->group(function () {
 });
 
 // ── Recibos de venta ──────────────────────────────────────────────────────────
-Route::middleware('permiso:fac,ver')->group(function () {
-    Route::get('/recibo_venta/{presupuesto?}/{obra?}/{factura?}', [ReciboController::class, 'index'])->name('recibo_venta.index');
-});
 Route::middleware('permiso:fac,agregar')->group(function () {
     Route::get('/recibo_venta/cargar/{presupuesto?}/{obra?}/{factura?}', [ReciboController::class, 'create'])->name('recibo_venta.create');
     Route::post('/recibo_venta/guardar', [ReciboController::class, 'store'])->name('recibo_venta.store');
@@ -274,6 +271,9 @@ Route::middleware('permiso:fac,agregar')->group(function () {
 Route::middleware('permiso:fac,editar')->group(function () {
     Route::get('/recibo_venta/{id}/edit', [ReciboController::class, 'edit'])->name('recibo_venta.edit');
     Route::put('/recibo_venta/{id}', [ReciboController::class, 'update'])->name('recibo_venta.update');
+});
+Route::middleware('permiso:fac,ver')->group(function () {
+    Route::get('/recibo_venta/{presupuesto?}/{obra?}/{factura?}', [ReciboController::class, 'index'])->name('recibo_venta.index');
 });
 
 // ── Tabletas ──────────────────────────────────────────────────────────────────

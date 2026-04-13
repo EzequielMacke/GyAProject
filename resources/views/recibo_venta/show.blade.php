@@ -449,12 +449,14 @@
                         <div class="ph-crumb">
                             <i class="fas fa-hard-hat"></i>
                             <a href="{{ route('obras.index') }}">Obras</a>
+                            @if($obra)
                             <i class="fas fa-chevron-right"></i>
-                            <a href="{{ route('obras.show', $obra) }}">{{ $obra->nombre ?? '-' }}</a>
+                            <a href="{{ route('obras.show', $obra->id) }}">{{ $obra->nombre }}</a>
                             <i class="fas fa-chevron-right"></i>
                             <a href="{{ route('factura_venta.show', ['obraId' => $obra->id]) }}">Facturación</a>
                             <i class="fas fa-chevron-right"></i>
-                            <a href="{{ route('factura_venta.index', ['presupuesto' => $presupuesto, 'obra' => $obra]) }}">Facturas</a>
+                            <a href="{{ route('factura_venta.index', ['presupuesto' => $presupuesto?->id, 'obra' => $obra->id]) }}">Facturas</a>
+                            @endif
                             <i class="fas fa-chevron-right"></i>
                             Recibos
                         </div>
