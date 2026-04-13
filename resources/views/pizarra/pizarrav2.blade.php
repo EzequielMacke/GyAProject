@@ -88,6 +88,7 @@
         /* Dynamic cursor via JS class */
         canvas.mode-draw   { cursor: crosshair; }
         canvas.mode-eraser { cursor: cell; }
+        canvas.mode-text   { cursor: text; }
         canvas.panning     { cursor: grab; }
 
         /* Info badge (bottom center) */
@@ -109,6 +110,35 @@
         }
         #infoBadge.show { opacity: 1; }
 
+        /* Text confirm panel */
+        #textPanel {
+            position: fixed;
+            z-index: 200;
+            background: #fff;
+            border: 1.5px solid #4a90e2;
+            border-radius: 10px;
+            padding: 7px 10px;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+            font-size: 13px;
+        }
+        #textPanel input {
+            font-size: 15px;
+            padding: 3px 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            min-width: 140px;
+            outline: none;
+            font-family: sans-serif;
+        }
+        #textPanel .tp-hint {
+            font-size: 11px;
+            color: #999;
+            white-space: nowrap;
+        }
+
         /* Snap dot */
         #snapDot {
             position: fixed;
@@ -129,6 +159,7 @@
 <div id="toolbar">
     <button id="btnDraw"   class="active">✏ Dibujar</button>
     <button id="btnEraser" class="eraser">⌫ Borrador</button>
+    <button id="btnText">𝑻 Texto</button>
     <div class="sep"></div>
     <button id="btnUndo">↩ Deshacer</button>
     <div class="sep"></div>
@@ -151,6 +182,13 @@
 
 <div id="infoBadge"></div>
 <div id="snapDot"></div>
+
+<div id="textPanel">
+    <input id="textPanelInput" type="text" placeholder="Escribir texto…">
+    <span class="tp-hint">Enter ✓</span>
+    <button id="btnTextOk" style="background:#4a90e2;color:#fff;border-color:#3178c6;padding:4px 10px;min-height:30px;">✓</button>
+    <button id="btnTextCancel" style="padding:4px 10px;min-height:30px;">✗</button>
+</div>
 
 <script>
 (() => {
@@ -210,6 +248,12 @@ let pinchCX      = 0, pinchCY = 0;
 let pinchPanX0   = 0, pinchPanY0 = 0;
 
 let badgeTimer   = null;
+
+// Text mode
+let textPlaceW   = null;   // {x,y} mundo donde se colocará el nuevo texto
+let selText      = null;   // elemento de texto seleccionado
+let txtForm      = null;   // transformación activa: 'move'|'resize'|'rotate'
+let txtFormStart = null;   // snapshot del inicio de la transformación
 
 // ─────────────────────────────────────────────────────────────
 //  RESIZE
@@ -350,6 +394,10 @@ function elementSnapPoints(el) {
         case 'freehand': {
             const pts = el.points;
             return [pts[0], pts[pts.length-1]];
+        }
+        case 'text': {
+            const { w, h } = textMetrics(el);
+            return [{ x: el.x + w / 2, y: el.y + h / 2 }];
         }
     }
     return [];
@@ -564,6 +612,11 @@ function hitTest(el, wx, wy) {
             }
             return false;
         }
+        case 'text': {
+            const lp = textLocalPoint(el, wx, wy);
+            const { w, h } = textMetrics(el);
+            return Math.abs(lp.x) <= w / 2 + T && Math.abs(lp.y) <= h / 2 + T;
+        }
     }
     return false;
 }
@@ -584,6 +637,7 @@ function render() {
     drawGrid();
     for (const el of elements) drawElement(el);
     if (drawing && rawPoints.length > 1) drawPreview();
+    if (mode === 'text' && selText) drawTextHandles(selText);
 
     ctx.restore();
 }
@@ -672,6 +726,20 @@ function drawElement(el) {
             ctx.moveTo(pts[0].x, pts[0].y);
             for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
             ctx.stroke();
+            break;
+        }
+        case 'text': {
+            ctx.save();
+            ctx.font = `${el.fontSize}px sans-serif`;
+            const tw = ctx.measureText(el.text).width;
+            const th = el.fontSize * 1.15;
+            ctx.translate(el.x + tw / 2, el.y + th / 2);
+            ctx.rotate(el.rotation || 0);
+            ctx.fillStyle    = '#2c3e50';
+            ctx.textBaseline = 'middle';
+            ctx.textAlign    = 'center';
+            ctx.fillText(el.text, 0, 0);
+            ctx.restore();
             break;
         }
     }
@@ -800,6 +868,189 @@ function tryErase(sx, sy) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  TEXT MODE
+// ─────────────────────────────────────────────────────────────
+
+// Medidas del texto en unidades mundo (measureText devuelve px = unidades mundo)
+function textMetrics(el) {
+    ctx.font = `${el.fontSize}px sans-serif`;
+    return { w: ctx.measureText(el.text).width, h: el.fontSize * 1.15 };
+}
+
+// Transforma un punto mundo al espacio local (no rotado) del texto
+function textLocalPoint(el, wx, wy) {
+    const { w, h } = textMetrics(el);
+    const cx = el.x + w / 2, cy = el.y + h / 2;
+    const rot = -(el.rotation || 0);
+    const dx = wx - cx, dy = wy - cy;
+    return {
+        x: dx * Math.cos(rot) - dy * Math.sin(rot),
+        y: dx * Math.sin(rot) + dy * Math.cos(rot),
+    };
+}
+
+// Devuelve qué parte del texto fue tocada: 'move' | 'resize' | 'rotate' | null
+function hitTextHandle(el, wx, wy) {
+    const { w, h } = textMetrics(el);
+    const lp  = textLocalPoint(el, wx, wy);
+    const pad = 6 / zoom;
+
+    // Handle de rotación (círculo sobre el centro superior)
+    const rotY = -h / 2 - 28 / zoom;
+    if (Math.hypot(lp.x, lp.y - rotY) < 10 / zoom) return 'rotate';
+
+    // Handle de escala (esquina inferior derecha)
+    if (Math.abs(lp.x - w / 2) < 10 / zoom && Math.abs(lp.y - h / 2) < 10 / zoom) return 'resize';
+
+    // Cuerpo del texto
+    if (lp.x >= -w / 2 - pad && lp.x <= w / 2 + pad &&
+        lp.y >= -h / 2 - pad && lp.y <= h / 2 + pad) return 'move';
+
+    return null;
+}
+
+// Dibuja los handles de selección (llamado dentro del transform mundo)
+function drawTextHandles(el) {
+    const { w, h } = textMetrics(el);
+    const cx = el.x + w / 2, cy = el.y + h / 2;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(el.rotation || 0);
+
+    // Caja punteada
+    const pad = 5 / zoom;
+    ctx.strokeStyle = '#4a90e2';
+    ctx.lineWidth   = 1.2 / zoom;
+    ctx.setLineDash([5 / zoom, 3 / zoom]);
+    ctx.strokeRect(-w / 2 - pad, -h / 2 - pad, w + pad * 2, h + pad * 2);
+    ctx.setLineDash([]);
+
+    // Línea + círculo de rotación
+    const rotY = -h / 2 - pad - 28 / zoom;
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.beginPath();
+    ctx.moveTo(0, -h / 2 - pad);
+    ctx.lineTo(0, rotY + 6 / zoom);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(0, rotY, 7 / zoom, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#4a90e2';
+    ctx.stroke();
+
+    // Cuadrado de escala (esquina inferior derecha)
+    const hs = 8 / zoom;
+    ctx.fillStyle = '#4a90e2';
+    ctx.fillRect(w / 2 - hs / 2, h / 2 - hs / 2, hs, hs);
+
+    ctx.restore();
+}
+
+// Muestra el panel de input flotante en la posición de pantalla (sx, sy)
+function showTextInput(sx, sy) {
+    const rect  = canvas.getBoundingClientRect();
+    const panel = document.getElementById('textPanel');
+    const input = document.getElementById('textPanelInput');
+    panel.style.display = 'flex';
+    panel.style.left = Math.max(8, rect.left + sx) + 'px';
+    panel.style.top  = Math.max(8, rect.top  + sy - 54) + 'px';
+    input.value = '';
+    setTimeout(() => input.focus(), 40);
+}
+
+function commitText(raw) {
+    const text = raw.trim();
+    if (text && textPlaceW) {
+        saveUndo();
+        const el = { type: 'text', x: textPlaceW.x, y: textPlaceW.y,
+                     text, fontSize: GRID * 1.2, rotation: 0 };
+        elements.push(el);
+        selText = el;
+    }
+    textPlaceW = null;
+    document.getElementById('textPanel').style.display = 'none';
+    render();
+}
+
+function resetTextMode() {
+    textPlaceW   = null;
+    selText      = null;
+    txtForm      = null;
+    txtFormStart = null;
+    document.getElementById('textPanel').style.display = 'none';
+    render();
+}
+
+// ── Interacción de texto ──────────────────────────────────────
+function onTextDown(sx, sy) {
+    const wp = s2w(sx, sy);
+
+    // ¿Toca los handles del elemento seleccionado?
+    if (selText) {
+        const hit = hitTextHandle(selText, wp.x, wp.y);
+        if (hit) { startTxtTransform(hit, wp.x, wp.y); return; }
+    }
+
+    // ¿Toca algún texto existente?
+    for (let i = elements.length - 1; i >= 0; i--) {
+        if (elements[i].type === 'text') {
+            const hit = hitTextHandle(elements[i], wp.x, wp.y);
+            if (hit) {
+                selText = elements[i];
+                startTxtTransform(hit, wp.x, wp.y);
+                render(); return;
+            }
+        }
+    }
+
+    // Click en área vacía → nuevo texto
+    selText    = null;
+    textPlaceW = wp;
+    showTextInput(sx, sy);
+    render();
+}
+
+function startTxtTransform(form, wx, wy) {
+    txtForm = form;
+    const { w, h } = textMetrics(selText);
+    saveUndo();
+    txtFormStart = {
+        wx, wy,
+        snap: JSON.parse(JSON.stringify(selText)),
+        cx: selText.x + w / 2,
+        cy: selText.y + h / 2,
+        angle0: Math.atan2(wy - (selText.y + h / 2), wx - (selText.x + w / 2)),
+    };
+}
+
+function onTextMove(sx, sy) {
+    if (!txtForm || !selText || !txtFormStart) return;
+    const wp = s2w(sx, sy);
+    const { wx: wx0, wy: wy0, snap, cx, cy, angle0 } = txtFormStart;
+
+    if (txtForm === 'move') {
+        selText.x = snap.x + (wp.x - wx0);
+        selText.y = snap.y + (wp.y - wy0);
+    } else if (txtForm === 'resize') {
+        const d0 = Math.hypot(wx0 - cx, wy0 - cy);
+        const d1 = Math.hypot(wp.x - cx, wp.y - cy);
+        if (d0 > 1) selText.fontSize = Math.max(6, snap.fontSize * d1 / d0);
+    } else if (txtForm === 'rotate') {
+        const angle1 = Math.atan2(wp.y - cy, wp.x - cx);
+        selText.rotation = (snap.rotation || 0) + (angle1 - angle0);
+    }
+    render();
+}
+
+function onTextUp() {
+    txtForm      = null;
+    txtFormStart = null;
+}
+
+// ─────────────────────────────────────────────────────────────
 //  UNDO
 // ─────────────────────────────────────────────────────────────
 function saveUndo() {
@@ -855,6 +1106,8 @@ canvas.addEventListener('mousedown', e => {
         erasing = true;
         eraseUndoSaved = false;
         tryErase(sx, sy);
+    } else if (mode === 'text') {
+        onTextDown(sx, sy);
     }
 });
 
@@ -868,6 +1121,7 @@ canvas.addEventListener('mousemove', e => {
     }
     if (mode === 'draw') continueDraw(sx, sy);
     if (mode === 'eraser' && erasing) tryErase(sx, sy);
+    if (mode === 'text') onTextMove(sx, sy);
 });
 
 canvas.addEventListener('mouseup', e => {
@@ -879,12 +1133,14 @@ canvas.addEventListener('mouseup', e => {
     if (e.button === 0) {
         if (mode === 'draw') endDraw();
         if (mode === 'eraser') erasing = false;
+        if (mode === 'text') onTextUp();
     }
 });
 
 canvas.addEventListener('mouseleave', () => {
     if (drawing) endDraw();
     if (erasing) erasing = false;
+    if (mode === 'text') onTextUp();
     if (panning) { panning = false; canvas.classList.remove('panning'); }
     snapDot.style.display = 'none';
 });
@@ -914,6 +1170,8 @@ canvas.addEventListener('touchstart', e => {
             erasing = true;
             eraseUndoSaved = false;
             tryErase(sx, sy);
+        } else if (mode === 'text') {
+            onTextDown(sx, sy);
         }
     } else if (e.touches.length === 2) {
         // Cancel any active draw/erase
@@ -939,6 +1197,7 @@ canvas.addEventListener('touchmove', e => {
         const { sx, sy } = touchOffset(e.touches[0]);
         if (drawing) continueDraw(sx, sy);
         if (erasing && mode === 'eraser') tryErase(sx, sy);
+        if (mode === 'text') onTextMove(sx, sy);
     } else if (e.touches.length === 2 && pinching) {
         const rect = canvas.getBoundingClientRect();
         const newDist = Math.hypot(
@@ -965,6 +1224,7 @@ canvas.addEventListener('touchend', e => {
     e.preventDefault();
     if (e.touches.length === 0) {
         if (drawing) endDraw();
+        if (mode === 'text') onTextUp();
         erasing = false;
         pinching = false;
     } else if (e.touches.length === 1) {
@@ -980,10 +1240,12 @@ canvas.addEventListener('touchend', e => {
 // ─────────────────────────────────────────────────────────────
 function setMode(m) {
     mode = m;
-    document.getElementById('btnDraw').classList.toggle('active',  m === 'draw');
+    document.getElementById('btnDraw').classList.toggle('active',   m === 'draw');
     document.getElementById('btnEraser').classList.toggle('active', m === 'eraser');
+    document.getElementById('btnText').classList.toggle('active',   m === 'text');
     canvas.className = `mode-${m}`;
     if (m !== 'draw') { drawing = false; rawPoints = []; hideBadge(); snapDot.style.display = 'none'; }
+    if (m !== 'text') resetTextMode();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -991,6 +1253,15 @@ function setMode(m) {
 // ─────────────────────────────────────────────────────────────
 document.getElementById('btnDraw').addEventListener('click',   () => setMode('draw'));
 document.getElementById('btnEraser').addEventListener('click', () => setMode(mode === 'eraser' ? 'draw' : 'eraser'));
+document.getElementById('btnText').addEventListener('click',   () => setMode(mode === 'text'   ? 'draw' : 'text'));
+
+document.getElementById('btnTextOk').addEventListener('click', () =>
+    commitText(document.getElementById('textPanelInput').value));
+document.getElementById('btnTextCancel').addEventListener('click', resetTextMode);
+document.getElementById('textPanelInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); commitText(e.target.value); }
+    if (e.key === 'Escape') resetTextMode();
+});
 
 document.getElementById('btnUndo').addEventListener('click', undo);
 
