@@ -14,6 +14,7 @@ class Solucion extends Model
     protected $fillable = [
         'problema_id',
         'descripcion',
+        'observacion',
         'stamp',
         'avance',
         'estado',

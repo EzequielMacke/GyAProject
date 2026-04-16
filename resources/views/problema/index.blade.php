@@ -94,7 +94,7 @@
 
         .list-header {
             display: grid;
-            grid-template-columns: 1fr 180px 160px 120px;
+            grid-template-columns: 1fr 180px 160px 170px;
             padding: 0.65rem 1.25rem;
             background: var(--surface2);
             border-bottom: 1.5px solid var(--border);
@@ -111,7 +111,7 @@
 
         .problema-row {
             display: grid;
-            grid-template-columns: 1fr 180px 160px 120px;
+            grid-template-columns: 1fr 180px 160px 170px;
             align-items: center;
             padding: 1rem 1.25rem;
             transition: background 0.12s;
@@ -390,13 +390,20 @@
                                         <i class="fas fa-clock"></i>
                                         {{ $problema->stamp ? \Carbon\Carbon::parse($problema->stamp)->format('d/m/Y H:i') : '—' }}
                                     </div>
-                                    <div class="prob-acciones">
+                                    <div class="prob-acciones" style="gap:0.35rem;">
                                         @if($puedeAgregarSolucion)
                                         <button type="button" class="btn btn-sm btn-green"
-                                            onclick="abrirModalSolucion({{ $problema->id }})">
-                                            <i class="fas fa-plus"></i> Solución
+                                            onclick="abrirModalSolucion({{ $problema->id }})"
+                                            title="Nueva solución">
+                                            <i class="fas fa-plus"></i>
                                         </button>
                                         @endif
+                                        <a href="{{ route('problemas.show', $problema->id) }}" class="btn btn-sm" title="Vista general">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ route('problemas.detalle', $problema->id) }}" class="btn btn-sm" title="Ver detalle">
+                                            <i class="fas fa-file-alt"></i>
+                                        </a>
                                         @if($puedeEliminarProblema)
                                         <button type="button" class="btn btn-sm btn-danger-soft" title="Eliminar problema"
                                             onclick="abrirModalConfirmarEliminar({{ $problema->id }}, {{ json_encode(Str::limit($problema->descripcion, 60)) }})">
@@ -416,6 +423,9 @@
                                         <span class="solucion-viñeta">&rsaquo;&rsaquo;</span>
                                         <span class="solucion-texto">{{ $solucion->descripcion }}</span>
                                         <span class="solucion-autor">{{ $solucion->usuario?->nombre ?? '—' }}</span>
+                                        <a href="{{ route('soluciones.detalle', $solucion->id) }}" class="btn-edit-desc" title="Ver detalle">
+                                            <i class="fas fa-file-alt"></i>
+                                        </a>
                                         @if($puedeEditarSolucion && $solucion->estado == 1)
                                         <button type="button" class="btn-edit-desc"
                                             onclick="abrirModalEditarSolucion({{ $solucion->id }}, {{ json_encode($solucion->descripcion) }})"

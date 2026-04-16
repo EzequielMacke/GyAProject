@@ -12,6 +12,7 @@ class Problema extends Model
     protected $fillable = [
         'usuario_id',
         'descripcion',
+        'observacion',
         'stamp',
         'avance',
         'estado',

@@ -342,27 +342,36 @@ Route::middleware('permiso:sit_ava,agregar')->group(function () {
 // ── Problemas ─────────────────────────────────────────────────────────────────
 Route::middleware('permiso:pro,ver')->group(function () {
     Route::get('/problemas', [ProblemaController::class, 'index'])->name('problemas.index');
+    Route::get('/problemas/{id}/detalle', [ProblemaController::class, 'detalle'])->name('problemas.detalle');
+    Route::get('/problemas/{id}/show', [ProblemaController::class, 'show'])->name('problemas.show');
+    Route::get('/soluciones/{id}/detalle', [ProblemaController::class, 'detalleSolucion'])->name('soluciones.detalle');
 });
 Route::middleware('permiso:pro,agregar')->group(function () {
     Route::post('/problemas', [ProblemaController::class, 'store'])->name('problemas.store');
+    Route::post('/problemas/{id}/fotos', [ProblemaController::class, 'storeFoto'])->name('problemas.fotos.store');
 });
 Route::middleware('permiso:sol,agregar')->group(function () {
     Route::post('/problemas/{problema_id}/soluciones', [ProblemaController::class, 'storeSolucion'])->name('problemas.soluciones.store');
+    Route::post('/soluciones/{id}/fotos', [ProblemaController::class, 'storeFotoSolucion'])->name('soluciones.fotos.store');
 });
 Route::middleware('permiso:pro,editar')->group(function () {
     Route::post('/problemas/reordenar', [ProblemaController::class, 'reordenarProblemas'])->name('problemas.reordenar');
     Route::put('/problemas/{id}', [ProblemaController::class, 'update'])->name('problemas.update');
+    Route::put('/problemas/{id}/observacion', [ProblemaController::class, 'updateObservacion'])->name('problemas.observacion');
 });
 Route::middleware('permiso:pro,eliminar')->group(function () {
     Route::delete('/problemas/{id}', [ProblemaController::class, 'destroy'])->name('problemas.destroy');
+    Route::delete('/problema-detalles/{id}', [ProblemaController::class, 'destroyFoto'])->name('problemas.fotos.destroy');
 });
 Route::middleware('permiso:sol,editar')->group(function () {
     Route::post('/soluciones/reordenar', [ProblemaController::class, 'reordenarSoluciones'])->name('soluciones.reordenar');
     Route::put('/soluciones/{id}', [ProblemaController::class, 'updateSolucion'])->name('soluciones.update');
+    Route::put('/soluciones/{id}/observacion', [ProblemaController::class, 'updateObservacionSolucion'])->name('soluciones.observacion');
 });
 Route::middleware('permiso:sol,eliminar')->group(function () {
     Route::delete('/soluciones/{id}', [ProblemaController::class, 'destroySolucion'])->name('soluciones.destroy');
     Route::put('/soluciones/{id}/restaurar', [ProblemaController::class, 'restaurarSolucion'])->name('soluciones.restaurar');
+    Route::delete('/solucion-detalles/{id}', [ProblemaController::class, 'destroyFotoSolucion'])->name('soluciones.fotos.destroy');
 });
 
 // ── Buscador global (sin restricción de módulo) ───────────────────────────────
