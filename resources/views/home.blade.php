@@ -234,6 +234,13 @@
                     </a>
                     @endpermiso
 
+                    @permiso('pro', 'ver')
+                    <a href="{{ route('problemas.index') }}" class="opcion-card" style="animation-delay:0.46s">
+                        <div class="opcion-icon ic-orange"><i class="fas fa-exclamation-triangle"></i></div>
+                        <span class="opcion-label">Reporte de Problemas</span>
+                    </a>
+                    @endpermiso
+
                 </div>
 
             </div>
