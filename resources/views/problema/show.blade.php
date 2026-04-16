@@ -127,7 +127,7 @@
                         </p>
                     </div>
                     <div class="ph-right">
-                        <a href="{{ route('problemas.detalle', $problema->id) }}" class="btn btn-sm">
+                        <a href="{{ route('problemas.detalle', $problema->id) }}" class="btn btn">
                             <i class="fas fa-folder-open"></i> Detalle
                         </a>
                         <a href="{{ route('problemas.index') }}" class="btn">
