@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de Problemas</title>
+    <title>Programa de Mejoramiento</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -94,7 +94,7 @@
 
         .list-header {
             display: grid;
-            grid-template-columns: 1fr 180px 160px 170px;
+            grid-template-columns: 1fr 160px 170px;
             padding: 0.65rem 1.25rem;
             background: var(--surface2);
             border-bottom: 1.5px solid var(--border);
@@ -111,7 +111,7 @@
 
         .problema-row {
             display: grid;
-            grid-template-columns: 1fr 180px 160px 170px;
+            grid-template-columns: 1fr 160px 170px;
             align-items: center;
             padding: 1rem 1.25rem;
             transition: background 0.12s;
@@ -307,10 +307,10 @@
                             <i class="fas fa-home"></i>
                             <a href="{{ route('home') }}">Inicio</a>
                             <i class="fas fa-chevron-right"></i>
-                            <i class="fas fa-exclamation-triangle"></i>
-                            Reporte de Problemas
+                            <i class="fas fa-chart-line"></i>
+                            Programa de Mejoramiento
                         </div>
-                        <h1 class="ph-title">Reporte de <em>Problemas</em></h1>
+                        <h1 class="ph-title">Programa de <em>Mejoramiento</em></h1>
                         <p class="ph-sub">{{ $problemas->count() }} {{ $problemas->count() === 1 ? 'registro' : 'registros' }} encontrados</p>
                     </div>
                     <div class="ph-right">
@@ -351,7 +351,6 @@
                     @else
                         <div class="list-header">
                             <div>Descripción</div>
-                            <div>Publicado por</div>
                             <div>Fecha</div>
                             <div></div>
                         </div>
@@ -367,7 +366,7 @@
                             <div class="problema-block" data-id="{{ $problema->id }}" data-search="{{ strtolower($problema->descripcion . ' ' . $problema->usuario?->nombre) }}" style="border-left-color: {{ $urgColor }}">
                                 <div class="problema-row">
                                     <div class="prob-descripcion" style="display:flex;align-items:baseline;gap:0.25rem;">
-                                        @if($puedeEditarProblema)
+                                        @if($puedeEliminarProblema)
                                         <span class="drag-handle" title="Arrastrar para reordenar"><i class="fas fa-grip-vertical"></i></span>
                                         @endif
                                         <span>{{ $problema->descripcion }}
@@ -379,12 +378,6 @@
                                         </button>
                                         @endif
                                         </span>
-                                    </div>
-                                    <div class="prob-autor">
-                                        <div class="prob-autor-avatar">
-                                            {{ strtoupper(substr($problema->usuario?->nombre ?? '?', 0, 2)) }}
-                                        </div>
-                                        {{ $problema->usuario?->nombre ?? '—' }}
                                     </div>
                                     <div class="prob-fecha">
                                         <i class="fas fa-clock"></i>
@@ -417,12 +410,11 @@
                                 <div class="soluciones-list">
                                     @foreach($problema->soluciones as $solucion)
                                     <div class="solucion-item {{ $solucion->estado == 2 ? 'inactiva' : '' }}" data-id="{{ $solucion->id }}">
-                                        @if($puedeEditarSolucion)
+                                        @if($puedeEliminarSolucion)
                                         <span class="drag-handle drag-handle-sol" title="Arrastrar para reordenar"><i class="fas fa-grip-vertical"></i></span>
                                         @endif
                                         <span class="solucion-viñeta">&rsaquo;&rsaquo;</span>
                                         <span class="solucion-texto">{{ $solucion->descripcion }}</span>
-                                        <span class="solucion-autor">{{ $solucion->usuario?->nombre ?? '—' }}</span>
                                         <a href="{{ route('soluciones.detalle', $solucion->id) }}" class="btn-edit-desc" title="Ver detalle">
                                             <i class="fas fa-file-alt"></i>
                                         </a>
@@ -471,7 +463,7 @@
 <div class="modal-backdrop" id="modal-problema">
     <div class="modal-box">
         <div class="modal-header">
-            <span class="modal-title"><i class="fas fa-exclamation-triangle"></i> Nuevo Problema</span>
+            <span class="modal-title"><i class="fas fa-chart-line"></i> Nuevo Problema</span>
             <button type="button" class="modal-close" onclick="cerrarModal('modal-problema')">
                 <i class="fas fa-times"></i>
             </button>
@@ -658,7 +650,7 @@
     });
 
     // Drag & drop — Problemas
-    @if($puedeEditarProblema)
+    @if($puedeEliminarProblema)
     const listaProblemas = document.getElementById('lista-problemas');
     if (listaProblemas) {
         Sortable.create(listaProblemas, {
@@ -680,7 +672,7 @@
     @endif
 
     // Drag & drop — Soluciones
-    @if($puedeEditarSolucion)
+    @if($puedeEliminarSolucion)
     document.querySelectorAll('.soluciones-list').forEach(function (list) {
         Sortable.create(list, {
             handle: '.drag-handle-sol',

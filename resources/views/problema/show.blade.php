@@ -115,7 +115,7 @@
                             <i class="fas fa-home"></i>
                             <a href="{{ route('home') }}">Inicio</a>
                             <i class="fas fa-chevron-right"></i>
-                            <a href="{{ route('problemas.index') }}">Problemas</a>
+                            <a href="{{ route('problemas.index') }}">Programa de Mejoramiento</a>
                             <i class="fas fa-chevron-right"></i>
                             <i class="fas fa-exclamation-triangle"></i>
                             Vista general
@@ -151,12 +151,6 @@
                     </div>
                     <div class="card-body">
                         <p class="desc-text">{{ $problema->descripcion }}</p>
-                        <div class="meta-row">
-                            <span class="meta-chip">
-                                <span class="avatar avatar-orange">{{ strtoupper(substr($problema->usuario?->nombre ?? '?', 0, 2)) }}</span>
-                                {{ $problema->usuario?->nombre ?? '—' }}
-                            </span>
-                        </div>
 
                         @if($problema->observacion)
                         <div class="obs-box">
@@ -170,7 +164,7 @@
                         <div class="fotos-grid">
                             @foreach($problema->detalles as $detalle)
                             <div class="foto-card">
-                                <img src="{{ asset('storage/problemas/' . $detalle->foto) }}"
+                                <img src="{{ Storage::url('problemas/' . $detalle->foto) }}"
                                      alt="{{ $detalle->foto }}"
                                      onclick="abrirLightbox(this.src)">
                                 <div class="foto-nombre" title="{{ preg_replace('/^\d+_/', '', $detalle->foto) }}">
@@ -203,10 +197,6 @@
                                         <span class="badge-inactiva">Inactiva</span>
                                         @endif
                                         <span class="meta-chip">
-                                            <span class="avatar avatar-green">{{ strtoupper(substr($solucion->usuario?->nombre ?? '?', 0, 2)) }}</span>
-                                            {{ $solucion->usuario?->nombre ?? '—' }}
-                                        </span>
-                                        <span class="meta-chip">
                                             <i class="fas fa-clock"></i>
                                             {{ $solucion->stamp ? \Carbon\Carbon::parse($solucion->stamp)->format('d/m/Y') : '—' }}
                                         </span>
@@ -227,7 +217,7 @@
                                     <div class="fotos-grid">
                                         @foreach($solucion->detalles as $detalle)
                                         <div class="foto-card">
-                                            <img src="{{ asset('storage/soluciones/' . $detalle->foto) }}"
+                                            <img src="{{ Storage::url('soluciones/' . $detalle->foto) }}"
                                                  alt="{{ $detalle->foto }}"
                                                  onclick="abrirLightbox(this.src)">
                                             <div class="foto-nombre" title="{{ preg_replace('/^\d+_/', '', $detalle->foto) }}">

@@ -125,7 +125,7 @@
                             <i class="fas fa-home"></i>
                             <a href="{{ route('home') }}">Inicio</a>
                             <i class="fas fa-chevron-right"></i>
-                            <a href="{{ route('problemas.index') }}">Problema</a>
+                            <a href="{{ route('problemas.index') }}">Programa de Mejoramiento</a>
                             <i class="fas fa-chevron-right"></i>
                             <a href="{{ route('problemas.detalle', $solucion->problema_id) }}">
                                 {{ \Illuminate\Support\Str::limit($solucion->problema->descripcion ?? '—', 40) }}
@@ -186,12 +186,6 @@
                             <strong>Problema:</strong> {{ $solucion->problema->descripcion }}
                         </div>
                         @endif
-                        <div class="prob-meta">
-                            <span class="prob-meta-item">
-                                <span class="prob-autor-avatar">{{ strtoupper(substr($solucion->usuario?->nombre ?? '?', 0, 2)) }}</span>
-                                {{ $solucion->usuario?->nombre ?? '—' }}
-                            </span>
-                        </div>
                     </div>
                 </div>
 
@@ -249,11 +243,10 @@
                         <div class="fotos-grid">
                             @foreach($solucion->detalles as $detalle)
                             <div class="foto-card">
-                                <img src="{{ asset('storage/soluciones/' . $detalle->foto) }}"
+                                <img src="{{ Storage::url('soluciones/' . $detalle->foto) }}"
                                      alt="Foto"
                                      onclick="abrirLightbox(this.src)">
                                 <div class="foto-card-footer">
-                                    <span class="foto-autor">{{ $detalle->usuario?->nombre ?? '—' }}</span>
                                     @if($puedeEliminarSolucion)
                                     <button type="button" class="btn-foto-del"
                                         onclick="confirmarEliminarFoto({{ $detalle->id }})"

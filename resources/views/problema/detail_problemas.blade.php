@@ -207,7 +207,7 @@
                             <i class="fas fa-home"></i>
                             <a href="{{ route('home') }}">Inicio</a>
                             <i class="fas fa-chevron-right"></i>
-                            <a href="{{ route('problemas.index') }}">Problemas</a>
+                            <a href="{{ route('problemas.index') }}">Programa de Mejoramiento</a>
                             <i class="fas fa-chevron-right"></i>
                             <i class="fas fa-file-alt"></i>
                             Detalle
@@ -246,12 +246,6 @@
                     </div>
                     <div class="card-body">
                         <p class="prob-desc-text">{{ $problema->descripcion }}</p>
-                        <div class="prob-meta">
-                            <span class="prob-meta-item">
-                                <span class="prob-autor-avatar">{{ strtoupper(substr($problema->usuario?->nombre ?? '?', 0, 2)) }}</span>
-                                {{ $problema->usuario?->nombre ?? '—' }}
-                            </span>
-                        </div>
                     </div>
                 </div>
 
@@ -314,11 +308,10 @@
                         <div class="fotos-grid">
                             @foreach($problema->detalles as $detalle)
                             <div class="foto-card">
-                                <img src="{{ asset('storage/problemas/' . $detalle->foto) }}"
+                                <img src="{{ Storage::url('problemas/' . $detalle->foto) }}"
                                      alt="Foto"
                                      onclick="abrirLightbox(this.src)">
                                 <div class="foto-card-footer">
-                                    <span class="foto-autor">{{ $detalle->usuario?->nombre ?? '—' }}</span>
                                     @if($puedeEliminarProblema)
                                     <button type="button" class="btn-foto-del"
                                         onclick="confirmarEliminarFoto({{ $detalle->id }})"
