@@ -241,6 +241,13 @@
                     </a>
                     @endpermiso
 
+                    @permiso('bib', 'ver')
+                    <a href="{{ route('bibliografia.index') }}" class="opcion-card" style="animation-delay:0.48s">
+                        <div class="opcion-icon ic-blue"><i class="fas fa-book"></i></div>
+                        <span class="opcion-label">Bibliografías</span>
+                    </a>
+                    @endpermiso
+
                 </div>
 
             </div>

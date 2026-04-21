@@ -26,6 +26,7 @@ use App\Http\Controllers\UsuariosController;
 use App\Http\Controllers\ProblemaController;
 use App\Http\Controllers\SituacionAvanceController;
 use App\Http\Controllers\ValidarpresupuestoController;
+use App\Http\Controllers\BibliografiaController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
@@ -376,6 +377,29 @@ Route::middleware('permiso:sol,eliminar')->group(function () {
 
 // ── Buscador global (sin restricción de módulo) ───────────────────────────────
 Route::middleware('permiso:obr,ver')->get('/buscar', [SearchController::class, 'search'])->name('search.global');
+
+// ── Bibliografía ──────────────────────────────────────────────────────────────
+// Rutas estáticas primero para evitar conflicto con /{id}
+Route::middleware('permiso:bib,ver')->group(function () {
+    Route::get('/bibliografia', [BibliografiaController::class, 'index'])->name('bibliografia.index');
+    Route::get('/bibliografia/generar', [BibliografiaController::class, 'generate'])->name('bibliografia.generate');
+    Route::post('/bibliografia/generar', [BibliografiaController::class, 'generateWord'])->name('bibliografia.generateWord');
+});
+Route::middleware('permiso:bib,agregar')->group(function () {
+    Route::get('/bibliografia/crear', [BibliografiaController::class, 'create'])->name('bibliografia.create');
+    Route::post('/bibliografia', [BibliografiaController::class, 'store'])->name('bibliografia.store');
+});
+// Rutas dinámicas /{id} al final
+Route::middleware('permiso:bib,ver')->group(function () {
+    Route::get('/bibliografia/{id}', [BibliografiaController::class, 'show'])->name('bibliografia.show');
+});
+Route::middleware('permiso:bib,editar')->group(function () {
+    Route::get('/bibliografia/{id}/editar', [BibliografiaController::class, 'edit'])->name('bibliografia.edit');
+    Route::put('/bibliografia/{id}', [BibliografiaController::class, 'update'])->name('bibliografia.update');
+});
+Route::middleware('permiso:bib,eliminar')->group(function () {
+    Route::delete('/bibliografia/{id}', [BibliografiaController::class, 'destroy'])->name('bibliografia.destroy');
+});
 
 
 //ruta de pizarra
