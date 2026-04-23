@@ -355,7 +355,7 @@
             <div class="nota-pie-panel" id="np-panel-${idx}">
                 <div class="nota-pie-aviso">
                     <i class="fas fa-info-circle"></i>
-                    Si no completás el texto, la nota al pie se completará automáticamente con el autor.
+                    Si no agregas texto, la nota al pie se completará automáticamente con la fuente.
                 </div>
                 <textarea class="form-control" name="detalles[${idx}][nota_pie]" rows="2"
                     placeholder="Texto de la nota al pie (opcional)..."
