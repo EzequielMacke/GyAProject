@@ -6,6 +6,9 @@
     <title>Códigos QR de Tabletas</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         :root {
             --bg:       #f0f3f7;
@@ -163,7 +166,7 @@
                         <p class="ph-sub">Imprimí los códigos QR de cada tableta</p>
                     </div>
                     <div class="ph-right">
-                        <button onclick="window.print()" class="btn btn-primary">
+                        <button id="btn-print" onclick="generarPDFs()" class="btn btn-primary">
                             <i class="fas fa-print"></i> Imprimir
                         </button>
                         <a href="{{ route('tabletas.index') }}" class="btn">
@@ -206,25 +209,119 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    new QRious({
-        element: document.getElementById('qr-admin'),
-        value: "9XQ2Z7LJ4B1V6KTP",
-        size: 150,
-        background: 'transparent',
-        foreground: '#2a6fdb'
-    });
+// Paleta idéntica a los CSS variables de la vista
+const CSS = {
+    surface:  [248, 250, 252], // --surface:  #f8fafc
+    border:   [216, 224, 234], // --border:   #d8e0ea
+    text:     [30,  40,  53],  // --text:     #1e2835
+    muted:    [132, 150, 170], // --muted:    #8496aa
+    accent:   [42,  111, 219], // --accent:   #2a6fdb
+    accentS:  [232, 240, 252], // --accent-s: #e8f0fc
+};
 
+document.addEventListener('DOMContentLoaded', function () {
+    new QRious({ element: document.getElementById('qr-admin'), value: "9XQ2Z7LJ4B1V6KTP", size: 150, background: 'transparent', foreground: '#2a6fdb' });
     @foreach($qrs as $tableta)
-    new QRious({
-        element: document.getElementById('qr-{{ $tableta->id }}'),
-        value: "{{ $tableta->codigo_qr }}",
-        size: 150,
-        background: 'white',
-        foreground: '#1e2835'
-    });
+    new QRious({ element: document.getElementById('qr-{{ $tableta->id }}'), value: @json($tableta->codigo_qr), size: 150, background: 'white', foreground: '#1e2835' });
     @endforeach
 });
+
+const QR_CARDS = [
+    { value: "9XQ2Z7LJ4B1V6KTP", label: "ADMINISTRADOR", sublabel: "Acceso de administrador", isAdmin: true },
+    @foreach($qrs as $tableta)
+    { value: @json($tableta->codigo_qr), label: @json($tableta->clave ?? $tableta->id), sublabel: @json($tableta->nombre ?? ''), isAdmin: false },
+    @endforeach
+];
+
+function makeQRDataURL(value, isAdmin) {
+    const c = document.createElement('canvas');
+    new QRious({ element: c, value: value, size: 400, background: 'white', foreground: isAdmin ? '#2a6fdb' : '#1e2835' });
+    return c.toDataURL('image/png');
+}
+
+async function generarPDFs() {
+    const { jsPDF } = window.jspdf;
+    const btn = document.getElementById('btn-print');
+    btn.disabled = true;
+
+    const W = 57, H = 90;
+    const zip = new JSZip();
+
+    for (let i = 0; i < QR_CARDS.length; i++) {
+        const card = QR_CARDS[i];
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${i + 1} / ${QR_CARDS.length}`;
+
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [W, H] });
+
+        // ── Fondo: --surface #f8fafc ──
+        doc.setFillColor(...CSS.surface);
+        doc.roundedRect(0, 0, W, H, 4, 4, 'F');
+
+        // ── QR canvas wrap (replica el .qr-canvas-wrap) ──
+        // Proporciones CSS: padding 1rem=4mm lateral, wrap padding 0.6rem≈2.5mm, radius 0.55rem≈2mm
+        const cardPad = 4;
+        const wrapPad = 2.5;
+        const wrapX   = cardPad;
+        const wrapW   = W - cardPad * 2;   // 49mm
+        const wrapY   = 22;                 // desplazado abajo, deja espacio para perforación
+        const wrapH   = wrapW;              // cuadrado
+
+        // ── Círculo indicador de perforación ──
+        doc.setFillColor(...CSS.accentS);
+        doc.setDrawColor(...CSS.border);
+        doc.setLineWidth(0.5);
+        doc.circle(W / 2, 7, 3.5, 'FD');
+
+        // Admin: fondo --accent-s + borde --accent | Regular: fondo blanco + borde --border
+        doc.setFillColor(...(card.isAdmin ? CSS.accentS : [255, 255, 255]));
+        doc.setDrawColor(...(card.isAdmin ? CSS.accent  : CSS.border));
+        doc.setLineWidth(0.5);
+        doc.roundedRect(wrapX, wrapY, wrapW, wrapH, 2, 2, 'FD');
+
+        // QR dentro del wrap con padding interior
+        const qrSize = wrapW - wrapPad * 2;   // 44mm
+        doc.addImage(
+            makeQRDataURL(card.value, card.isAdmin),
+            'PNG',
+            wrapX + wrapPad, wrapY + wrapPad,
+            qrSize, qrSize
+        );
+
+        // ── Etiqueta: .qr-label (DM Mono → Courier bold, letter-spacing 0.5px) ──
+        const gap    = 3;   // ≈ 0.75rem flex gap
+        const labelY = wrapY + wrapH + gap;   // ≈ 67mm
+
+        doc.setTextColor(...(card.isAdmin ? CSS.accent : CSS.text));
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(9.5);
+        doc.setCharSpace(0.4);
+        doc.text(doc.splitTextToSize(card.label, wrapW), W / 2, labelY, { align: 'center' });
+        doc.setCharSpace(0);
+
+        // ── Sub-etiqueta: .qr-sublabel ──
+        if (card.sublabel) {
+            doc.setTextColor(...CSS.muted);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text(doc.splitTextToSize(card.sublabel, wrapW), W / 2, labelY + 4.5, { align: 'center' });
+        }
+
+        // ── Borde exterior: border 1.5px --border, border-radius 0.85rem≈4mm ──
+        doc.setDrawColor(...CSS.border);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(0.5, 0.5, W - 1, H - 1, 3.5, 3.5, 'S');
+
+        zip.file(`QR_${card.label.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`, doc.output('arraybuffer'));
+    }
+
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Empaquetando…';
+    const blob = await zip.generateAsync({ type: 'blob' });
+    saveAs(blob, 'QR_Tabletas.zip');
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check"></i> Descargado';
+    setTimeout(() => { btn.innerHTML = '<i class="fas fa-print"></i> Imprimir'; }, 3000);
+}
 </script>
 </body>
 </html>
