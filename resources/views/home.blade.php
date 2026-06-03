@@ -157,19 +157,19 @@
                     </a>
                     @endpermiso
 
-                    @permiso('equ', 'ver')
+                    {{-- @permiso('equ', 'ver')
                     <a href="#" class="opcion-card" style="animation-delay:0.10s">
                         <div class="opcion-icon ic-green"><i class="fas fa-tools"></i></div>
                         <span class="opcion-label">Equipos</span>
                     </a>
-                    @endpermiso
+                    @endpermiso --}}
 
-                    @permiso('veh', 'ver')
+                    {{-- @permiso('veh', 'ver')
                     <a href="#" class="opcion-card" style="animation-delay:0.13s">
                         <div class="opcion-icon ic-yellow"><i class="fas fa-truck"></i></div>
                         <span class="opcion-label">Vehículos</span>
                     </a>
-                    @endpermiso
+                    @endpermiso --}}
 
                     @permiso('per', 'ver')
                     <a href="{{ route('permisos.index') }}" class="opcion-card" style="animation-delay:0.16s">
@@ -185,19 +185,19 @@
                     </a>
                     @endpermiso
 
-                    @permiso('her', 'ver')
+                    {{-- @permiso('her', 'ver')
                     <a href="#" class="opcion-card" style="animation-delay:0.22s">
                         <div class="opcion-icon ic-teal"><i class="fas fa-hammer"></i></div>
                         <span class="opcion-label">Herramientas</span>
                     </a>
-                    @endpermiso
+                    @endpermiso --}}
 
-                    @permiso('man', 'ver')
+                    {{-- @permiso('man', 'ver')
                     <a href="{{ route('mantenimiento.show') }}" class="opcion-card" style="animation-delay:0.25s">
                         <div class="opcion-icon ic-pink"><i class="fas fa-wrench"></i></div>
                         <span class="opcion-label">Mantenimiento</span>
                     </a>
-                    @endpermiso
+                    @endpermiso --}}
 
                     @permiso('pre_ped', 'ver')
                     <a href="{{ route('preparobra.index') }}" class="opcion-card" style="animation-delay:0.31s">
@@ -227,12 +227,12 @@
                     </a>
                     @endpermiso
 
-                    @permiso('rep', 'ver')
+                    {{-- @permiso('rep', 'ver')
                     <a href="#" class="opcion-card" style="animation-delay:0.43s">
                         <div class="opcion-icon ic-blue"><i class="fas fa-chart-bar"></i></div>
                         <span class="opcion-label">Reportes</span>
                     </a>
-                    @endpermiso
+                    @endpermiso --}}
 
                     @permiso('pro', 'ver')
                     <a href="{{ route('problemas.index') }}" class="opcion-card" style="animation-delay:0.46s">
@@ -245,6 +245,13 @@
                     <a href="{{ route('bibliografia.index') }}" class="opcion-card" style="animation-delay:0.48s">
                         <div class="opcion-icon ic-blue"><i class="fas fa-book"></i></div>
                         <span class="opcion-label">Bibliografías</span>
+                    </a>
+                    @endpermiso
+
+                    @permiso('pla', 'ver')
+                    <a href="{{ route('plantilla.index') }}" class="opcion-card" style="animation-delay:0.54s">
+                        <div class="opcion-icon ic-blue"><i class="fas fa-file-alt"></i></div>
+                        <span class="opcion-label">Plantillas</span>
                     </a>
                     @endpermiso
 

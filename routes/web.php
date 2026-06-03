@@ -27,6 +27,7 @@ use App\Http\Controllers\ProblemaController;
 use App\Http\Controllers\SituacionAvanceController;
 use App\Http\Controllers\ValidarpresupuestoController;
 use App\Http\Controllers\BibliografiaController;
+use App\Http\Controllers\PlantillaController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
@@ -401,6 +402,27 @@ Route::middleware('permiso:bib,eliminar')->group(function () {
     Route::delete('/bibliografia/{id}', [BibliografiaController::class, 'destroy'])->name('bibliografia.destroy');
 });
 
+
+// ── Plantilla ─────────────────────────────────────────────────────────────────
+Route::middleware('permiso:pla,ver')->group(function () {
+    Route::get('/plantilla', [PlantillaController::class, 'index'])->name('plantilla.index');
+    Route::get('/plantilla/{id}/descargar', [PlantillaController::class, 'download'])->name('plantilla.download');
+});
+Route::middleware('permiso:pla,agregar')->group(function () {
+    Route::get('/plantilla/crear', [PlantillaController::class, 'create'])->name('plantilla.create');
+    Route::post('/plantilla', [PlantillaController::class, 'store'])->name('plantilla.store');
+});
+Route::middleware('permiso:pla,ver')->group(function () {
+    Route::get('/plantilla/{id}', [PlantillaController::class, 'show'])->name('plantilla.show');
+});
+Route::middleware('permiso:pla,editar')->group(function () {
+    Route::get('/plantilla/{id}/editar', [PlantillaController::class, 'edit'])->name('plantilla.edit');
+    Route::put('/plantilla/{id}', [PlantillaController::class, 'update'])->name('plantilla.update');
+    Route::post('/plantilla/{id}/revision', [PlantillaController::class, 'storeRevision'])->name('plantilla.revision');
+});
+Route::middleware('permiso:pla,eliminar')->group(function () {
+    Route::delete('/plantilla/{id}', [PlantillaController::class, 'destroy'])->name('plantilla.destroy');
+});
 
 //ruta de pizarra
 Route::get('/pizarra', function () {
