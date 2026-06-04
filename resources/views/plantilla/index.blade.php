@@ -213,6 +213,7 @@
             background: var(--surface2); border: 1px solid var(--border);
             border-radius: 0.55rem; padding: 0.7rem 1rem;
             margin-bottom: 1.4rem; line-height: 1.55;
+            white-space: pre-wrap;
         }
         .ver-descripcion-vacia { color: var(--muted); font-style: italic; }
         .ver-rev-titulo {
@@ -358,7 +359,7 @@
                                     @endpermiso
                                     @permiso('pla', 'editar')
                                     <button type="button" class="btn btn-sm" title="Editar"
-                                        onclick="abrirModalEditar({{ $pla->id }}, '{{ addslashes($pla->nombre) }}', '{{ addslashes($pla->descripcion) }}', '{{ addslashes($pla->observacion ?? '') }}')">
+                                        onclick="abrirModalEditar({{ $pla->id }})">
                                         <i class="fas fa-pencil-alt"></i>
                                     </button>
                                     @php
@@ -366,7 +367,7 @@
                                         $nextRev = 'Rev - ' . str_pad((isset($m[1]) ? (int)$m[1] + 1 : 2), 3, '0', STR_PAD_LEFT);
                                     @endphp
                                     <button type="button" class="btn btn-sm" title="Nueva revisión"
-                                        onclick="abrirModalActualizar({{ $pla->id }}, '{{ addslashes($pla->nombre) }}', '{{ addslashes($pla->descripcion) }}', '{{ $nextRev }}', '{{ addslashes($pla->observacion ?? '') }}')">
+                                        onclick="abrirModalActualizar({{ $pla->id }}, '{{ $nextRev }}')">
                                         <i class="fas fa-history"></i>
                                     </button>
                                     @endpermiso
@@ -604,6 +605,7 @@
         {{ $pla->id }}: {
             nombre: @json($pla->nombre),
             descripcion: @json($pla->descripcion ?? ''),
+            observacion: @json($pla->observacion ?? ''),
             revisiones: [
                 @foreach(array_reverse($cadenas[$pla->id]) as $rev)
                 {
@@ -665,7 +667,7 @@
             const obsHtml = rev.observacion && rev.observacion.trim()
                 ? `<div class="rev-archivo" style="padding: 0 1rem 0.55rem; color:var(--muted); font-style:italic; font-size:0.8rem; gap:0.4rem;">
                        <i class="fas fa-comment-alt" style="color:var(--muted);"></i>
-                       <span>${rev.observacion}</span>
+                       <span style="white-space:pre-wrap;">${rev.observacion}</span>
                    </div>`
                 : '';
 
@@ -821,15 +823,17 @@
     /* ─── Modal Actualizar (nueva revisión) ───────────────── */
     let archivosAct = [];
 
-    function abrirModalActualizar(id, nombre, descripcion, nextRev, observacion) {
+    function abrirModalActualizar(id, nextRev) {
+        const data = plantillasData[id];
+        if (!data) return;
         archivosAct = [];
         document.getElementById('file-list-act').innerHTML = '';
         document.getElementById('input-archivos-act').value = '';
-        document.getElementById('act-nombre').value = nombre;
-        document.getElementById('act-descripcion').value = descripcion;
-        document.getElementById('act-nombre-hidden').value = nombre;
-        document.getElementById('act-descripcion-hidden').value = descripcion;
-        document.getElementById('act-observacion').value = observacion || '';
+        document.getElementById('act-nombre').value = data.nombre;
+        document.getElementById('act-descripcion').value = data.descripcion;
+        document.getElementById('act-nombre-hidden').value = data.nombre;
+        document.getElementById('act-descripcion-hidden').value = data.descripcion;
+        document.getElementById('act-observacion').value = '';
         document.getElementById('act-rev-label').textContent = nextRev;
         document.getElementById('act-revision').value = nextRev;
         document.getElementById('act-nombre').classList.remove('error');
@@ -905,10 +909,12 @@
     });
 
     /* ─── Modal Editar ────────────────────────────────────── */
-    function abrirModalEditar(id, nombre, descripcion, observacion) {
-        document.getElementById('edit-nombre').value = nombre;
-        document.getElementById('edit-descripcion').value = descripcion;
-        document.getElementById('edit-observacion').value = observacion;
+    function abrirModalEditar(id) {
+        const data = plantillasData[id];
+        if (!data) return;
+        document.getElementById('edit-nombre').value = data.nombre;
+        document.getElementById('edit-descripcion').value = data.descripcion;
+        document.getElementById('edit-observacion').value = data.observacion;
         document.getElementById('edit-nombre').classList.remove('error');
         document.getElementById('form-editar').action = '/plantilla/' + id;
         document.getElementById('modal-editar').classList.add('active');
