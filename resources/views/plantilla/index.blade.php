@@ -833,7 +833,7 @@
         document.getElementById('act-descripcion').value = data.descripcion;
         document.getElementById('act-nombre-hidden').value = data.nombre;
         document.getElementById('act-descripcion-hidden').value = data.descripcion;
-        document.getElementById('act-observacion').value = '';
+        document.getElementById('act-observacion').value = data.revisiones.length > 0 ? data.revisiones[0].observacion : '';
         document.getElementById('act-rev-label').textContent = nextRev;
         document.getElementById('act-revision').value = nextRev;
         document.getElementById('act-nombre').classList.remove('error');
