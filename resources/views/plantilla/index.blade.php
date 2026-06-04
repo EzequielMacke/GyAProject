@@ -267,6 +267,111 @@
         .btn-cancel:hover { background: var(--surface2); }
         .btn-confirm-delete { height: 36px; padding: 0 1rem; border-radius: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; border: none; background: #c0392b; color: #fff; cursor: pointer; transition: background 0.14s; }
         .btn-confirm-delete:hover { background: #a93226; }
+
+        /* ════════════════════════════════════════
+           RESPONSIVE
+        ════════════════════════════════════════ */
+
+        /* ── TABLET ≤ 900px: ocultar columna descripción ── */
+        @media (max-width: 900px) {
+            .list-header,
+            .pla-row {
+                grid-template-columns: 40px 1fr 120px 90px 165px;
+            }
+            .list-header > div:nth-child(3),
+            .pla-desc { display: none; }
+        }
+
+        /* ── MOBILE ≤ 640px: diseño de tarjeta ── */
+        @media (max-width: 640px) {
+
+            /* Encabezado */
+            .ph { padding: 1rem 0 0.75rem; gap: 0.75rem; margin-bottom: 1rem; }
+            .ph-title { font-size: 1.3rem; }
+            .ph-right { width: 100%; }
+            .search-wrap { flex: 1; min-width: 0; }
+            .search-bar,
+            .search-bar:focus { width: 100% !important; }
+
+            /* Lista: tarjeta */
+            .list-header { display: none; }
+
+            .pla-row {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                grid-template-rows: auto auto auto;
+                column-gap: 0.75rem;
+                row-gap: 0;
+                padding: 0.85rem 1rem;
+                align-items: start;
+            }
+
+            .pla-num    { display: none; }
+            .pla-nombre { grid-column: 1; grid-row: 1; padding-bottom: 0.15rem; }
+
+            .pla-desc {
+                grid-column: 1; grid-row: 2;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                font-size: 0.78rem;
+                color: var(--muted);
+            }
+
+            .pla-rev     { grid-column: 1; grid-row: 3; padding-top: 0.4rem; }
+            .pla-usuario { display: none; }
+
+            .pla-acciones {
+                grid-column: 2;
+                grid-row: 1 / 4;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: flex-end;
+                gap: 0.3rem;
+                align-self: stretch;
+            }
+
+            .btn-sm { height: 28px; padding: 0 0.55rem; }
+
+            /* Modales */
+            .modal-overlay { padding: 0.5rem; }
+
+            .modal-nuevo {
+                max-width: 100%;
+                max-height: 90vh;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .modal-nuevo form {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-height: 0;
+                overflow: hidden;
+            }
+
+            .modal-nuevo .modal-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 1.1rem 1.25rem;
+            }
+
+            .modal-head  { padding: 1rem 1.25rem 0.9rem; }
+            .modal-foot  { padding: 0.85rem 1.25rem 1rem; }
+
+            .modal-ver-box { max-width: 100%; max-height: 92vh; }
+            .modal-ver-body { padding: 1.1rem 1.25rem; }
+
+            .modal-del-box { max-width: 100%; width: 100%; }
+
+            .drop-zone { padding: 1.5rem 1rem; }
+            .drop-zone-icon { font-size: 1.5rem; margin-bottom: 0.35rem; }
+
+            .rev-badge { font-size: 0.8rem; padding: 0.35rem 0.65rem; }
+        }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
