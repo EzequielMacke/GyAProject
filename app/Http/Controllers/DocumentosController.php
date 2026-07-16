@@ -138,7 +138,7 @@ class DocumentosController extends Controller
         $documento = Documento::with(['tipoTrabajo', 'trabajosDetalles.ensayo', 'trabajosDetalles.encargado'])->findOrFail($documentoId);
 
         // Ruta a la plantilla
-        $templatePath = public_path('storage/informes_modelo/Plantilla v2.docx');
+        $templatePath = storage_path('app/public/informes_modelo/Plantilla v2.docx');
         $templateProcessor = new TemplateProcessor($templatePath);
 
         // Reemplazo de marcadores generales
