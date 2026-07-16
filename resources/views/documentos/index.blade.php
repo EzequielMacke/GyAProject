@@ -6,7 +6,7 @@
     <title>Generador de Documentos</title>
     @include('partials.head')
 
-    @php
+    {{-- @php
         use App\Models\Modulo;
         use App\Models\Permiso;
         $permisos = Permiso::where('area_id', session('usuario_area_id'))->get();
@@ -15,7 +15,7 @@
         <script>
             window.location.href = "{{ url('/home') }}";
         </script>
-    @endif
+    @endif --}}
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
     <div class="wrapper">
@@ -28,11 +28,11 @@
                         <div class="col-sm-6">
                             <h1 class="m-0">Listado de Documentos</h1>
                         </div>
-                        @if ($permisos->where('modulo_id', Modulo::where('nombre', 'gen_doc')->first()->id ?? null)->where('agregar', 1)->isNotEmpty())
+                        {{-- @if ($permisos->where('modulo_id', Modulo::where('nombre', 'gen_doc')->first()->id ?? null)->where('agregar', 1)->isNotEmpty()) --}}
                         <div class="col-sm-6">
                             <a href="{{ route('documentos.create') }}" class="btn btn-primary float-right" id="agregar-insumo-btn">Agregar Documento</a>
                         </div>
-                        @endif
+                        {{-- @endif --}}
                     </div>
                 </div>
             </div>

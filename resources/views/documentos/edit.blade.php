@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar Documento</title>
     @includeIf('partials.head')
-    @php
+    {{-- @php
         use App\Models\Modulo;
         use App\Models\Permiso;
         $permisos = Permiso::where('area_id', session('usuario_area_id'))->get();
@@ -14,7 +14,7 @@
         <script>
             window.location.href = "{{ url('/home') }}";
         </script>
-    @endif
+    @endif --}}
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
     <div class="wrapper">
