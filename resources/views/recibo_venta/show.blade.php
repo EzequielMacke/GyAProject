@@ -414,7 +414,36 @@
             border-top: 1px solid var(--border);
             background: var(--surface2);
             display: flex;
+            align-items: center;
             justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .card-action form { display: inline-flex; }
+
+        .btn-danger-outline {
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            border-radius: 0.55rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            border: 1.5px solid var(--red-s);
+            background: var(--red-s);
+            color: var(--red);
+            cursor: pointer;
+            transition: all 0.14s;
+            flex-shrink: 0;
+            margin-right: auto;
+        }
+
+        .btn-danger-outline:hover {
+            background: var(--red);
+            border-color: var(--red);
+            color: #fff;
         }
 
         /* empty / no results */
@@ -605,6 +634,16 @@
 
                         {{-- Footer --}}
                         <div class="card-action">
+                            @permiso('fac', 'eliminar')
+                            <form action="{{ route('recibo_venta.destroy', $recibo->id) }}" method="POST"
+                                  onsubmit="return confirm('¿Eliminar el recibo {{ addslashes($recibo->nro_recibo) }}? Esta acción no se puede deshacer.');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn-danger-outline" title="Eliminar recibo">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+                            @endpermiso
                             @permiso('fac', 'editar')
                             <a href="{{ route('recibo_venta.edit', $recibo->id) }}" class="btn">
                                 <i class="fas fa-pen"></i> Editar

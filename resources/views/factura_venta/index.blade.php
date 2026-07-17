@@ -118,6 +118,30 @@
             color: #fff;
         }
 
+        .btn-danger-outline {
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            border-radius: 0.55rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            border: 1.5px solid var(--red-s);
+            background: var(--red-s);
+            color: var(--red);
+            cursor: pointer;
+            transition: all 0.14s;
+            flex-shrink: 0;
+            margin-right: auto;
+        }
+
+        .btn-danger-outline:hover {
+            background: var(--red);
+            border-color: var(--red);
+            color: #fff;
+        }
+
         /* ── Search ── */
         .search-wrap { position: relative; }
 
@@ -426,6 +450,8 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 0.4rem;
         }
 
         /* empty / no results */
@@ -490,6 +516,12 @@
                 @if(session('success'))
                 <div class="alert alert-success mb-3" style="border-radius:0.55rem; font-size:0.85rem;">
                     {{ session('success') }}
+                </div>
+                @endif
+
+                @if(session('error'))
+                <div class="alert alert-danger mb-3" style="border-radius:0.55rem; font-size:0.85rem;">
+                    {{ session('error') }}
                 </div>
                 @endif
 
@@ -623,6 +655,19 @@
 
                         {{-- Footer: edit link + recibos button --}}
                         <div class="card-action">
+                            @if($factura->recibosVenta->isEmpty())
+                            @permiso('fac', 'eliminar')
+                            <form action="{{ route('factura_venta.destroy', $factura->id) }}" method="POST"
+                                  onsubmit="event.stopPropagation(); return confirm('¿Eliminar la factura {{ addslashes($factura->nro_factura) }}? Esta acción no se puede deshacer.');"
+                                  onclick="event.stopPropagation()">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn-danger-outline" title="Eliminar factura">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+                            @endpermiso
+                            @endif
                             @permiso('fac', 'agregar')
                             <a href="{{ route('recibo_venta.index', ['presupuesto' => $factura->presupuesto_aprobado_id, 'obra' => $factura->obra_id, 'factura' => $factura->id]) }}"
                                class="btn btn-green"
@@ -633,7 +678,6 @@
                             @permiso('fac', 'editar')
                             <a href="{{ route('factura_venta.edit', $factura->id) }}"
                                class="btn"
-                               style="margin-left:0.4rem;"
                                onclick="event.stopPropagation()">
                                 <i class="fas fa-pen"></i> Editar
                             </a>

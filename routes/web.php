@@ -262,6 +262,9 @@ Route::middleware('permiso:fac,editar')->group(function () {
     Route::get('/factura_venta/{id}/edit', [FacturaVentaController::class, 'edit'])->name('factura_venta.edit');
     Route::put('/factura_venta/{id}', [FacturaVentaController::class, 'update'])->name('factura_venta.update');
 });
+Route::middleware('permiso:fac,eliminar')->group(function () {
+    Route::delete('/factura_venta/{id}', [FacturaVentaController::class, 'destroy'])->name('factura_venta.destroy');
+});
 Route::middleware('permiso:fac,ver')->group(function () {
     Route::get('/factura_venta/{presupuesto?}/{obra?}', [FacturaVentaController::class, 'index'])->name('factura_venta.index');
 });
@@ -274,6 +277,9 @@ Route::middleware('permiso:fac,agregar')->group(function () {
 Route::middleware('permiso:fac,editar')->group(function () {
     Route::get('/recibo_venta/{id}/edit', [ReciboController::class, 'edit'])->name('recibo_venta.edit');
     Route::put('/recibo_venta/{id}', [ReciboController::class, 'update'])->name('recibo_venta.update');
+});
+Route::middleware('permiso:fac,eliminar')->group(function () {
+    Route::delete('/recibo_venta/{id}', [ReciboController::class, 'destroy'])->name('recibo_venta.destroy');
 });
 Route::middleware('permiso:fac,ver')->group(function () {
     Route::get('/recibo_venta/{presupuesto?}/{obra?}/{factura?}', [ReciboController::class, 'index'])->name('recibo_venta.index');

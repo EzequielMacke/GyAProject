@@ -119,6 +119,23 @@ class FacturaVentaController extends Controller
             ->with('success', 'Factura de venta actualizada correctamente.');
     }
 
+    public function destroy($id)
+    {
+        $factura = FacturaVenta::findOrFail($id);
+
+        if ($factura->recibosVenta()->exists()) {
+            return redirect()->route('factura_venta.index', ['presupuesto' => $factura->presupuesto_aprobado_id, 'obra' => $factura->obra_id])
+                ->with('error', 'No se puede eliminar la factura porque tiene recibos de cobro asociados.');
+        }
+
+        $presupuestoId = $factura->presupuesto_aprobado_id;
+        $obraId = $factura->obra_id;
+        $factura->delete();
+
+        return redirect()->route('factura_venta.index', ['presupuesto' => $presupuestoId, 'obra' => $obraId])
+            ->with('success', 'Factura de venta eliminada correctamente.');
+    }
+
     public function search()
     {
         $presupuestos = PresupuestoAprobado::with('obra')

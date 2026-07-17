@@ -94,6 +94,18 @@ class ReciboController extends Controller
         ])->with('success', 'Recibo actualizado correctamente.');
     }
 
+    public function destroy($id)
+    {
+        $recibo = RecibidoVenta::findOrFail($id);
+        $presupuestoId = $recibo->presupuesto_aprobado_id;
+        $obraId = $recibo->obra_id;
+        $facturaId = $recibo->factura_id;
+        $recibo->delete();
 
-    
+        return redirect()->route('recibo_venta.index', [
+            'presupuesto' => $presupuestoId,
+            'obra' => $obraId,
+            'factura' => $facturaId
+        ])->with('success', 'Recibo eliminado correctamente.');
+    }
 }
