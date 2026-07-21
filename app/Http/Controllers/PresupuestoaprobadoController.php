@@ -13,7 +13,7 @@ class PresupuestoaprobadoController extends Controller
 {
     public function index(Request $request, $obra = null)
     {
-        $query = PresupuestoAprobado::with('usuario');
+        $query = PresupuestoAprobado::with(['usuario', 'situacionAvances.estadoSituacion']);
         $obraModel = null;
         if ($obra) {
             $obraModel = Obra::findOrFail($obra);

@@ -25,6 +25,9 @@
             --green-b:  #a8dcc9;
             --slate:    #4e6070;
             --slate-s:  #edf1f4;
+            --orange:   #c9820c;
+            --orange-s: #fbf1de;
+            --orange-b: #f0d6a3;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -271,6 +274,13 @@
             flex: 1;
         }
 
+        .card-name-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
         .card-name {
             font-size: 0.92rem;
             font-weight: 700;
@@ -278,6 +288,24 @@
             line-height: 1.3;
             word-break: break-word;
         }
+
+        .estado-badge {
+            font-size: 0.62rem;
+            font-weight: 700;
+            padding: 0.22rem 0.55rem;
+            border-radius: 99px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .estado-badge.estado-aprobado { background: var(--slate-s); color: var(--slate); border: 1px solid var(--border2); }
+        .estado-badge.estado-agendado { background: var(--orange-s); color: var(--orange); border: 1px solid var(--orange-b); }
+        .estado-badge.estado-en-curso { background: var(--accent-s); color: var(--accent); border: 1px solid #c6d9f7; }
+        .estado-badge.estado-terminado,
+        .estado-badge.estado-entregado,
+        .estado-badge.estado-finalizado { background: var(--green-s); color: var(--green); border: 1px solid var(--green-b); }
 
         .card-tipo {
             font-size: 0.75rem;
@@ -494,6 +522,9 @@
 
                     {{-- Budget cards --}}
                     @foreach($presupuestos->reverse() as $presupuesto)
+                    @php
+                        $avance = $presupuesto->situacionAvances->sortByDesc('id')->first();
+                    @endphp
                     <a href="{{ route('presupuesto_aprobado.edit', $presupuesto->id) }}"
                        class="budget-card"
                        style="animation-delay:{{ $loop->index * 0.04 }}s"
@@ -511,7 +542,12 @@
                         </div>
 
                         <div class="card-body">
-                            <div class="card-name">{{ $presupuesto->clave }}</div>
+                            <div class="card-name-row">
+                                <div class="card-name">{{ $presupuesto->clave }}</div>
+                                @if($avance?->estadoSituacion)
+                                <span class="estado-badge estado-{{ Str::slug($avance->estadoSituacion->descripcion) }}">{{ $avance->estadoSituacion->descripcion }}</span>
+                                @endif
+                            </div>
                             <div class="card-tipo">{{ config('constantes.tipo_trabajo')[$presupuesto->tipo_trabajo] ?? 'Desconocido' }}</div>
 
                             <div class="card-meta">
