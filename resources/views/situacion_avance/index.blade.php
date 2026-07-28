@@ -264,6 +264,41 @@
             display: block; font-size: 0.75rem; font-weight: 600;
             color: var(--text2); margin-bottom: 0.3rem;
         }
+        /* dual range slider */
+        .range-slider { position: relative; height: 20px; margin: 0.5rem 0.2rem 0.15rem; }
+        .range-track {
+            position: absolute; top: 50%; left: 0; right: 0; height: 4px;
+            background: var(--border2); border-radius: 99px; transform: translateY(-50%);
+        }
+        .range-fill {
+            position: absolute; top: 50%; height: 4px;
+            background: var(--accent-s); border-radius: 99px; transform: translateY(-50%);
+        }
+        .range-input {
+            position: absolute; top: 0; left: 0; width: 100%; height: 20px;
+            margin: 0; background: transparent; pointer-events: none;
+            -webkit-appearance: none; appearance: none;
+        }
+        .range-input::-webkit-slider-runnable-track { background: transparent; height: 20px; }
+        .range-input::-moz-range-track { background: transparent; height: 20px; }
+        .range-input::-webkit-slider-thumb {
+            -webkit-appearance: none; pointer-events: auto;
+            width: 15px; height: 15px; border-radius: 50%;
+            border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            cursor: pointer; margin-top: 3px;
+        }
+        .range-input::-moz-range-thumb {
+            pointer-events: auto; width: 15px; height: 15px; border-radius: 50%;
+            border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3); cursor: pointer;
+        }
+        .range-input.range-min::-webkit-slider-thumb { background: var(--accent); }
+        .range-input.range-min::-moz-range-thumb { background: var(--accent); }
+        .range-input.range-max::-webkit-slider-thumb { background: var(--green); }
+        .range-input.range-max::-moz-range-thumb { background: var(--green); }
+        .range-values {
+            display: flex; justify-content: space-between;
+            font-size: 0.7rem; font-weight: 600; color: var(--muted);
+        }
         /* searchable select */
         .ss-wrap { position: relative; }
         .ss-input {
@@ -467,12 +502,44 @@
                                 </div>
                             </div>
 
+                            <div class="filter-group">
+                                <label class="filter-label">% Facturado</label>
+                                <div class="range-slider" data-range="f-facturado">
+                                    <div class="range-track"></div>
+                                    <div class="range-fill"></div>
+                                    <input type="range" min="0" max="100" value="0"   class="range-input range-min">
+                                    <input type="range" min="0" max="100" value="100" class="range-input range-max">
+                                </div>
+                                <div class="range-values">
+                                    <span class="range-value-min">0%</span>
+                                    <span class="range-value-max">100%</span>
+                                </div>
+                            </div>
+
+                            <div class="filter-group">
+                                <label class="filter-label">% Cobrado</label>
+                                <div class="range-slider" data-range="f-cobrado">
+                                    <div class="range-track"></div>
+                                    <div class="range-fill"></div>
+                                    <input type="range" min="0" max="100" value="0"   class="range-input range-min">
+                                    <input type="range" min="0" max="100" value="100" class="range-input range-max">
+                                </div>
+                                <div class="range-values">
+                                    <span class="range-value-min">0%</span>
+                                    <span class="range-value-max">100%</span>
+                                </div>
+                            </div>
+
                             <div class="filter-actions">
                                 <button class="btn btn-sm" id="filter-clear">Limpiar</button>
                                 <button class="btn btn-sm btn-primary" id="filter-apply">Aplicar</button>
                             </div>
                         </div>
                     </div>
+
+                    <a href="{{ route('situacion_avance.report') }}" class="btn">
+                        <i class="fas fa-file-alt"></i> Reporte
+                    </a>
 
                     <a href="{{ route('home') }}" class="btn">
                         <i class="fas fa-arrow-left"></i> Volver
@@ -560,7 +627,9 @@
                                                 data-mes="{{ $avance?->fecha_inicio ? \Carbon\Carbon::parse($avance->fecha_inicio)->month : '' }}"
                                                 data-anio="{{ $avance?->fecha_inicio ? \Carbon\Carbon::parse($avance->fecha_inicio)->year : '' }}"
                                                 data-mes-fin="{{ $avance?->fecha_fin ? \Carbon\Carbon::parse($avance->fecha_fin)->month : '' }}"
-                                                data-anio-fin="{{ $avance?->fecha_fin ? \Carbon\Carbon::parse($avance->fecha_fin)->year : '' }}">
+                                                data-anio-fin="{{ $avance?->fecha_fin ? \Carbon\Carbon::parse($avance->fecha_fin)->year : '' }}"
+                                                data-pct-fac="{{ $pctFac }}"
+                                                data-pct-cob="{{ $pctCob }}">
                                                 <td class="td-clave">
                                                     {{ $presupuesto->clave }}
                                                     <div style="font-size:0.72rem; font-weight:500; margin-top:2px; color:var(--muted);">
@@ -908,31 +977,75 @@
         }
     });
 
+    // ── Dual range sliders ──────────────────────────────────────────────────
+    const rangeValues = {};
+
+    document.querySelectorAll('.range-slider').forEach(slider => {
+        const id       = slider.dataset.range;
+        const minInput = slider.querySelector('.range-min');
+        const maxInput = slider.querySelector('.range-max');
+        const fill     = slider.querySelector('.range-fill');
+        const valMin   = slider.parentElement.querySelector('.range-value-min');
+        const valMax   = slider.parentElement.querySelector('.range-value-max');
+
+        rangeValues[id] = { min: 0, max: 100 };
+
+        function update() {
+            let min = parseInt(minInput.value);
+            let max = parseInt(maxInput.value);
+            if (min > max) { [min, max] = [max, min]; }
+
+            minInput.value = min;
+            maxInput.value = max;
+            rangeValues[id] = { min, max };
+
+            fill.style.left  = min + '%';
+            fill.style.right = (100 - max) + '%';
+            valMin.textContent = min + '%';
+            valMax.textContent = max + '%';
+
+            applyAllFilters();
+        }
+
+        minInput.addEventListener('input', update);
+        maxInput.addEventListener('input', update);
+        update();
+    });
+
     function getFilters() {
         return {
-            obra:    ssValues['f-obra']     || '',
-            mes:     ssValues['f-mes']      || '',
-            anio:    ssValues['f-anio']     || '',
-            mesFin:  ssValues['f-mes-fin']  || '',
-            anioFin: ssValues['f-anio-fin'] || '',
-            tipo:    ssValues['f-tipo']     || '',
-            search:  document.getElementById('global-search').value.toLowerCase(),
+            obra:      ssValues['f-obra']     || '',
+            mes:       ssValues['f-mes']      || '',
+            anio:      ssValues['f-anio']     || '',
+            mesFin:    ssValues['f-mes-fin']  || '',
+            anioFin:   ssValues['f-anio-fin'] || '',
+            tipo:      ssValues['f-tipo']     || '',
+            facMin:    rangeValues['f-facturado']?.min ?? 0,
+            facMax:    rangeValues['f-facturado']?.max ?? 100,
+            cobMin:    rangeValues['f-cobrado']?.min ?? 0,
+            cobMax:    rangeValues['f-cobrado']?.max ?? 100,
+            search:    document.getElementById('global-search').value.toLowerCase(),
         };
     }
 
     function rowMatches(row, f) {
+        const pctFac = Number(row.dataset.pctFac || 0);
+        const pctCob = Number(row.dataset.pctCob || 0);
         return (!f.obra    || row.dataset.obra   == f.obra)
             && (!f.mes     || row.dataset.mes    == f.mes)
             && (!f.anio    || row.dataset.anio   == f.anio)
             && (!f.mesFin  || row.dataset.mesFin == f.mesFin)
             && (!f.anioFin || row.dataset.anioFin== f.anioFin)
             && (!f.tipo    || row.dataset.tipo   == f.tipo)
+            && pctFac >= f.facMin && pctFac <= f.facMax
+            && pctCob >= f.cobMin && pctCob <= f.cobMax
             && (!f.search  || row.textContent.toLowerCase().includes(f.search));
     }
 
     function applyAllFilters() {
         const f = getFilters();
-        const activeCount = [f.obra, f.mes, f.anio, f.mesFin, f.anioFin, f.tipo].filter(v => v !== '').length;
+        const rangoActivo = f.facMin > 0 || f.facMax < 100 || f.cobMin > 0 || f.cobMax < 100;
+        const activeCount = [f.obra, f.mes, f.anio, f.mesFin, f.anioFin, f.tipo].filter(v => v !== '').length + (rangoActivo ? 1 : 0);
         filterCount.textContent = activeCount;
         filterCount.style.display = activeCount > 0 ? 'inline' : 'none';
         filterToggle.classList.toggle('btn-filter-active', activeCount > 0);
@@ -976,6 +1089,14 @@
                 o.style.display = '';
             });
             wrap.querySelector('.ss-empty')?.remove();
+        });
+        document.querySelectorAll('.range-slider').forEach(slider => {
+            const id = slider.dataset.range;
+            const minInput = slider.querySelector('.range-min');
+            const maxInput = slider.querySelector('.range-max');
+            minInput.value = 0;
+            maxInput.value = 100;
+            minInput.dispatchEvent(new Event('input'));
         });
         applyAllFilters();
     });

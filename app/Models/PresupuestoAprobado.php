@@ -58,4 +58,9 @@ class PresupuestoAprobado extends Model
     {
         return $this->hasMany(\App\Models\RecibidoVenta::class, 'presupuesto_aprobado_id');
     }
+
+    public function controlGasto()
+    {
+        return $this->hasOne(\App\Models\ControlGasto::class, 'presupuesto_aprobado_id');
+    }
 }

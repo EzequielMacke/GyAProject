@@ -357,6 +357,13 @@
                     </a>
                     @endpermiso
 
+                    @permiso('con_gas', 'ver')
+                    <a href="{{ route('control_gastos.index', $obra->id) }}" class="opcion-card" style="animation-delay:0.32s">
+                        <div class="opcion-icon ic-yellow"><i class="fas fa-coins"></i></div>
+                        <span class="opcion-label">Control de Gastos</span>
+                    </a>
+                    @endpermiso
+
                 </div>
 
             </div>

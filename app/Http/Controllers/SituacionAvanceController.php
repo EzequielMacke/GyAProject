@@ -6,7 +6,9 @@ use App\Models\EstadoSituacion;
 use App\Models\Obra;
 use App\Models\PresupuestoAprobado;
 use App\Models\SituacionAvance;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class SituacionAvanceController extends Controller
 {
@@ -83,5 +85,104 @@ class SituacionAvanceController extends Controller
         $avance->update($data);
 
         return back()->with('success', 'Situación de avance actualizada correctamente.');
+    }
+
+    public function report(Request $request)
+    {
+        $estados     = EstadoSituacion::all();
+        $obras       = Obra::orderBy('nombre')->get();
+        $tipoTrabajo = config('constantes.tipo_trabajo');
+
+        $presupuestos = PresupuestoAprobado::with([
+            'obra',
+            'situacionAvances.estadoSituacion',
+            'facturasVenta',
+            'recibosVenta',
+            'controlGasto',
+        ])->latest()->get();
+
+        $anios = $presupuestos->filter(fn ($p) => $p->situacionAvances->first()?->fecha_inicio)
+            ->map(fn ($p) => \Carbon\Carbon::parse($p->situacionAvances->sortByDesc('id')->first()->fecha_inicio)->year)
+            ->unique()->sort()->values();
+
+        $filas = $this->filasReporte($presupuestos, $request);
+
+        return view('situacion_avance.report', compact('estados', 'obras', 'tipoTrabajo', 'anios', 'filas'));
+    }
+
+    public function reportePdf(Request $request)
+    {
+        $presupuestos = PresupuestoAprobado::with([
+            'obra',
+            'situacionAvances.estadoSituacion',
+            'facturasVenta',
+            'recibosVenta',
+            'controlGasto',
+        ])->latest()->get();
+
+        $filas = $this->filasReporte($presupuestos, $request);
+
+        $totales = [
+            'facturado'   => $filas->sum('facturado'),
+            'cobrado'     => $filas->sum('cobrado'),
+            'totalGastos' => $filas->sum('totalGastos'),
+        ];
+
+        $pdf = Pdf::loadView('situacion_avance.report_pdf', compact('filas', 'totales'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->download('reporte_situacion_avance_' . now()->format('Ymd_His') . '.pdf');
+    }
+
+    private function filasReporte(Collection $presupuestos, Request $request): Collection
+    {
+        $obraId  = $request->input('obra');
+        $mes     = $request->input('mes');
+        $anio    = $request->input('anio');
+        $mesFin  = $request->input('mes_fin');
+        $anioFin = $request->input('anio_fin');
+        $tipo    = $request->input('tipo');
+        $estadoId = $request->input('estado');
+        $facMin  = (int) $request->input('fac_min', 0);
+        $facMax  = (int) $request->input('fac_max', 100);
+        $cobMin  = (int) $request->input('cob_min', 0);
+        $cobMax  = (int) $request->input('cob_max', 100);
+
+        return $presupuestos->map(function ($presupuesto) {
+            $avance      = $presupuesto->situacionAvances->sortByDesc('id')->first();
+            $monto       = (float) $presupuesto->monto_total;
+            $facturado   = $presupuesto->facturasVenta->sum('monto');
+            $cobrado     = $presupuesto->recibosVenta->sum('monto');
+            $gasto       = $presupuesto->controlGasto;
+            $totalGastos = $gasto
+                ? (float) (($gasto->ingenieros ?? 0) + ($gasto->tecnicos ?? 0) + ($gasto->mano_obra ?? 0) + ($gasto->otros ?? 0))
+                : 0;
+
+            return (object) [
+                'presupuesto' => $presupuesto,
+                'avance'      => $avance,
+                'monto'       => $monto,
+                'facturado'   => $facturado,
+                'cobrado'     => $cobrado,
+                'pctFac'      => $monto > 0 ? min(100, round($facturado / $monto * 100)) : 0,
+                'pctCob'      => $facturado > 0 ? min(100, round($cobrado / $facturado * 100)) : 0,
+                'totalGastos' => $totalGastos,
+                'estado'      => $avance?->estadoSituacion?->descripcion ?? '—',
+            ];
+        })->filter(function ($fila) use ($obraId, $mes, $anio, $mesFin, $anioFin, $tipo, $estadoId, $facMin, $facMax, $cobMin, $cobMax) {
+            $p      = $fila->presupuesto;
+            $inicio = $fila->avance?->fecha_inicio ? \Carbon\Carbon::parse($fila->avance->fecha_inicio) : null;
+            $fin    = $fila->avance?->fecha_fin ? \Carbon\Carbon::parse($fila->avance->fecha_fin) : null;
+
+            return (!$obraId   || $p->obra_id == $obraId)
+                && (!$tipo     || $p->tipo_trabajo == $tipo)
+                && (!$estadoId || $fila->avance?->estado_situacion_id == $estadoId)
+                && (!$mes      || $inicio?->month == $mes)
+                && (!$anio     || $inicio?->year == $anio)
+                && (!$mesFin   || $fin?->month == $mesFin)
+                && (!$anioFin  || $fin?->year == $anioFin)
+                && $fila->pctFac >= $facMin && $fila->pctFac <= $facMax
+                && $fila->pctCob >= $cobMin && $fila->pctCob <= $cobMax;
+        })->values();
     }
 }

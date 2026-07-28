@@ -39,6 +39,7 @@ class ModuloSeeder extends Seeder
             ['nombre' => 'sol',     'descripcion' => 'Soluciones',               'estado' => 1],
             ['nombre' => 'bib',     'descripcion' => 'Bibliografía',             'estado' => 1],
             ['nombre' => 'pla',     'descripcion' => 'Plantilla',                'estado' => 1],
+            ['nombre' => 'con_gas', 'descripcion' => 'Control de Gastos',        'estado' => 1],
         ];
 
         foreach ($modulos as $modulo) {

@@ -5,6 +5,7 @@ use App\Http\Controllers\AsignarOrdenController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContactoController;
+use App\Http\Controllers\ControlGastoController;
 use App\Http\Controllers\DirectorioController;
 use App\Http\Controllers\DocumentosController;
 use App\Http\Controllers\FacturaVentaController;
@@ -178,6 +179,18 @@ Route::middleware('permiso:pre_apr,editar')->group(function () {
     Route::put('/presupuesto_aprobado/{id}', [PresupuestoaprobadoController::class, 'update'])->name('presupuesto_aprobado.update');
 });
 
+// ── Control de gastos ─────────────────────────────────────────────────────────
+Route::middleware('permiso:con_gas,ver')->group(function () {
+    Route::get('/control_gastos/{obra}', [ControlGastoController::class, 'index'])->name('control_gastos.index');
+    Route::get('/control_gastos/{obra}/presupuesto/{presupuesto}/nuevo', [ControlGastoController::class, 'create'])->name('control_gastos.create');
+});
+Route::middleware('permiso:con_gas,agregar')->group(function () {
+    Route::post('/control_gastos', [ControlGastoController::class, 'store'])->name('control_gastos.store');
+});
+Route::middleware('permiso:con_gas,editar')->group(function () {
+    Route::put('/control_gastos/{id}', [ControlGastoController::class, 'update'])->name('control_gastos.update');
+});
+
 // ── Validar presupuestos ──────────────────────────────────────────────────────
 Route::middleware('permiso:pre_apr,editar')->group(function () {
     Route::get('/validar_presupuesto', [ValidarpresupuestoController::class, 'index'])->name('validar_presupuesto.index');
@@ -342,6 +355,8 @@ Route::middleware('permiso:dat,ver')->group(function () {
 // ── Situación de avance ───────────────────────────────────────────────────────
 Route::middleware('permiso:sit_ava,ver')->group(function () {
     Route::get('/situacion_avance', [SituacionAvanceController::class, 'index'])->name('situacion_avance.index');
+    Route::get('/situacion_avance/reporte', [SituacionAvanceController::class, 'report'])->name('situacion_avance.report');
+    Route::get('/situacion_avance/reporte/pdf', [SituacionAvanceController::class, 'reportePdf'])->name('situacion_avance.report.pdf');
 });
 Route::middleware('permiso:sit_ava,agregar')->group(function () {
     Route::put('/situacion_avance/{id}', [SituacionAvanceController::class, 'update'])->name('situacion_avance.update');
