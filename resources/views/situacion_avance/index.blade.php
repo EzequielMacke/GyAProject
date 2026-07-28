@@ -503,6 +503,20 @@
                             </div>
 
                             <div class="filter-group">
+                                <label class="filter-label">Monto</label>
+                                <div class="range-slider" data-range="f-monto" data-format="currency">
+                                    <div class="range-track"></div>
+                                    <div class="range-fill"></div>
+                                    <input type="range" min="{{ $montoMin }}" max="{{ $montoMax }}" value="{{ $montoMin }}" class="range-input range-min">
+                                    <input type="range" min="{{ $montoMin }}" max="{{ $montoMax }}" value="{{ $montoMax }}" class="range-input range-max">
+                                </div>
+                                <div class="range-values">
+                                    <span class="range-value-min">Gs. {{ number_format($montoMin, 0, ',', '.') }}</span>
+                                    <span class="range-value-max">Gs. {{ number_format($montoMax, 0, ',', '.') }}</span>
+                                </div>
+                            </div>
+
+                            <div class="filter-group">
                                 <label class="filter-label">% Facturado</label>
                                 <div class="range-slider" data-range="f-facturado">
                                     <div class="range-track"></div>
@@ -629,7 +643,8 @@
                                                 data-mes-fin="{{ $avance?->fecha_fin ? \Carbon\Carbon::parse($avance->fecha_fin)->month : '' }}"
                                                 data-anio-fin="{{ $avance?->fecha_fin ? \Carbon\Carbon::parse($avance->fecha_fin)->year : '' }}"
                                                 data-pct-fac="{{ $pctFac }}"
-                                                data-pct-cob="{{ $pctCob }}">
+                                                data-pct-cob="{{ $pctCob }}"
+                                                data-monto="{{ $monto }}">
                                                 <td class="td-clave">
                                                     {{ $presupuesto->clave }}
                                                     <div style="font-size:0.72rem; font-weight:500; margin-top:2px; color:var(--muted);">
@@ -979,30 +994,42 @@
 
     // ── Dual range sliders ──────────────────────────────────────────────────
     const rangeValues = {};
+    const rangeBounds = {};
+
+    function formatRangeValue(format, value) {
+        return format === 'currency'
+            ? 'Gs. ' + Number(value).toLocaleString('de-DE')
+            : value + '%';
+    }
 
     document.querySelectorAll('.range-slider').forEach(slider => {
         const id       = slider.dataset.range;
+        const format   = slider.dataset.format || 'percent';
         const minInput = slider.querySelector('.range-min');
         const maxInput = slider.querySelector('.range-max');
         const fill     = slider.querySelector('.range-fill');
         const valMin   = slider.parentElement.querySelector('.range-value-min');
         const valMax   = slider.parentElement.querySelector('.range-value-max');
+        const sliderMin = parseFloat(minInput.min);
+        const sliderMax = parseFloat(minInput.max);
+        const span      = sliderMax - sliderMin || 1;
 
-        rangeValues[id] = { min: 0, max: 100 };
+        rangeValues[id] = { min: sliderMin, max: sliderMax };
+        rangeBounds[id] = { min: sliderMin, max: sliderMax };
 
         function update() {
-            let min = parseInt(minInput.value);
-            let max = parseInt(maxInput.value);
+            let min = parseFloat(minInput.value);
+            let max = parseFloat(maxInput.value);
             if (min > max) { [min, max] = [max, min]; }
 
             minInput.value = min;
             maxInput.value = max;
             rangeValues[id] = { min, max };
 
-            fill.style.left  = min + '%';
-            fill.style.right = (100 - max) + '%';
-            valMin.textContent = min + '%';
-            valMax.textContent = max + '%';
+            fill.style.left  = ((min - sliderMin) / span * 100) + '%';
+            fill.style.right = (100 - (max - sliderMin) / span * 100) + '%';
+            valMin.textContent = formatRangeValue(format, min);
+            valMax.textContent = formatRangeValue(format, max);
 
             applyAllFilters();
         }
@@ -1020,6 +1047,8 @@
             mesFin:    ssValues['f-mes-fin']  || '',
             anioFin:   ssValues['f-anio-fin'] || '',
             tipo:      ssValues['f-tipo']     || '',
+            montoMin:  rangeValues['f-monto']?.min ?? -Infinity,
+            montoMax:  rangeValues['f-monto']?.max ?? Infinity,
             facMin:    rangeValues['f-facturado']?.min ?? 0,
             facMax:    rangeValues['f-facturado']?.max ?? 100,
             cobMin:    rangeValues['f-cobrado']?.min ?? 0,
@@ -1031,12 +1060,14 @@
     function rowMatches(row, f) {
         const pctFac = Number(row.dataset.pctFac || 0);
         const pctCob = Number(row.dataset.pctCob || 0);
+        const monto  = Number(row.dataset.monto || 0);
         return (!f.obra    || row.dataset.obra   == f.obra)
             && (!f.mes     || row.dataset.mes    == f.mes)
             && (!f.anio    || row.dataset.anio   == f.anio)
             && (!f.mesFin  || row.dataset.mesFin == f.mesFin)
             && (!f.anioFin || row.dataset.anioFin== f.anioFin)
             && (!f.tipo    || row.dataset.tipo   == f.tipo)
+            && monto  >= f.montoMin && monto  <= f.montoMax
             && pctFac >= f.facMin && pctFac <= f.facMax
             && pctCob >= f.cobMin && pctCob <= f.cobMax
             && (!f.search  || row.textContent.toLowerCase().includes(f.search));
@@ -1044,7 +1075,9 @@
 
     function applyAllFilters() {
         const f = getFilters();
-        const rangoActivo = f.facMin > 0 || f.facMax < 100 || f.cobMin > 0 || f.cobMax < 100;
+        const montoBounds = rangeBounds['f-monto'] ?? { min: f.montoMin, max: f.montoMax };
+        const rangoActivo = f.facMin > 0 || f.facMax < 100 || f.cobMin > 0 || f.cobMax < 100
+            || f.montoMin > montoBounds.min || f.montoMax < montoBounds.max;
         const activeCount = [f.obra, f.mes, f.anio, f.mesFin, f.anioFin, f.tipo].filter(v => v !== '').length + (rangoActivo ? 1 : 0);
         filterCount.textContent = activeCount;
         filterCount.style.display = activeCount > 0 ? 'inline' : 'none';
@@ -1094,8 +1127,8 @@
             const id = slider.dataset.range;
             const minInput = slider.querySelector('.range-min');
             const maxInput = slider.querySelector('.range-max');
-            minInput.value = 0;
-            maxInput.value = 100;
+            minInput.value = minInput.min;
+            maxInput.value = maxInput.max;
             minInput.dispatchEvent(new Event('input'));
         });
         applyAllFilters();

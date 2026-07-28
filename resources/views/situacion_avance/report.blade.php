@@ -358,6 +358,21 @@
 
                             <div class="fields-grid">
                                 <div>
+                                    <label class="field-label">Monto</label>
+                                    <div class="range-slider" data-range="monto" data-format="currency">
+                                        <div class="range-track"></div>
+                                        <div class="range-fill"></div>
+                                        <input type="range" min="{{ $montoMin }}" max="{{ $montoMax }}" value="{{ request('monto_min', $montoMin) }}" class="range-input range-min">
+                                        <input type="range" min="{{ $montoMin }}" max="{{ $montoMax }}" value="{{ request('monto_max', $montoMax) }}" class="range-input range-max">
+                                    </div>
+                                    <div class="range-values">
+                                        <span class="range-value-min">Gs. {{ number_format(request('monto_min', $montoMin), 0, ',', '.') }}</span>
+                                        <span class="range-value-max">Gs. {{ number_format(request('monto_max', $montoMax), 0, ',', '.') }}</span>
+                                    </div>
+                                    <input type="hidden" name="monto_min" value="{{ request('monto_min', $montoMin) }}">
+                                    <input type="hidden" name="monto_max" value="{{ request('monto_max', $montoMax) }}">
+                                </div>
+                                <div>
                                     <label class="field-label">% Facturado</label>
                                     <div class="range-slider" data-range="facturado">
                                         <div class="range-track"></div>
@@ -528,8 +543,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    function formatRangeValue(format, value) {
+        return format === 'currency'
+            ? 'Gs. ' + Number(value).toLocaleString('de-DE')
+            : value + '%';
+    }
+
     document.querySelectorAll('.range-slider').forEach(slider => {
         const wrap      = slider.parentElement;
+        const format    = slider.dataset.format || 'percent';
         const minInput  = slider.querySelector('.range-min');
         const maxInput  = slider.querySelector('.range-max');
         const fill      = slider.querySelector('.range-fill');
@@ -537,19 +559,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const valMax    = wrap.querySelector('.range-value-max');
         const hiddenMin = wrap.querySelector('input[type="hidden"][name$="_min"]');
         const hiddenMax = wrap.querySelector('input[type="hidden"][name$="_max"]');
+        const sliderMin = parseFloat(minInput.min);
+        const sliderMax = parseFloat(minInput.max);
+        const span      = sliderMax - sliderMin || 1;
 
         function update() {
-            let min = parseInt(minInput.value);
-            let max = parseInt(maxInput.value);
+            let min = parseFloat(minInput.value);
+            let max = parseFloat(maxInput.value);
             if (min > max) { [min, max] = [max, min]; }
 
             minInput.value = min;
             maxInput.value = max;
 
-            fill.style.left  = min + '%';
-            fill.style.right = (100 - max) + '%';
-            valMin.textContent = min + '%';
-            valMax.textContent = max + '%';
+            fill.style.left  = ((min - sliderMin) / span * 100) + '%';
+            fill.style.right = (100 - (max - sliderMin) / span * 100) + '%';
+            valMin.textContent = formatRangeValue(format, min);
+            valMax.textContent = formatRangeValue(format, max);
 
             if (hiddenMin) hiddenMin.value = min;
             if (hiddenMax) hiddenMax.value = max;

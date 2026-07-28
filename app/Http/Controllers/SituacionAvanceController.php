@@ -51,7 +51,10 @@ class SituacionAvanceController extends Controller
                         ->map(fn($p) => \Carbon\Carbon::parse($p->situacionAvances->sortByDesc('id')->first()->fecha_inicio)->year)
                         ->unique()->sort()->values();
 
-        return view('situacion_avance.index', compact('estados', 'presupuestosPorEstado', 'puedeEditar', 'puedeVerFac', 'obras', 'tipoTrabajo', 'anios'));
+        $montoMin = (int) $presupuestos->min('monto_total');
+        $montoMax = (int) $presupuestos->max('monto_total');
+
+        return view('situacion_avance.index', compact('estados', 'presupuestosPorEstado', 'puedeEditar', 'puedeVerFac', 'obras', 'tipoTrabajo', 'anios', 'montoMin', 'montoMax'));
     }
 
     public function update(Request $request, $id)
@@ -105,9 +108,12 @@ class SituacionAvanceController extends Controller
             ->map(fn ($p) => \Carbon\Carbon::parse($p->situacionAvances->sortByDesc('id')->first()->fecha_inicio)->year)
             ->unique()->sort()->values();
 
+        $montoMin = (int) $presupuestos->min('monto_total');
+        $montoMax = (int) $presupuestos->max('monto_total');
+
         $filas = $this->filasReporte($presupuestos, $request);
 
-        return view('situacion_avance.report', compact('estados', 'obras', 'tipoTrabajo', 'anios', 'filas'));
+        return view('situacion_avance.report', compact('estados', 'obras', 'tipoTrabajo', 'anios', 'montoMin', 'montoMax', 'filas'));
     }
 
     public function reportePdf(Request $request)
@@ -136,17 +142,19 @@ class SituacionAvanceController extends Controller
 
     private function filasReporte(Collection $presupuestos, Request $request): Collection
     {
-        $obraId  = $request->input('obra');
-        $mes     = $request->input('mes');
-        $anio    = $request->input('anio');
-        $mesFin  = $request->input('mes_fin');
-        $anioFin = $request->input('anio_fin');
-        $tipo    = $request->input('tipo');
+        $obraId   = $request->input('obra');
+        $mes      = $request->input('mes');
+        $anio     = $request->input('anio');
+        $mesFin   = $request->input('mes_fin');
+        $anioFin  = $request->input('anio_fin');
+        $tipo     = $request->input('tipo');
         $estadoId = $request->input('estado');
-        $facMin  = (int) $request->input('fac_min', 0);
-        $facMax  = (int) $request->input('fac_max', 100);
-        $cobMin  = (int) $request->input('cob_min', 0);
-        $cobMax  = (int) $request->input('cob_max', 100);
+        $facMin   = (int) $request->input('fac_min', 0);
+        $facMax   = (int) $request->input('fac_max', 100);
+        $cobMin   = (int) $request->input('cob_min', 0);
+        $cobMax   = (int) $request->input('cob_max', 100);
+        $montoMin = $request->filled('monto_min') ? (float) $request->input('monto_min') : null;
+        $montoMax = $request->filled('monto_max') ? (float) $request->input('monto_max') : null;
 
         return $presupuestos->map(function ($presupuesto) {
             $avance      = $presupuesto->situacionAvances->sortByDesc('id')->first();
@@ -169,7 +177,7 @@ class SituacionAvanceController extends Controller
                 'totalGastos' => $totalGastos,
                 'estado'      => $avance?->estadoSituacion?->descripcion ?? '—',
             ];
-        })->filter(function ($fila) use ($obraId, $mes, $anio, $mesFin, $anioFin, $tipo, $estadoId, $facMin, $facMax, $cobMin, $cobMax) {
+        })->filter(function ($fila) use ($obraId, $mes, $anio, $mesFin, $anioFin, $tipo, $estadoId, $montoMin, $montoMax, $facMin, $facMax, $cobMin, $cobMax) {
             $p      = $fila->presupuesto;
             $inicio = $fila->avance?->fecha_inicio ? \Carbon\Carbon::parse($fila->avance->fecha_inicio) : null;
             $fin    = $fila->avance?->fecha_fin ? \Carbon\Carbon::parse($fila->avance->fecha_fin) : null;
@@ -181,6 +189,8 @@ class SituacionAvanceController extends Controller
                 && (!$anio     || $inicio?->year == $anio)
                 && (!$mesFin   || $fin?->month == $mesFin)
                 && (!$anioFin  || $fin?->year == $anioFin)
+                && (is_null($montoMin) || $fila->monto >= $montoMin)
+                && (is_null($montoMax) || $fila->monto <= $montoMax)
                 && $fila->pctFac >= $facMin && $fila->pctFac <= $facMax
                 && $fila->pctCob >= $cobMin && $fila->pctCob <= $cobMax;
         })->values();
