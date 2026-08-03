@@ -539,7 +539,7 @@
                             <div class="alert-row">
                                 <i class="fas fa-exclamation-circle"></i>
                                 <div class="alert-row-text">
-                                    Retirado por: {{ $usuario?->nombre ?? 'Usuario desconocido' }}
+                                    Retirado por: {{ $usuario ? ($usuario->nombre_completo ?: $usuario->nombre) : 'Usuario desconocido' }}
                                     @if($ultimoUso->fecha_retiro)
                                     · {{ \Carbon\Carbon::parse($ultimoUso->fecha_retiro)->format('d/m/Y') }}
                                     @endif
