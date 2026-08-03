@@ -49,16 +49,18 @@ class UsuariosController extends Controller
         $usuario = Usuarios::findOrFail($id);
 
         $request->validate([
-            'usuario'       => 'required|string|max:255|unique:usuarios,nombre,' . $id,
-            'contraseña'    => 'nullable|string|min:4|same:rep_contraseña',
-            'area_id'       => 'required|exists:areas,id',
-            'estado'        => 'required|in:1,2',
+            'usuario'         => 'required|string|max:255|unique:usuarios,nombre,' . $id,
+            'nombre_completo' => 'nullable|string|max:255',
+            'contraseña'      => 'nullable|string|min:4|same:rep_contraseña',
+            'area_id'         => 'required|exists:areas,id',
+            'estado'          => 'required|in:1,2',
         ]);
 
         $data = [
-            'nombre'  => $request->usuario,
-            'area_id' => $request->area_id,
-            'estado'  => $request->estado,
+            'nombre'          => $request->usuario,
+            'nombre_completo' => $request->nombre_completo,
+            'area_id'         => $request->area_id,
+            'estado'          => $request->estado,
         ];
 
         if ($request->filled('contraseña')) {

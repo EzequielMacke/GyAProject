@@ -14,8 +14,10 @@ class TabletaUso extends Model
     protected $fillable = [
         'tableta_id',
         'usuario_id',
+        'aprobado',
         'fecha_retiro',
         'fecha_devolucion',
+        'aprobacion_devolucion',
     ];
 
     public function tableta()

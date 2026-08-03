@@ -22,6 +22,10 @@
             --accent-b: #1f5bbf;
             --green:    #1e9166;
             --green-s:  #e5f6f0;
+            --red:      #d94040;
+            --red-s:    #fdeaea;
+            --slate:    #4e6070;
+            --slate-s:  #edf1f4;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -180,6 +184,19 @@
         .cell-date i { font-size: 0.6rem; }
         .cell-date.pending { color: var(--green); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.78rem; font-weight: 600; }
 
+        .estado-badge {
+            display: inline-flex; align-items: center; gap: 0.32rem;
+            font-size: 0.68rem; font-weight: 700;
+            letter-spacing: 0.3px; text-transform: uppercase;
+            padding: 0.24rem 0.6rem; border-radius: 99px;
+            white-space: nowrap;
+        }
+        .estado-badge i { font-size: 0.55rem; }
+        .estado-badge.pendiente-retiro     { background: var(--red-s);    color: var(--red); }
+        .estado-badge.en-uso               { background: var(--red-s);    color: var(--red); }
+        .estado-badge.pendiente-devolucion { background: var(--accent-s); color: var(--accent); }
+        .estado-badge.finalizado           { background: var(--green-s);  color: var(--green); }
+
         /* empty */
         .empty-state {
             text-align: center;
@@ -233,10 +250,18 @@
                                 </option>
                             @endforeach
                         </select>
+                        <span class="filter-label"><i class="fas fa-hourglass-half" style="color:var(--accent);margin-right:0.3rem;"></i> Estado</span>
+                        <select name="estado" class="filter-select" style="min-width:200px;">
+                            <option value="">Todos los estados</option>
+                            <option value="pendiente_retiro" {{ request('estado') == 'pendiente_retiro' ? 'selected' : '' }}>Pendiente de aprobación</option>
+                            <option value="en_uso" {{ request('estado') == 'en_uso' ? 'selected' : '' }}>En uso</option>
+                            <option value="pendiente_devolucion" {{ request('estado') == 'pendiente_devolucion' ? 'selected' : '' }}>Devolución pendiente</option>
+                            <option value="finalizado" {{ request('estado') == 'finalizado' ? 'selected' : '' }}>Finalizado</option>
+                        </select>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-filter"></i> Filtrar
                         </button>
-                        @if(request('tableta_id'))
+                        @if(request('tableta_id') || request('estado'))
                         <a href="{{ request()->url() }}" class="btn">
                             <i class="fas fa-times"></i> Limpiar
                         </a>
@@ -261,16 +286,36 @@
                                 <th onclick="sortTable(3)">Usuario<i class="fas fa-sort sort-icon"></i></th>
                                 <th onclick="sortTable(4)">Retiro<i class="fas fa-sort sort-icon"></i></th>
                                 <th onclick="sortTable(5)">Devolución<i class="fas fa-sort sort-icon"></i></th>
+                                <th onclick="sortTable(6)">Estado<i class="fas fa-sort sort-icon"></i></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($usos as $uso)
+                            @php
+                                if ($uso->aprobado == 0) {
+                                    $estadoTxt = 'Pendiente aprobación';
+                                    $estadoCls = 'pendiente-retiro';
+                                    $estadoIcon = 'fa-hourglass-half';
+                                } elseif (!$uso->fecha_devolucion) {
+                                    $estadoTxt = 'En uso';
+                                    $estadoCls = 'en-uso';
+                                    $estadoIcon = 'fa-user-clock';
+                                } elseif (!$uso->aprobacion_devolucion) {
+                                    $estadoTxt = 'Devolución pendiente';
+                                    $estadoCls = 'pendiente-devolucion';
+                                    $estadoIcon = 'fa-hourglass-half';
+                                } else {
+                                    $estadoTxt = 'Finalizado';
+                                    $estadoCls = 'finalizado';
+                                    $estadoIcon = 'fa-circle-check';
+                                }
+                            @endphp
                             <tr>
                                 <td class="cell-mono">{{ str_pad($loop->iteration, 2, '0', STR_PAD_LEFT) }}</td>
                                 <td><span class="cell-badge">{{ $uso->tableta->clave ?? '-' }}</span></td>
                                 <td style="font-weight:600; color:var(--text);">{{ $uso->tableta->nombre ?? '-' }}</td>
-                                <td>{{ $uso->usuario->nombre ?? '-' }}</td>
-                                <td>
+                                <td>{{ $uso->usuario->nombre_completo ?: ($uso->usuario->nombre ?? '-') }}</td>
+                                <td data-sort="{{ $uso->fecha_retiro ? \Carbon\Carbon::parse($uso->fecha_retiro)->format('Y-m-d') : '' }}">
                                     @if($uso->fecha_retiro)
                                     <div class="cell-date">
                                         <i class="fas fa-sign-out-alt"></i>
@@ -280,7 +325,7 @@
                                     <span class="cell-mono">—</span>
                                     @endif
                                 </td>
-                                <td>
+                                <td data-sort="{{ $uso->fecha_devolucion ? \Carbon\Carbon::parse($uso->fecha_devolucion)->format('Y-m-d') : '' }}">
                                     @if($uso->fecha_devolucion)
                                     <div class="cell-date">
                                         <i class="fas fa-sign-in-alt"></i>
@@ -291,6 +336,11 @@
                                         <i class="fas fa-clock"></i> Pendiente
                                     </div>
                                     @endif
+                                </td>
+                                <td>
+                                    <span class="estado-badge {{ $estadoCls }}">
+                                        <i class="fas {{ $estadoIcon }}"></i> {{ $estadoTxt }}
+                                    </span>
                                 </td>
                             </tr>
                             @endforeach
@@ -316,8 +366,9 @@ function sortTable(col) {
     const tbody = table.tBodies[0];
     const rows  = Array.from(tbody.rows);
     rows.sort((a, b) => {
-        let x = a.cells[col]?.textContent.trim().toLowerCase() ?? '';
-        let y = b.cells[col]?.textContent.trim().toLowerCase() ?? '';
+        const cellA = a.cells[col], cellB = b.cells[col];
+        let x = cellA?.dataset.sort ?? cellA?.textContent.trim().toLowerCase() ?? '';
+        let y = cellB?.dataset.sort ?? cellB?.textContent.trim().toLowerCase() ?? '';
         const dx = Date.parse(x), dy = Date.parse(y);
         if (!isNaN(dx) && !isNaN(dy)) { x = dx; y = dy; }
         if (x < y) return dir === 'asc' ? -1 : 1;

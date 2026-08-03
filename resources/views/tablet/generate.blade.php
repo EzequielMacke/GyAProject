@@ -6,7 +6,6 @@
     <title>Códigos QR de Tabletas</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
@@ -125,13 +124,6 @@
             margin-top: -0.4rem;
         }
 
-        .qr-admin .qr-canvas-wrap {
-            border-color: var(--accent);
-            background: var(--accent-s);
-        }
-
-        .qr-admin .qr-label { color: var(--accent); }
-
         /* ── Print ── */
         @media print {
             .no-print { display: none !important; }
@@ -166,7 +158,7 @@
                         <p class="ph-sub">Imprimí los códigos QR de cada tableta</p>
                     </div>
                     <div class="ph-right">
-                        <button id="btn-print" onclick="generarPDFs()" class="btn btn-primary">
+                        <button id="btn-print" onclick="generarPNGs()" class="btn btn-primary">
                             <i class="fas fa-print"></i> Imprimir
                         </button>
                         <a href="{{ route('tabletas.index') }}" class="btn">
@@ -180,15 +172,6 @@
         <section class="content">
             <div class="container-fluid">
                 <div class="qr-grid">
-
-                    {{-- QR Administrador --}}
-                    <div class="qr-card qr-admin">
-                        <div class="qr-canvas-wrap">
-                            <canvas id="qr-admin"></canvas>
-                        </div>
-                        <div class="qr-label">ADMINISTRADOR</div>
-                        <div class="qr-sublabel">Acceso de administrador</div>
-                    </div>
 
                     @foreach($qrs as $tableta)
                     <div class="qr-card">
@@ -209,114 +192,103 @@
 </div>
 
 <script>
-// Paleta idéntica a los CSS variables de la vista
-const CSS = {
-    surface:  [248, 250, 252], // --surface:  #f8fafc
-    border:   [216, 224, 234], // --border:   #d8e0ea
-    text:     [30,  40,  53],  // --text:     #1e2835
-    muted:    [132, 150, 170], // --muted:    #8496aa
-    accent:   [42,  111, 219], // --accent:   #2a6fdb
-    accentS:  [232, 240, 252], // --accent-s: #e8f0fc
-};
-
 document.addEventListener('DOMContentLoaded', function () {
-    new QRious({ element: document.getElementById('qr-admin'), value: "9XQ2Z7LJ4B1V6KTP", size: 150, background: 'transparent', foreground: '#2a6fdb' });
     @foreach($qrs as $tableta)
     new QRious({ element: document.getElementById('qr-{{ $tableta->id }}'), value: @json($tableta->codigo_qr), size: 150, background: 'white', foreground: '#1e2835' });
     @endforeach
 });
 
 const QR_CARDS = [
-    { value: "9XQ2Z7LJ4B1V6KTP", label: "ADMINISTRADOR", sublabel: "Acceso de administrador", isAdmin: true },
     @foreach($qrs as $tableta)
-    { value: @json($tableta->codigo_qr), label: @json($tableta->clave ?? $tableta->id), sublabel: @json($tableta->nombre ?? ''), isAdmin: false },
+    {
+        value: @json($tableta->codigo_qr),
+        label: @json($tableta->clave ?? $tableta->id),
+        nombre: @json($tableta->nombre ?? ''),
+        modelo: @json($tableta->modelo ?? ''),
+        serie: @json($tableta->serie ?? ''),
+        sim: @json($tableta->sim ?? ''),
+    },
     @endforeach
 ];
 
-function makeQRDataURL(value, isAdmin) {
-    const c = document.createElement('canvas');
-    new QRious({ element: c, value: value, size: 400, background: 'white', foreground: isAdmin ? '#2a6fdb' : '#1e2835' });
-    return c.toDataURL('image/png');
-}
-
-async function generarPDFs() {
-    const { jsPDF } = window.jspdf;
+async function generarPNGs() {
     const btn = document.getElementById('btn-print');
     btn.disabled = true;
 
-    const W = 57, H = 90;
-    const zip = new JSZip();
+    const DPI    = 600; // máxima calidad para impresión
+    const mm     = v => Math.round(v * DPI / 25.4);
+    const W      = 100, H = 50; // mm
+    const pxW    = mm(W), pxH = mm(H);
+    const zip    = new JSZip();
 
     for (let i = 0; i < QR_CARDS.length; i++) {
         const card = QR_CARDS[i];
         btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${i + 1} / ${QR_CARDS.length}`;
 
-        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [W, H] });
+        const canvas = document.createElement('canvas');
+        canvas.width  = pxW;
+        canvas.height = pxH;
+        const ctx = canvas.getContext('2d');
 
-        // ── Fondo: --surface #f8fafc ──
-        doc.setFillColor(...CSS.surface);
-        doc.roundedRect(0, 0, W, H, 4, 4, 'F');
+        // ── Fondo blanco, todo en blanco y negro ──
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pxW, pxH);
 
-        // ── QR canvas wrap (replica el .qr-canvas-wrap) ──
-        // Proporciones CSS: padding 1rem=4mm lateral, wrap padding 0.6rem≈2.5mm, radius 0.55rem≈2mm
-        const cardPad = 4;
-        const wrapPad = 2.5;
-        const wrapX   = cardPad;
-        const wrapW   = W - cardPad * 2;   // 49mm
-        const wrapY   = 22;                 // desplazado abajo, deja espacio para perforación
-        const wrapH   = wrapW;              // cuadrado
+        // ── QR a la izquierda ──
+        const pad     = mm(4);
+        const qrSize  = pxH - pad * 2;
+        const qrX     = pad;
+        const qrY     = pad;
+        const qrInner = mm(1.5);
 
-        // ── Círculo indicador de perforación ──
-        doc.setFillColor(...CSS.accentS);
-        doc.setDrawColor(...CSS.border);
-        doc.setLineWidth(0.5);
-        doc.circle(W / 2, 7, 3.5, 'FD');
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth   = mm(0.4);
+        ctx.strokeRect(qrX, qrY, qrSize, qrSize);
 
-        // Admin: fondo --accent-s + borde --accent | Regular: fondo blanco + borde --border
-        doc.setFillColor(...(card.isAdmin ? CSS.accentS : [255, 255, 255]));
-        doc.setDrawColor(...(card.isAdmin ? CSS.accent  : CSS.border));
-        doc.setLineWidth(0.5);
-        doc.roundedRect(wrapX, wrapY, wrapW, wrapH, 2, 2, 'FD');
+        const qrCanvas = document.createElement('canvas');
+        new QRious({ element: qrCanvas, value: card.value, size: qrSize - qrInner * 2, background: 'white', foreground: '#000000' });
+        ctx.drawImage(qrCanvas, qrX + qrInner, qrY + qrInner, qrSize - qrInner * 2, qrSize - qrInner * 2);
 
-        // QR dentro del wrap con padding interior
-        const qrSize = wrapW - wrapPad * 2;   // 44mm
-        doc.addImage(
-            makeQRDataURL(card.value, card.isAdmin),
-            'PNG',
-            wrapX + wrapPad, wrapY + wrapPad,
-            qrSize, qrSize
-        );
+        // ── Info de la tableta a la derecha (sin observaciones) ──
+        const textX = qrX + qrSize + pad;
+        const textW = pxW - textX - pad;
+        ctx.fillStyle = '#000000';
+        let y = pad + mm(7);
 
-        // ── Etiqueta: .qr-label (DM Mono → Courier bold, letter-spacing 0.5px) ──
-        const gap    = 3;   // ≈ 0.75rem flex gap
-        const labelY = wrapY + wrapH + gap;   // ≈ 67mm
+        ctx.font = `bold ${mm(5)}px "Courier New", monospace`;
+        if ('letterSpacing' in ctx) ctx.letterSpacing = `${mm(0.4)}px`;
+        ctx.fillText(card.label, textX, y, textW);
+        if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+        y += mm(7.5);
 
-        doc.setTextColor(...(card.isAdmin ? CSS.accent : CSS.text));
-        doc.setFont('courier', 'bold');
-        doc.setFontSize(9.5);
-        doc.setCharSpace(0.4);
-        doc.text(doc.splitTextToSize(card.label, wrapW), W / 2, labelY, { align: 'center' });
-        doc.setCharSpace(0);
-
-        // ── Sub-etiqueta: .qr-sublabel ──
-        if (card.sublabel) {
-            doc.setTextColor(...CSS.muted);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.text(doc.splitTextToSize(card.sublabel, wrapW), W / 2, labelY + 4.5, { align: 'center' });
+        if (card.nombre) {
+            ctx.font = `bold ${mm(3.6)}px Arial, sans-serif`;
+            ctx.fillText(card.nombre, textX, y, textW);
+            y += mm(6.5);
         }
 
-        // ── Borde exterior: border 1.5px --border, border-radius 0.85rem≈4mm ──
-        doc.setDrawColor(...CSS.border);
-        doc.setLineWidth(0.5);
-        doc.roundedRect(0.5, 0.5, W - 1, H - 1, 3.5, 3.5, 'S');
+        ctx.font = `${mm(3)}px Arial, sans-serif`;
+        if (card.modelo) { ctx.fillText(`Modelo: ${card.modelo}`, textX, y, textW); y += mm(5); }
+        if (card.serie)  { ctx.fillText(`Serie: ${card.serie}`, textX, y, textW);   y += mm(5); }
+        if (card.sim)    { ctx.fillText(`SIM: ${card.sim}`, textX, y, textW);       y += mm(5); }
 
-        zip.file(`QR_${card.label.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`, doc.output('arraybuffer'));
+        // ── Línea divisoria y borde exterior, esquinas rectas ──
+        ctx.beginPath();
+        ctx.lineWidth = mm(0.3);
+        ctx.moveTo(textX - pad / 2, pad);
+        ctx.lineTo(textX - pad / 2, pxH - pad);
+        ctx.stroke();
+
+        ctx.lineWidth = mm(0.5);
+        ctx.strokeRect(mm(0.5), mm(0.5), pxW - mm(1), pxH - mm(1));
+
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1));
+        zip.file(`QR_${card.label.replace(/[^a-zA-Z0-9_\-]/g, '_')}.png`, blob);
     }
 
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Empaquetando…';
     const blob = await zip.generateAsync({ type: 'blob' });
-    saveAs(blob, 'QR_Tabletas.zip');
+    saveAs(blob, 'QR_Tabletas_PNG.zip');
 
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-check"></i> Descargado';

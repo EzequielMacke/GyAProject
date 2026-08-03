@@ -256,6 +256,13 @@
                                                value="{{ old('usuario', $usuario->nombre) }}">
                                     </div>
 
+                                    <div class="field-full">
+                                        <label class="field-label" for="nombre_completo">Nombre completo</label>
+                                        <input type="text" class="field-input" id="nombre_completo" name="nombre_completo"
+                                               autocomplete="off"
+                                               value="{{ old('nombre_completo', $usuario->nombre_completo) }}">
+                                    </div>
+
                                     <div>
                                         <label class="field-label" for="contraseña">Nueva contraseña</label>
                                         <input type="password" class="field-input" id="contraseña" name="contraseña"

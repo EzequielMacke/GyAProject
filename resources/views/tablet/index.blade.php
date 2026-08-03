@@ -111,6 +111,22 @@
         .btn-green { background: var(--green-s); border-color: var(--green-b); color: var(--green); }
         .btn-green:hover { background: var(--green); border-color: var(--green); color: #fff; }
 
+        .btn-aprobaciones { position: relative; }
+        .btn-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 99px;
+            background: var(--red);
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
         /* ── Search ── */
         .search-wrap { position: relative; }
 
@@ -384,6 +400,28 @@
                             <i class="fas fa-plus"></i> Nueva tablet
                         </a>
                         @endpermiso
+                        @permiso('ret_tab', 'agregar')
+                        <a href="{{ route('tabletas.retiro') }}" class="btn">
+                            <i class="fas fa-right-from-bracket"></i> Retiro
+                        </a>
+                        <a href="{{ route('tabletas.devolucion.index') }}" class="btn">
+                            <i class="fas fa-right-to-bracket"></i> Devolución
+                        </a>
+                        @endpermiso
+                        @permiso('ret_tab', 'eliminar')
+                        @php
+                            $pendAprobaciones = $tabletausos->filter(function($u) {
+                                return $u->aprobado == 0
+                                    || ($u->aprobado == 1 && $u->fecha_devolucion && !$u->aprobacion_devolucion);
+                            })->count();
+                        @endphp
+                        <a href="{{ route('tabletas.aprobacion') }}" class="btn btn-aprobaciones">
+                            <i class="fas fa-check-double"></i> Aprobaciones
+                            @if($pendAprobaciones > 0)
+                            <span class="btn-count">{{ $pendAprobaciones }}</span>
+                            @endif
+                        </a>
+                        @endpermiso
                         @permiso('tab', 'eliminar')
                         <a href="{{ route('tabletas.report') }}" class="btn">
                             <i class="fas fa-file-alt"></i> Reportes
@@ -415,7 +453,7 @@
                     $total       = $tabletas->count();
                     $enUso       = $tabletas->filter(function($t) use ($tabletausos) {
                         $u = $tabletausos->where('tableta_id', $t->id)->sortByDesc('id')->first();
-                        return $u && !$u->fecha_devolucion;
+                        return $u && $u->aprobado == 1 && (!$u->fecha_devolucion || !$u->aprobacion_devolucion);
                     })->count();
                     $disponibles = $total - $enUso;
                 @endphp
@@ -457,7 +495,7 @@
                     @foreach($tabletas->reverse() as $tableta)
                     @php
                         $ultimoUso      = $tabletausos->where('tableta_id', $tableta->id)->sortByDesc('id')->first();
-                        $sinDevolucion  = $ultimoUso && !$ultimoUso->fecha_devolucion;
+                        $sinDevolucion  = $ultimoUso && $ultimoUso->aprobado == 1 && (!$ultimoUso->fecha_devolucion || !$ultimoUso->aprobacion_devolucion);
                         $usuario        = ($sinDevolucion && $ultimoUso->usuario_id)
                             ? App\Models\Usuarios::find($ultimoUso->usuario_id)
                             : null;

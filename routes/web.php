@@ -306,6 +306,7 @@ Route::middleware('permiso:tab,ver')->group(function () {
     Route::get('/tabletas/thanks', [TabletController::class, 'thanks'])->name('tabletas.thanks');
     Route::post('/tabletas/assign/{clave}', [TabletController::class, 'assignRetiro'])->name('tabletas.assign.retiro');
     Route::post('/tabletas/devolucion/{clave}', [TabletController::class, 'devolucion'])->name('tabletas.devolucion');
+    Route::get('/tabletas/info/{clave}', [TabletController::class, 'info'])->name('tabletas.info');
 
 Route::middleware('permiso:tab,eliminar')->group(function () {
     Route::get('/tabletas/generar-qrs', [TabletController::class, 'generarQrs'])->name('tabletas.generarQrs');
@@ -318,6 +319,19 @@ Route::middleware('permiso:tab,agregar')->group(function () {
 Route::middleware('permiso:tab,editar')->group(function () {
     Route::get('/tabletas/{id}/edit', [TabletController::class, 'edit'])->name('tabletas.edit');
     Route::put('/tabletas/{id}', [TabletController::class, 'update'])->name('tabletas.update');
+});
+Route::middleware('permiso:ret_tab,agregar')->group(function () {
+    Route::get('/tabletas/retiro', [TabletController::class, 'retiro'])->name('tabletas.retiro');
+    Route::post('/tabletas/retiro', [TabletController::class, 'retiroStore'])->name('tabletas.retiro.store');
+    Route::get('/tabletas/devolucion', [TabletController::class, 'devolucionIndex'])->name('tabletas.devolucion.index');
+    Route::post('/tabletas/devolucion/registrar/{id}', [TabletController::class, 'devolucionRegistrar'])->name('tabletas.devolucion.registrar');
+});
+Route::middleware('permiso:ret_tab,eliminar')->group(function () {
+    Route::get('/tabletas/aprobacion', [TabletController::class, 'aprobacion'])->name('tabletas.aprobacion');
+    Route::put('/tabletas/aprobacion/{id}/aprobar', [TabletController::class, 'aprobar'])->name('tabletas.aprobacion.aprobar');
+    Route::delete('/tabletas/aprobacion/{id}', [TabletController::class, 'denegar'])->name('tabletas.aprobacion.denegar');
+    Route::put('/tabletas/aprobacion/{id}/aprobar-devolucion', [TabletController::class, 'aprobarDevolucion'])->name('tabletas.aprobacion.aprobarDevolucion');
+    Route::put('/tabletas/aprobacion/{id}/denegar-devolucion', [TabletController::class, 'denegarDevolucion'])->name('tabletas.aprobacion.denegarDevolucion');
 });
 
 // ── Mantenimiento ─────────────────────────────────────────────────────────────

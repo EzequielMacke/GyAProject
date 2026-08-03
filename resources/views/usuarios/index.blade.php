@@ -187,6 +187,15 @@
         .area-cell { display: flex; align-items: center; gap: 0.38rem; font-size: 0.8rem; color: var(--muted); }
         .area-cell i { font-size: 0.62rem; }
 
+        .nc-missing {
+            display: inline-flex; align-items: center; gap: 0.32rem;
+            font-size: 0.68rem; font-weight: 700;
+            letter-spacing: 0.3px;
+            color: #c0392b; background: #fdecea;
+            padding: 0.24rem 0.6rem; border-radius: 99px;
+        }
+        .nc-missing i { font-size: 0.62rem; }
+
         .action-btn {
             height: 30px; padding: 0 0.7rem; border-radius: 0.4rem;
             display: inline-flex; align-items: center; gap: 0.35rem;
@@ -301,6 +310,7 @@
                             <tr>
                                 <th class="row-num">#</th>
                                 <th>Usuario</th>
+                                <th>Nombre completo</th>
                                 <th>Área</th>
                                 <th>Estado</th>
                                 @permiso('usu', 'editar')<th></th>@endpermiso
@@ -320,6 +330,16 @@
                                         <div class="name-avatar {{ $on ? '' : 'off' }}">{{ $initials }}</div>
                                         <span class="name-text">{{ $usuario->nombre }}</span>
                                     </div>
+                                </td>
+                                <td>
+                                    @if($usuario->nombre_completo)
+                                        {{ $usuario->nombre_completo }}
+                                    @else
+                                        <span class="nc-missing">
+                                            <i class="fas fa-triangle-exclamation"></i>
+                                            Sin nombre completo
+                                        </span>
+                                    @endif
                                 </td>
                                 <td>
                                     <div class="area-cell">
@@ -343,7 +363,7 @@
                             </tr>
                             @empty
                             <tr class="empty-row">
-                                <td colspan="5">
+                                <td colspan="6">
                                     <i class="fas fa-users"></i>
                                     No hay usuarios registrados.
                                 </td>
@@ -351,7 +371,7 @@
                             @endforelse
 
                             <tr class="no-results-row" id="no-results">
-                                <td colspan="5">
+                                <td colspan="6">
                                     <i class="fas fa-search"></i>
                                     Sin resultados para tu búsqueda.
                                 </td>
