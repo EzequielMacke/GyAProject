@@ -90,6 +90,10 @@
         .resumen-tile.tile-diff.diff-pos .resumen-value { color: var(--green); }
         .resumen-tile.tile-diff.diff-neg { background: var(--red-s); border-color: var(--red-b); }
         .resumen-tile.tile-diff.diff-neg .resumen-value { color: var(--red); }
+        .resumen-value-iva {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem; font-weight: 600; color: var(--red);
+        }
 
         .form-card {
             background: var(--surface);
@@ -154,7 +158,9 @@
             $totalInicial = $tieneGasto
                 ? (($gasto->ingenieros ?? 0) + ($gasto->tecnicos ?? 0) + ($gasto->mano_obra ?? 0) + ($gasto->otros ?? 0))
                 : 0;
-            $diferenciaInicial = $presupuesto->monto_total - $totalInicial;
+            $montoPresupuestoSinIva = $presupuesto->monto_total / 1.1;
+            $ivaFijo = $presupuesto->monto_total - $montoPresupuestoSinIva;
+            $diferenciaSinIvaInicial = $montoPresupuestoSinIva - $totalInicial;
         @endphp
         <div class="content-header">
             <div class="container-fluid">
@@ -209,9 +215,10 @@
                         <span class="resumen-label">Total de gastos</span>
                         <span class="resumen-value" id="total-gastos">{{ number_format($totalInicial, 0, '', '.') }}</span>
                     </div>
-                    <div class="resumen-tile tile-diff {{ $diferenciaInicial >= 0 ? 'diff-pos' : 'diff-neg' }}" id="tile-diferencia">
+                    <div class="resumen-tile tile-diff {{ $diferenciaSinIvaInicial >= 0 ? 'diff-pos' : 'diff-neg' }}" id="tile-diferencia">
                         <span class="resumen-label">Diferencia</span>
-                        <span class="resumen-value" id="diferencia">{{ number_format($diferenciaInicial, 0, '', '.') }}</span>
+                        <span class="resumen-value" id="diferencia">{{ number_format($diferenciaSinIvaInicial, 0, '', '.') }}</span>
+                        <span class="resumen-value-iva" id="diferencia-iva">-{{ number_format($ivaFijo, 0, '', '.') }} IVA</span>
                     </div>
                 </div>
 
@@ -280,10 +287,15 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const montoPresupuesto = {{ (float) $presupuesto->monto_total }};
+    const montoPresupuestoSinIva = montoPresupuesto / 1.1;
+    const ivaFijo = montoPresupuesto - montoPresupuestoSinIva;
     const montoInputs = document.querySelectorAll('.monto-input');
     const totalEl = document.getElementById('total-gastos');
     const diffEl = document.getElementById('diferencia');
+    const diffIvaEl = document.getElementById('diferencia-iva');
     const diffTile = document.getElementById('tile-diferencia');
+
+    diffIvaEl.textContent = '-' + Math.round(ivaFijo).toLocaleString('de-DE') + ' IVA';
 
     function parseMonto(v) {
         v = v.replace(/\./g, '');
@@ -293,10 +305,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function recalcular() {
         let total = 0;
         montoInputs.forEach(input => total += parseMonto(input.value));
-        const diferencia = montoPresupuesto - total;
+        const diferencia = montoPresupuestoSinIva - total;
 
         totalEl.textContent = total.toLocaleString('de-DE');
-        diffEl.textContent = diferencia.toLocaleString('de-DE');
+        diffEl.textContent = Math.round(diferencia).toLocaleString('de-DE');
 
         diffTile.classList.toggle('diff-pos', diferencia >= 0);
         diffTile.classList.toggle('diff-neg', diferencia < 0);
