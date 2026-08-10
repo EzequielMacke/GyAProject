@@ -35,6 +35,12 @@ class AuthController extends Controller
             ])->withInput($request->only('nombre'));
         }
 
+        if ($usuario->estado == 2) {
+            return redirect()->back()->withErrors([
+                'nombre' => 'El usuario está desactivado. Contacte al administrador.',
+            ])->withInput($request->only('nombre'));
+        }
+
         Auth::login($usuario);
 
         // Guardar información en la sesión
