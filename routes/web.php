@@ -29,6 +29,9 @@ use App\Http\Controllers\SituacionAvanceController;
 use App\Http\Controllers\ValidarpresupuestoController;
 use App\Http\Controllers\BibliografiaController;
 use App\Http\Controllers\PlantillaController;
+use App\Http\Controllers\ObraTcController;
+use App\Http\Controllers\DirectorioTcController;
+use App\Http\Controllers\PlanoController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
@@ -457,6 +460,31 @@ Route::middleware('permiso:pla,editar')->group(function () {
 });
 Route::middleware('permiso:pla,eliminar')->group(function () {
     Route::delete('/plantilla/{id}', [PlantillaController::class, 'destroy'])->name('plantilla.destroy');
+});
+
+// ── Trabajo de Campo ────────────────────────────────────────────────────────
+Route::middleware('permiso:tra_cam,ver')->group(function () {
+    Route::get('/trabajo-campo', [ObraTcController::class, 'index'])->name('trabajo_campo.index');
+    Route::get('/trabajo-campo/{id}', [ObraTcController::class, 'show'])->name('obras_tc.index');
+});
+Route::middleware('permiso:obr_tc,agregar')->group(function () {
+    Route::post('/trabajo-campo', [ObraTcController::class, 'store'])->name('trabajo_campo.store');
+});
+Route::middleware('permiso:dir_tc,ver')->group(function () {
+    Route::get('/trabajo-campo/{obraTc}/directorio', [DirectorioTcController::class, 'index'])->name('directorio_tc.index');
+});
+Route::middleware('permiso:dir_tc,agregar')->group(function () {
+    Route::post('/trabajo-campo/{obraTc}/directorio', [DirectorioTcController::class, 'store'])->name('directorio_tc.store');
+});
+Route::middleware('permiso:pla_tc,ver')->group(function () {
+    Route::get('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'index'])->name('planos_tc.index');
+});
+Route::middleware('permiso:pla_tc,agregar')->group(function () {
+    Route::post('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'store'])->name('planos_tc.store');
+});
+Route::middleware(['permiso:pla_tc,editar', 'permiso:pla_tc,agregar'])->group(function () {
+    Route::get('/trabajo-campo/{obraTc}/planos/aprobar', [PlanoController::class, 'aprobar'])->name('planos_tc.aprobar');
+    Route::patch('/trabajo-campo/{obraTc}/planos/{plano}/aprobar', [PlanoController::class, 'aprobarStore'])->name('planos_tc.aprobarStore');
 });
 
 //ruta de pizarra

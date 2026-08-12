@@ -114,6 +114,11 @@
             line-height: 1.3;
         }
 
+        /* ── ALERTS ── */
+        .alert { padding: 0.75rem 1rem; border-radius: 0.55rem; font-size: 0.83rem; font-weight: 500; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+        .alert-success { background: #e5f6f0; color: #1e9166; border: 1px solid #b6e8d6; }
+        .alert-danger  { background: #fff0f0; color: #c0392b; border: 1px solid #f5c2c2; }
+
         /* colour variants */
         .ic-purple { background: #eeecf9; color: #7c6fcd; }
         .ic-violet { background: #f3ecf9; color: #8e44ad; }
@@ -140,6 +145,18 @@
                     <h1 class="ph-title">Gavilan <em>y Asociados</em></h1>
                     <p class="ph-sub">Seleccioná un módulo para continuar</p>
                 </div>
+
+                @if(session('success'))
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> {{ session('success') }}
+                </div>
+                @endif
+
+                @if(session('error'))
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                </div>
+                @endif
 
                 <div class="options-grid">
 
@@ -252,6 +269,13 @@
                     <a href="{{ route('plantilla.index') }}" class="opcion-card" style="animation-delay:0.54s">
                         <div class="opcion-icon ic-blue"><i class="fas fa-file-alt"></i></div>
                         <span class="opcion-label">Plantillas</span>
+                    </a>
+                    @endpermiso
+
+                    @permiso('tra_cam', 'ver')
+                    <a href="{{ route('trabajo_campo.index') }}" class="opcion-card" style="animation-delay:0.57s">
+                        <div class="opcion-icon ic-green"><i class="fas fa-hard-hat"></i></div>
+                        <span class="opcion-label">Trabajo de Campo</span>
                     </a>
                     @endpermiso
 
