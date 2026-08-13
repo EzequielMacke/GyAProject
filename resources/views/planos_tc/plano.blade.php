@@ -26,10 +26,13 @@
             padding: 0.55rem 0.25rem; border-radius: 0.55rem;
             color: #ccc; font-size: 0.68rem; font-weight: 600;
         }
+        .tool-submenu-wrap > .tool-btn {
+            width: 100%; min-height: 56px; justify-content: center;
+        }
         .tool-btn:hover { background: #333; }
         .tool-btn.activo { background: #2a6fdb; color: #fff; }
         .tool-swatch {
-            width: 20px; height: 20px; border-radius: 50%;
+            width: 22px; height: 22px; border-radius: 50%;
             border: 2px solid rgba(255,255,255,0.55);
         }
         .tool-icon-img {
@@ -121,6 +124,10 @@
                         <span class="tool-swatch" style="background:#d800c9"></span>
                         Corrosión
                     </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="humedad" title="Humedad">
+                        <span class="tool-swatch" style="background:#1565c0"></span>
+                        Humedad
+                    </button>
                 </div>
             </div>
             <div class="tool-submenu-wrap" id="ensayos-wrap">
@@ -192,7 +199,8 @@
 
         const HERRAMIENTAS = {
             fisura: { tipo: 'trazo', color: '#e53e3e', grosor: 0.25 },
-            corrosion: { tipo: 'trazo', color: '#d800c9', grosor: 0.25 },
+            corrosion: { tipo: 'trazo', color: '#d800c9', grosor: 0.25, cierreAutomatico: true },
+            humedad: { tipo: 'trazo', color: '#1565c0', grosor: 0.25, cierreAutomatico: true },
         };
 
         ENSAYOS.forEach(({ tool, url }) => {
@@ -563,7 +571,7 @@
         function finalizarPuntero(e) {
             punterosActivos.delete(e.pointerId);
 
-            if (dibujando && trazoActual && trazoActual.puntos.length > 3) {
+            if (dibujando && trazoActual && trazoActual.puntos.length > 3 && HERRAMIENTAS[herramientaActual].cierreAutomatico) {
                 const inicio = trazoActual.puntos[0];
                 trazoActual.puntos.push({ x: inicio.x, y: inicio.y });
                 trazoActual.cerrado = true;
