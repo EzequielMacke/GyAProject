@@ -32,6 +32,40 @@
             width: 20px; height: 20px; border-radius: 50%;
             border: 2px solid rgba(255,255,255,0.55);
         }
+        .tool-icon-img {
+            width: 22px; height: 22px;
+            background: #fff;
+            border-radius: 50%;
+            padding: 3px;
+            box-sizing: border-box;
+        }
+
+        /* ── BOTÓN ENSAYOS (con submenú expandible hacia la derecha) ── */
+        .tool-ensayos-wrap {
+            position: relative;
+        }
+        .tool-ensayos-wrap.activo > .tool-btn {
+            background: #2a6fdb; color: #fff;
+        }
+        .submenu-ensayos {
+            position: absolute;
+            top: 0;
+            left: calc(100% + 0.4rem);
+            background: #222;
+            border-radius: 0.55rem;
+            padding: 0.5rem;
+            display: none;
+            flex-direction: column;
+            gap: 0.3rem;
+            z-index: 30;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        .submenu-ensayos.abierto { display: flex; }
+        .submenu-ensayos .tool-btn {
+            flex-direction: row;
+            white-space: nowrap;
+            gap: 0.5rem;
+        }
 
         /* ── BOTÓN VOLVER (flotante, arriba a la derecha) ── */
         .btn-volver {
@@ -77,6 +111,34 @@
                 <span class="tool-swatch" style="background:#e53e3e"></span>
                 Fisura
             </button>
+            <div class="tool-ensayos-wrap" id="ensayos-wrap">
+                <button type="button" class="tool-btn" id="tool-ensayos" title="Ensayos">
+                    <img class="tool-icon-img" src="{{ asset('img/iconos/esclerometria.svg') }}" alt="">
+                    Ensayos
+                </button>
+                <div class="submenu-ensayos" id="submenu-ensayos">
+                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="esclerometria" title="Esclerometría">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/esclerometria.svg') }}" alt="">
+                        Esclerometría
+                    </button>
+                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="carbonatacion" title="Carbonatación">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/carbonatacion.svg') }}" alt="">
+                        Carbonatación
+                    </button>
+                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="pachometria" title="Pachometría">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/pachometria.svg') }}" alt="">
+                        Pachometría
+                    </button>
+                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="testigos" title="Testigos">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/testigos.svg') }}" alt="">
+                        Testigos
+                    </button>
+                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="ultrasonido" title="Ultrasonido">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/ultrasonido.svg') }}" alt="">
+                        Ultrasonido
+                    </button>
+                </div>
+            </div>
         </nav>
 
         <div class="lienzo-wrap" id="lienzo-wrap">
@@ -98,17 +160,66 @@
         const ZOOM_MAX = 40;
 
         /* ─── Herramientas de dibujo ───────────────────────── */
+        const ENSAYOS = [
+            { tool: 'esclerometria', url: @json(asset('img/iconos/esclerometria.svg')), prefijo: 'E', color: '#d800c9' },
+            { tool: 'carbonatacion', url: @json(asset('img/iconos/carbonatacion.svg')), prefijo: 'C', color: '#1f4fd8' },
+            { tool: 'pachometria', url: @json(asset('img/iconos/pachometria.svg')), prefijo: 'Pch', color: '#1f4fd8' },
+            { tool: 'testigos', url: @json(asset('img/iconos/testigos.svg')), prefijo: 'T', color: '#0a5c26' },
+            { tool: 'ultrasonido', url: @json(asset('img/iconos/ultrasonido.svg')), prefijo: 'U', color: '#e00000' },
+        ];
+
+        const PREFIJOS_ENSAYO = {};
+        const COLORES_ENSAYO = {};
+        const contadoresEnsayo = {};
+        ENSAYOS.forEach(({ tool, prefijo, color }) => {
+            PREFIJOS_ENSAYO[tool] = prefijo;
+            COLORES_ENSAYO[tool] = color;
+            contadoresEnsayo[tool] = 0;
+        });
+
         const HERRAMIENTAS = {
-            fisura: { color: '#e53e3e', grosor: 0.25 },
+            fisura: { tipo: 'trazo', color: '#e53e3e', grosor: 0.25 },
         };
+
+        ENSAYOS.forEach(({ tool, url }) => {
+            const img = new Image();
+            img.onload = () => redibujarTrazos();
+            img.src = url;
+            HERRAMIENTAS[tool] = { tipo: 'icono', imagen: img, tamano: 26 };
+        });
+
         let herramientaActual = 'fisura';
 
-        document.querySelectorAll('.tool-btn').forEach(btn => {
+        const ensayosWrap = document.getElementById('ensayos-wrap');
+        const submenuEnsayos = document.getElementById('submenu-ensayos');
+        const btnEnsayos = document.getElementById('tool-ensayos');
+        const imgBtnEnsayos = btnEnsayos.querySelector('img');
+
+        document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('activo'));
                 btn.classList.add('activo');
                 herramientaActual = btn.dataset.tool;
+
+                if (btn.classList.contains('tool-ensayo-item')) {
+                    ensayosWrap.classList.add('activo');
+                    imgBtnEnsayos.src = btn.querySelector('img').src;
+                    submenuEnsayos.classList.remove('abierto');
+                } else {
+                    ensayosWrap.classList.remove('activo');
+                }
             });
+        });
+
+        btnEnsayos.addEventListener('click', e => {
+            e.stopPropagation();
+            submenuEnsayos.classList.toggle('abierto');
+        });
+
+        document.addEventListener('click', e => {
+            if (!ensayosWrap.contains(e.target)) {
+                submenuEnsayos.classList.remove('abierto');
+            }
         });
 
         const lienzoWrap = document.getElementById('lienzo-wrap');
@@ -217,15 +328,42 @@
         function redibujarTrazos() {
             drawCtx.clearRect(0, 0, lienzoWrap.clientWidth, lienzoWrap.clientHeight);
 
-            trazos.forEach(trazo => {
-                if (trazo.puntos.length < 2) return;
-                drawCtx.strokeStyle = trazo.color;
-                drawCtx.lineWidth = trazo.grosor * vista.scale;
+            trazos.forEach(item => {
+                if (item.tipo === 'icono') {
+                    if (!item.imagen.complete || !item.imagen.naturalWidth) return;
+                    const ratio = item.imagen.naturalWidth / item.imagen.naturalHeight;
+                    const base = item.tamano * vista.scale;
+                    const anchoPantalla = ratio >= 1 ? base : base * ratio;
+                    const altoPantalla = ratio >= 1 ? base / ratio : base;
+                    const centro = mundoAPantalla(item.x, item.y);
+                    drawCtx.drawImage(
+                        item.imagen,
+                        centro.x - anchoPantalla / 2,
+                        centro.y - altoPantalla / 2,
+                        anchoPantalla,
+                        altoPantalla
+                    );
+
+                    if (item.etiqueta) {
+                        const tamanoFuente = base * 0.32;
+                        drawCtx.font = `bold ${tamanoFuente}px sans-serif`;
+                        drawCtx.textBaseline = 'middle';
+                        drawCtx.textAlign = 'left';
+                        const textoX = centro.x + anchoPantalla / 2 - base * 0.14;
+                        drawCtx.fillStyle = item.colorEtiqueta || '#000';
+                        drawCtx.fillText(item.etiqueta, textoX, centro.y);
+                    }
+                    return;
+                }
+
+                if (item.puntos.length < 2) return;
+                drawCtx.strokeStyle = item.color;
+                drawCtx.lineWidth = item.grosor * vista.scale;
                 drawCtx.beginPath();
-                const p0 = mundoAPantalla(trazo.puntos[0].x, trazo.puntos[0].y);
+                const p0 = mundoAPantalla(item.puntos[0].x, item.puntos[0].y);
                 drawCtx.moveTo(p0.x, p0.y);
-                for (let i = 1; i < trazo.puntos.length; i++) {
-                    const p = mundoAPantalla(trazo.puntos[i].x, trazo.puntos[i].y);
+                for (let i = 1; i < item.puntos.length; i++) {
+                    const p = mundoAPantalla(item.puntos[i].x, item.puntos[i].y);
                     drawCtx.lineTo(p.x, p.y);
                 }
                 drawCtx.stroke();
@@ -281,6 +419,7 @@
 
             factorActual = SOBREMUESTREO;
             trazos = [];
+            ENSAYOS.forEach(({ tool }) => { contadoresEnsayo[tool] = 0; });
             centrarVista();
         }
 
@@ -320,15 +459,27 @@
                 };
             } else if (punterosActivos.size === 1) {
                 const herramienta = HERRAMIENTAS[herramientaActual];
-                dibujando = true;
                 const pantalla = posicionPantalla(e);
                 const mundo = pantallaAMundo(pantalla.x, pantalla.y);
-                trazoActual = { color: herramienta.color, grosor: herramienta.grosor, puntos: [mundo] };
-                trazos.push(trazoActual);
-                drawCtx.strokeStyle = herramienta.color;
-                drawCtx.lineWidth = herramienta.grosor * vista.scale;
-                drawCtx.beginPath();
-                drawCtx.moveTo(pantalla.x, pantalla.y);
+
+                if (herramienta.tipo === 'icono') {
+                    const prefijo = PREFIJOS_ENSAYO[herramientaActual];
+                    let etiqueta = null;
+                    if (prefijo) {
+                        contadoresEnsayo[herramientaActual]++;
+                        etiqueta = prefijo + contadoresEnsayo[herramientaActual];
+                    }
+                    trazos.push({ tipo: 'icono', imagen: herramienta.imagen, x: mundo.x, y: mundo.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
+                    redibujarTrazos();
+                } else {
+                    dibujando = true;
+                    trazoActual = { tipo: 'trazo', color: herramienta.color, grosor: herramienta.grosor, puntos: [mundo] };
+                    trazos.push(trazoActual);
+                    drawCtx.strokeStyle = herramienta.color;
+                    drawCtx.lineWidth = herramienta.grosor * vista.scale;
+                    drawCtx.beginPath();
+                    drawCtx.moveTo(pantalla.x, pantalla.y);
+                }
             }
         });
 
