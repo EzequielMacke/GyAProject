@@ -128,6 +128,10 @@
                         <span class="tool-swatch" style="background:#1565c0"></span>
                         Humedad
                     </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="coqueras" title="Coqueras">
+                        <span class="tool-swatch" style="background:#0a8a3a"></span>
+                        Coqueras
+                    </button>
                 </div>
             </div>
             <div class="tool-submenu-wrap" id="ensayos-wrap">
@@ -201,6 +205,7 @@
             fisura: { tipo: 'trazo', color: '#e53e3e', grosor: 0.25 },
             corrosion: { tipo: 'trazo', color: '#d800c9', grosor: 0.25, cierreAutomatico: true },
             humedad: { tipo: 'trazo', color: '#1565c0', grosor: 0.25, cierreAutomatico: true },
+            coqueras: { tipo: 'trazo', color: '#0a8a3a', grosor: 0.25, cierreAutomatico: true },
         };
 
         ENSAYOS.forEach(({ tool, url }) => {
