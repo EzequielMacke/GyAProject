@@ -40,14 +40,14 @@
             box-sizing: border-box;
         }
 
-        /* ── BOTÓN ENSAYOS (con submenú expandible hacia la derecha) ── */
-        .tool-ensayos-wrap {
+        /* ── BOTONES CON SUBMENÚ (expandible hacia la derecha) ── */
+        .tool-submenu-wrap {
             position: relative;
         }
-        .tool-ensayos-wrap.activo > .tool-btn {
+        .tool-submenu-wrap.activo > .tool-btn {
             background: #2a6fdb; color: #fff;
         }
-        .submenu-ensayos {
+        .submenu-lateral {
             position: absolute;
             top: 0;
             left: calc(100% + 0.4rem);
@@ -60,8 +60,8 @@
             z-index: 30;
             box-shadow: 0 4px 16px rgba(0,0,0,0.4);
         }
-        .submenu-ensayos.abierto { display: flex; }
-        .submenu-ensayos .tool-btn {
+        .submenu-lateral.abierto { display: flex; }
+        .submenu-lateral .tool-btn {
             flex-direction: row;
             white-space: nowrap;
             gap: 0.5rem;
@@ -107,33 +107,45 @@
 
     <div class="app">
         <nav class="toolbar-vertical">
-            <button type="button" class="tool-btn activo" id="tool-fisura" data-tool="fisura" title="Fisura">
-                <span class="tool-swatch" style="background:#e53e3e"></span>
-                Fisura
-            </button>
-            <div class="tool-ensayos-wrap" id="ensayos-wrap">
+            <div class="tool-submenu-wrap activo" id="danos-wrap">
+                <button type="button" class="tool-btn" id="tool-danos" title="Daños">
+                    <span class="tool-swatch" style="background:#e53e3e"></span>
+                    Daños
+                </button>
+                <div class="submenu-lateral" id="submenu-danos">
+                    <button type="button" class="tool-btn tool-submenu-item activo" data-tool="fisura" title="Fisura">
+                        <span class="tool-swatch" style="background:#e53e3e"></span>
+                        Fisura
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="corrosion" title="Corrosión">
+                        <span class="tool-swatch" style="background:#d800c9"></span>
+                        Corrosión
+                    </button>
+                </div>
+            </div>
+            <div class="tool-submenu-wrap" id="ensayos-wrap">
                 <button type="button" class="tool-btn" id="tool-ensayos" title="Ensayos">
                     <img class="tool-icon-img" src="{{ asset('img/iconos/esclerometria.svg') }}" alt="">
                     Ensayos
                 </button>
-                <div class="submenu-ensayos" id="submenu-ensayos">
-                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="esclerometria" title="Esclerometría">
+                <div class="submenu-lateral" id="submenu-ensayos">
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="esclerometria" title="Esclerometría">
                         <img class="tool-icon-img" src="{{ asset('img/iconos/esclerometria.svg') }}" alt="">
                         Esclerometría
                     </button>
-                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="carbonatacion" title="Carbonatación">
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="carbonatacion" title="Carbonatación">
                         <img class="tool-icon-img" src="{{ asset('img/iconos/carbonatacion.svg') }}" alt="">
                         Carbonatación
                     </button>
-                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="pachometria" title="Pachometría">
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="pachometria" title="Pachometría">
                         <img class="tool-icon-img" src="{{ asset('img/iconos/pachometria.svg') }}" alt="">
                         Pachometría
                     </button>
-                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="testigos" title="Testigos">
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="testigos" title="Testigos">
                         <img class="tool-icon-img" src="{{ asset('img/iconos/testigos.svg') }}" alt="">
                         Testigos
                     </button>
-                    <button type="button" class="tool-btn tool-ensayo-item" data-tool="ultrasonido" title="Ultrasonido">
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="ultrasonido" title="Ultrasonido">
                         <img class="tool-icon-img" src="{{ asset('img/iconos/ultrasonido.svg') }}" alt="">
                         Ultrasonido
                     </button>
@@ -158,6 +170,7 @@
         const SOBREMUESTREO = Math.min(Math.max(dpr, 1) * 1.5, 3);
         const ZOOM_MIN = 0.05;
         const ZOOM_MAX = 40;
+        const ESPACIO_TRAMA = 4;
 
         /* ─── Herramientas de dibujo ───────────────────────── */
         const ENSAYOS = [
@@ -179,6 +192,7 @@
 
         const HERRAMIENTAS = {
             fisura: { tipo: 'trazo', color: '#e53e3e', grosor: 0.25 },
+            corrosion: { tipo: 'trazo', color: '#d800c9', grosor: 0.25 },
         };
 
         ENSAYOS.forEach(({ tool, url }) => {
@@ -190,10 +204,7 @@
 
         let herramientaActual = 'fisura';
 
-        const ensayosWrap = document.getElementById('ensayos-wrap');
-        const submenuEnsayos = document.getElementById('submenu-ensayos');
-        const btnEnsayos = document.getElementById('tool-ensayos');
-        const imgBtnEnsayos = btnEnsayos.querySelector('img');
+        const wrapsSubmenu = document.querySelectorAll('.tool-submenu-wrap');
 
         document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -201,25 +212,36 @@
                 btn.classList.add('activo');
                 herramientaActual = btn.dataset.tool;
 
-                if (btn.classList.contains('tool-ensayo-item')) {
-                    ensayosWrap.classList.add('activo');
-                    imgBtnEnsayos.src = btn.querySelector('img').src;
-                    submenuEnsayos.classList.remove('abierto');
-                } else {
-                    ensayosWrap.classList.remove('activo');
-                }
+                const wrapPadre = btn.closest('.tool-submenu-wrap');
+                wrapsSubmenu.forEach(w => w.classList.toggle('activo', w === wrapPadre));
+
+                const btnPrincipal = wrapPadre.querySelector(':scope > .tool-btn');
+                const imgOrigen = btn.querySelector('img');
+                const swatchOrigen = btn.querySelector('.tool-swatch');
+                if (imgOrigen) btnPrincipal.querySelector('img').src = imgOrigen.src;
+                if (swatchOrigen) btnPrincipal.querySelector('.tool-swatch').style.background = swatchOrigen.style.background;
+
+                wrapPadre.querySelector('.submenu-lateral').classList.remove('abierto');
             });
         });
 
-        btnEnsayos.addEventListener('click', e => {
-            e.stopPropagation();
-            submenuEnsayos.classList.toggle('abierto');
+        document.querySelectorAll('.tool-submenu-wrap > .tool-btn').forEach(btnToggle => {
+            btnToggle.addEventListener('click', e => {
+                e.stopPropagation();
+                const submenu = btnToggle.parentElement.querySelector('.submenu-lateral');
+                document.querySelectorAll('.submenu-lateral').forEach(s => {
+                    if (s !== submenu) s.classList.remove('abierto');
+                });
+                submenu.classList.toggle('abierto');
+            });
         });
 
         document.addEventListener('click', e => {
-            if (!ensayosWrap.contains(e.target)) {
-                submenuEnsayos.classList.remove('abierto');
-            }
+            wrapsSubmenu.forEach(wrap => {
+                if (!wrap.contains(e.target)) {
+                    wrap.querySelector('.submenu-lateral').classList.remove('abierto');
+                }
+            });
         });
 
         const lienzoWrap = document.getElementById('lienzo-wrap');
@@ -357,17 +379,48 @@
                 }
 
                 if (item.puntos.length < 2) return;
+                const puntosPantalla = item.puntos.map(p => mundoAPantalla(p.x, p.y));
+                const path = new Path2D();
+                path.moveTo(puntosPantalla[0].x, puntosPantalla[0].y);
+                for (let i = 1; i < puntosPantalla.length; i++) {
+                    path.lineTo(puntosPantalla[i].x, puntosPantalla[i].y);
+                }
+
+                if (item.cerrado) {
+                    path.closePath();
+                    dibujarTramaDiagonal(item, puntosPantalla, path);
+                }
+
                 drawCtx.strokeStyle = item.color;
                 drawCtx.lineWidth = item.grosor * vista.scale;
-                drawCtx.beginPath();
-                const p0 = mundoAPantalla(item.puntos[0].x, item.puntos[0].y);
-                drawCtx.moveTo(p0.x, p0.y);
-                for (let i = 1; i < item.puntos.length; i++) {
-                    const p = mundoAPantalla(item.puntos[i].x, item.puntos[i].y);
-                    drawCtx.lineTo(p.x, p.y);
-                }
-                drawCtx.stroke();
+                drawCtx.stroke(path);
             });
+        }
+
+        function dibujarTramaDiagonal(item, puntosPantalla, path) {
+            const xs = puntosPantalla.map(p => p.x);
+            const ys = puntosPantalla.map(p => p.y);
+            const minX = Math.min(...xs), maxX = Math.max(...xs);
+            const minY = Math.min(...ys), maxY = Math.max(...ys);
+            const centroX = (minX + maxX) / 2;
+            const centroY = (minY + maxY) / 2;
+            const diagonal = Math.hypot(maxX - minX, maxY - minY) || 1;
+            const espaciado = Math.max(1.5, ESPACIO_TRAMA * vista.scale);
+
+            drawCtx.save();
+            drawCtx.clip(path);
+            drawCtx.translate(centroX, centroY);
+            drawCtx.rotate(Math.PI / 4);
+            drawCtx.strokeStyle = item.color;
+            drawCtx.lineWidth = Math.max(0.5, item.grosor * vista.scale * 0.5);
+            drawCtx.globalAlpha = 0.75;
+            drawCtx.beginPath();
+            for (let x = -diagonal; x <= diagonal; x += espaciado) {
+                drawCtx.moveTo(x, -diagonal);
+                drawCtx.lineTo(x, diagonal);
+            }
+            drawCtx.stroke();
+            drawCtx.restore();
         }
 
         window.addEventListener('resize', () => {
@@ -509,6 +562,14 @@
 
         function finalizarPuntero(e) {
             punterosActivos.delete(e.pointerId);
+
+            if (dibujando && trazoActual && trazoActual.puntos.length > 3) {
+                const inicio = trazoActual.puntos[0];
+                trazoActual.puntos.push({ x: inicio.x, y: inicio.y });
+                trazoActual.cerrado = true;
+                redibujarTrazos();
+            }
+
             dibujando = false;
             trazoActual = null;
             pinchInfo = null;
