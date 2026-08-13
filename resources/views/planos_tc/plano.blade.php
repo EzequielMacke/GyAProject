@@ -159,7 +159,7 @@
         }
 
         function necesitaReajusteNitidez() {
-            const factorMaxSeguro = Math.min(12000 / anchoBase, 12000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
+            const factorMaxSeguro = Math.min(6000 / anchoBase, 6000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
             const faltaNitidez = vista.scale > factorActual * 0.9 && factorActual < factorMaxSeguro - 0.01;
             const sobraNitidez = factorActual > SOBREMUESTREO * 1.05 && vista.scale < factorActual / 3;
             return faltaNitidez || sobraNitidez;
@@ -175,7 +175,7 @@
 
             if (!necesitaReajusteNitidez()) return;
 
-            const factorMaxSeguro = Math.min(12000 / anchoBase, 12000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
+            const factorMaxSeguro = Math.min(6000 / anchoBase, 6000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
             const nuevoFactor = clamp(vista.scale * 1.8, SOBREMUESTREO, factorMaxSeguro);
             if (Math.abs(nuevoFactor - factorActual) > 0.05) {
                 await reRenderNitidez(nuevoFactor);
