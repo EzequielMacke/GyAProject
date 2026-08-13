@@ -115,7 +115,21 @@
 
         /* ── Panel central: PDF ── */
         .pdf-panel { position: relative; align-items: stretch; justify-content: stretch; }
-        #pdf-viewer { width: 100%; height: 100%; border: none; display: none; }
+        .pdf-canvas-wrap {
+            width: 100%; height: 100%; display: none;
+            align-items: center; justify-content: center;
+            overflow: auto; background: #e4e9f0;
+        }
+        .pdf-canvas-wrap canvas { box-shadow: 0 0 16px rgba(0,0,0,0.15); }
+        .pdf-toolbar { position: absolute; top: 10px; right: 10px; z-index: 5; display: none; gap: 0.4rem; }
+        .pdf-rot-btn {
+            width: 34px; height: 34px; border-radius: 0.5rem;
+            border: 1.5px solid var(--border); background: #fff; color: var(--text2);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            transition: all 0.14s;
+        }
+        .pdf-rot-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
         .pdf-empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 0.85rem; text-align: center; padding: 1.5rem; }
         .pdf-empty-state i { font-size: 2.2rem; opacity: 0.25; margin-bottom: 0.75rem; }
 
@@ -247,7 +261,13 @@
 
                     {{-- CENTRO: visor de PDF --}}
                     <div class="panel pdf-panel">
-                        <iframe id="pdf-viewer"></iframe>
+                        <div class="pdf-toolbar" id="pdf-toolbar">
+                            <button type="button" class="pdf-rot-btn" id="btn-rot-izq" title="Rotar a la izquierda"><i class="fas fa-undo"></i></button>
+                            <button type="button" class="pdf-rot-btn" id="btn-rot-der" title="Rotar a la derecha"><i class="fas fa-redo"></i></button>
+                        </div>
+                        <div class="pdf-canvas-wrap" id="pdf-canvas-wrap">
+                            <canvas id="pdf-canvas"></canvas>
+                        </div>
                         <div class="pdf-empty-state" id="pdf-empty-state">
                             <i class="fas fa-file-pdf"></i>
                             Seleccioná un plano de la lista para verlo acá.
@@ -303,7 +323,10 @@
     @include('partials.footer')
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
     const obraTcId = {{ $obraTc->id }};
 
     const pendientesData = {
@@ -321,6 +344,51 @@
 
     let planoActualId = null;
 
+    /* ─── Visor de PDF (canvas + pdf.js) con rotación ── */
+    const pdfCanvas = document.getElementById('pdf-canvas');
+    const pdfCtx = pdfCanvas.getContext('2d');
+    const pdfCanvasWrap = document.getElementById('pdf-canvas-wrap');
+    const pdfToolbar = document.getElementById('pdf-toolbar');
+    let pdfDocActual = null;
+    let rotacionActual = 0;
+
+    async function cargarPdfEnPanel(url) {
+        rotacionActual = 0;
+        pdfDocActual = await pdfjsLib.getDocument(url).promise;
+        await renderizarPaginaPanel();
+    }
+
+    async function renderizarPaginaPanel() {
+        if (!pdfDocActual) return;
+        const pagina = await pdfDocActual.getPage(1);
+        const dpr = window.devicePixelRatio || 1;
+
+        const viewportBase = pagina.getViewport({ scale: 1, rotation: rotacionActual });
+        const anchoDisponible = Math.max(pdfCanvasWrap.clientWidth - 32, 50);
+        const altoDisponible = Math.max(pdfCanvasWrap.clientHeight - 32, 50);
+        const escala = Math.min(anchoDisponible / viewportBase.width, altoDisponible / viewportBase.height);
+
+        const viewport = pagina.getViewport({ scale: escala, rotation: rotacionActual });
+        const viewportRender = pagina.getViewport({ scale: escala * dpr, rotation: rotacionActual });
+
+        pdfCanvas.width = viewportRender.width;
+        pdfCanvas.height = viewportRender.height;
+        pdfCanvas.style.width = viewport.width + 'px';
+        pdfCanvas.style.height = viewport.height + 'px';
+
+        await pagina.render({ canvasContext: pdfCtx, viewport: viewportRender }).promise;
+    }
+
+    document.getElementById('btn-rot-izq').addEventListener('click', () => {
+        rotacionActual = (rotacionActual - 90 + 360) % 360;
+        renderizarPaginaPanel();
+    });
+    document.getElementById('btn-rot-der').addEventListener('click', () => {
+        rotacionActual = (rotacionActual + 90) % 360;
+        renderizarPaginaPanel();
+    });
+    window.addEventListener('resize', () => renderizarPaginaPanel());
+
     function seleccionarPendiente(id) {
         planoActualId = id;
         const data = pendientesData[id];
@@ -329,10 +397,10 @@
         document.querySelectorAll('.pend-item').forEach(el => el.classList.remove('active'));
         document.getElementById('pend-item-' + id)?.classList.add('active');
 
-        const viewer = document.getElementById('pdf-viewer');
-        viewer.src = '/storage/planos/' + data.archivo;
-        viewer.style.display = 'block';
         document.getElementById('pdf-empty-state').style.display = 'none';
+        pdfCanvasWrap.style.display = 'flex';
+        pdfToolbar.style.display = 'flex';
+        cargarPdfEnPanel('/storage/planos/' + data.archivo);
 
         document.getElementById('form-panel-grupo').style.display = 'flex';
         document.getElementById('form-panel-grupo-nombre').textContent = data.grupoNombre;
@@ -478,7 +546,7 @@
                 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
                 'Accept': 'application/json',
             },
-            body: JSON.stringify({ nombre: nombre, subgrupo: subgrupo }),
+            body: JSON.stringify({ nombre: nombre, subgrupo: subgrupo, rotacion: rotacionActual }),
         })
         .then(async r => {
             if (!r.ok) {

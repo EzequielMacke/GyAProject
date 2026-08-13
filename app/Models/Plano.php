@@ -17,6 +17,7 @@ class Plano extends Model
         'archivo',
         'archivo_original',
         'usuario_id',
+        'rotacion',
     ];
 
     public function obra()

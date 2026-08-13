@@ -77,11 +77,15 @@ class PlanoController extends Controller
 
         $usuarioId = session('usuario_id');
 
-        $grupo = PlanoGrupo::create([
-            'descripcion' => $request->nombre_grupo,
-            'obra_id' => $obraTc->id,
-            'usuario_id' => $usuarioId,
-        ]);
+        $grupo = PlanoGrupo::firstOrCreate(
+            [
+                'obra_id' => $obraTc->id,
+                'descripcion' => $request->nombre_grupo,
+            ],
+            [
+                'usuario_id' => $usuarioId,
+            ]
+        );
 
         if (! Storage::disk('public')->exists('planos')) {
             Storage::disk('public')->makeDirectory('planos');
@@ -149,6 +153,7 @@ class PlanoController extends Controller
                 Rule::unique('planos', 'descripcion')->where('obra_id', $obraTc->id)->ignore($plano->id),
             ],
             'subgrupo' => 'required|string|max:255',
+            'rotacion' => 'nullable|integer|in:0,90,180,270',
         ], [
             'nombre.unique' => 'Ya existe un plano con ese nombre en esta obra.',
         ]);
@@ -167,6 +172,7 @@ class PlanoController extends Controller
         $plano->update([
             'descripcion' => $request->nombre,
             'subgrupo_id' => $subgrupo->id,
+            'rotacion' => $request->rotacion ?? 0,
         ]);
 
         return response()->json(['success' => true]);

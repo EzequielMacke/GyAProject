@@ -177,6 +177,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         const urlPdf = @json(Storage::url('planos/' . $plano->archivo));
+        const rotacionPlano = {{ (int) ($plano->rotacion ?? 0) }};
         const dpr = window.devicePixelRatio || 1;
         const SOBREMUESTREO = Math.min(Math.max(dpr, 1) * 1.5, 3);
         const ZOOM_MIN = 0.05;
@@ -334,8 +335,8 @@
             renderandoNitidez = true;
             try {
                 const pagina = await pdfDoc.getPage(1);
-                const escalaVisible = anchoBase / pagina.getViewport({ scale: 1 }).width;
-                const viewportRender = pagina.getViewport({ scale: escalaVisible * nuevoFactor });
+                const escalaVisible = anchoBase / pagina.getViewport({ scale: 1, rotation: rotacionPlano }).width;
+                const viewportRender = pagina.getViewport({ scale: escalaVisible * nuevoFactor, rotation: rotacionPlano });
 
                 pdfCanvas.width = viewportRender.width;
                 pdfCanvas.height = viewportRender.height;
@@ -468,10 +469,10 @@
             clearTimeout(temporizadorNitidez);
             const pagina = await pdfDoc.getPage(1);
             const anchoDisponible = Math.min(lienzoWrap.clientWidth - 48, 1400);
-            const viewportBase = pagina.getViewport({ scale: 1 });
+            const viewportBase = pagina.getViewport({ scale: 1, rotation: rotacionPlano });
             const escalaVisible = anchoDisponible / viewportBase.width;
-            const viewportVisible = pagina.getViewport({ scale: escalaVisible });
-            const viewportRender = pagina.getViewport({ scale: escalaVisible * SOBREMUESTREO });
+            const viewportVisible = pagina.getViewport({ scale: escalaVisible, rotation: rotacionPlano });
+            const viewportRender = pagina.getViewport({ scale: escalaVisible * SOBREMUESTREO, rotation: rotacionPlano });
 
             anchoBase = viewportVisible.width;
             altoBase = viewportVisible.height;
