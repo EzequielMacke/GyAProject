@@ -478,6 +478,9 @@ Route::middleware('permiso:dir_tc,agregar')->group(function () {
 });
 Route::middleware('permiso:pla_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'index'])->name('planos_tc.index');
+    Route::get('/trabajo-campo/{obraTc}/planos/{plano}', [PlanoController::class, 'show'])
+        ->where('plano', '[0-9]+')
+        ->name('planos_tc.plano');
 });
 Route::middleware('permiso:pla_tc,agregar')->group(function () {
     Route::post('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'store'])->name('planos_tc.store');

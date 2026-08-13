@@ -62,6 +62,11 @@ class PlanoController extends Controller
         return view('planos_tc.index', compact('obraTc', 'planos', 'arbol', 'pendientesCount', 'gruposExistentes'));
     }
 
+    public function show(ObraTc $obraTc, Plano $plano)
+    {
+        return view('planos_tc.plano', compact('obraTc', 'plano'));
+    }
+
     public function store(Request $request, ObraTc $obraTc)
     {
         $request->validate([

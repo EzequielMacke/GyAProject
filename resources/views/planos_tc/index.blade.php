@@ -73,6 +73,31 @@
         .alert-success { background: #e5f6f0; color: #1e9166; border: 1px solid #b6e8d6; }
         .alert-danger  { background: #fff0f0; color: #c0392b; border: 1px solid #f5c2c2; }
 
+        /* ── BUSCADOR ── */
+        .search-wrap {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        .search-wrap i.fa-search {
+            position: absolute; left: 0.95rem; top: 50%; transform: translateY(-50%);
+            color: var(--muted); font-size: 0.85rem; pointer-events: none;
+        }
+        .search-input {
+            width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.86rem;
+            background: var(--surface); border: 1.5px solid var(--border);
+            border-radius: 0.65rem; padding: 0.65rem 2.25rem 0.65rem 2.5rem; color: var(--text);
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
+        .search-clear {
+            display: none;
+            position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: var(--muted);
+            font-size: 0.8rem; padding: 0.3rem; border-radius: 0.3rem; transition: color 0.14s;
+        }
+        .search-clear:hover { color: var(--text); }
+        .search-clear.show { display: block; }
+
         /* ── ÁRBOL GRUPO › SUBGRUPO › PLANOS ── */
         .tree-wrap { background: var(--surface); border: 1.5px solid var(--border); border-radius: 0.85rem; overflow: hidden; }
 
@@ -122,6 +147,7 @@
             padding: 0.7rem 1.25rem 0.7rem 3.75rem;
             border-top: 1px solid var(--border);
             transition: background 0.12s;
+            text-decoration: none; color: inherit; cursor: pointer;
         }
         .pl-row:hover { background: var(--surface2); }
         .pl-row i.fa-file-pdf { color: #c0392b; flex-shrink: 0; }
@@ -224,6 +250,42 @@
         .file-item-remove { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.75rem; padding: 0 0.2rem; transition: color 0.14s; flex-shrink: 0; }
         .file-item-remove:hover { color: #c0392b; }
 
+        /* ── LAYOUT CONTENIDO + ACTIVIDAD ── */
+        .content-layout { display: flex; align-items: flex-start; gap: 1.5rem; }
+        .content-main { flex: 1; min-width: 0; }
+
+        /* ── PANEL ACTIVIDAD ── */
+        .activity-panel {
+            width: 300px; flex-shrink: 0;
+            background: var(--surface); border: 1.5px solid var(--border); border-radius: 0.85rem;
+            overflow: hidden;
+            position: sticky; top: 1rem;
+        }
+        .activity-head {
+            padding: 0.9rem 1.1rem;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem; font-weight: 700; color: var(--text);
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .activity-head i { color: var(--accent); }
+        .activity-list { max-height: 640px; overflow-y: auto; }
+        .activity-item {
+            display: flex; gap: 0.65rem;
+            padding: 0.8rem 1.1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-icon {
+            width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+            background: var(--blue-s); color: var(--accent);
+            display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+        }
+        .activity-text { font-size: 0.8rem; color: var(--text2); line-height: 1.4; }
+        .activity-text strong { color: var(--text); font-weight: 700; }
+        .activity-time { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
+        .activity-empty { padding: 2rem 1.1rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
+
         /* ── MOBILE ── */
         @media (max-width: 640px) {
             .ph { padding: 1rem 0 0.75rem; gap: 0.75rem; margin-bottom: 1rem; }
@@ -231,6 +293,8 @@
             .ph-right { width: 100%; }
             .pl-row { padding-left: 2.25rem; }
             .tree-subgrupo > summary { padding-left: 1.75rem; }
+            .content-layout { flex-direction: column; }
+            .activity-panel { width: 100%; position: static; }
         }
     </style>
 </head>
@@ -295,6 +359,17 @@
                 </div>
                 @endif
 
+                <div class="content-layout">
+                <div class="content-main">
+
+                @if(!$planos->isEmpty())
+                <div class="search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="input-buscar-plano" class="search-input" placeholder="Buscar por grupo, subgrupo o plano...">
+                    <button type="button" class="search-clear" id="btn-buscar-clear" onclick="limpiarBusquedaPlano()" title="Limpiar"><i class="fas fa-times"></i></button>
+                </div>
+                @endif
+
                 <div class="tree-wrap">
                     @if($planos->isEmpty())
                         <div class="empty-state">
@@ -304,7 +379,7 @@
                         </div>
                     @else
                         @foreach($arbol as $grupoId => $ramaGrupo)
-                        <details class="tree-grupo" open>
+                        <details class="tree-grupo" open data-nombre="{{ Str::lower($ramaGrupo['grupo']->descripcion ?? '') }}">
                             <summary>
                                 <i class="fas fa-chevron-right chevron"></i>
                                 <i class="fas fa-folder"></i>
@@ -313,7 +388,7 @@
                             </summary>
 
                             @foreach($ramaGrupo['subgrupos'] as $subgrupoId => $ramaSubgrupo)
-                            <details class="tree-subgrupo">
+                            <details class="tree-subgrupo" data-nombre="{{ Str::lower($ramaSubgrupo['subgrupo']->descripcion ?? '') }}">
                                 <summary>
                                     <i class="fas fa-chevron-right chevron"></i>
                                     <i class="fas fa-layer-group"></i>
@@ -322,16 +397,51 @@
                                 </summary>
 
                                 @foreach($ramaSubgrupo['planos'] as $plano)
-                                <div class="pl-row">
+                                <a href="{{ route('planos_tc.plano', [$obraTc->id, $plano->id]) }}" class="pl-row" data-nombre="{{ Str::lower($plano->descripcion ?? '') }}">
                                     <i class="fas fa-file-pdf"></i>
                                     <div class="pl-desc">{{ $plano->descripcion }}</div>
-                                </div>
+                                </a>
                                 @endforeach
                             </details>
                             @endforeach
                         </details>
                         @endforeach
+
+                        <div class="empty-state" id="empty-busqueda" style="display:none">
+                            <div class="empty-icon"><i class="fas fa-search"></i></div>
+                            <div class="empty-title">Sin resultados</div>
+                            <div class="empty-sub">No se encontraron grupos, subgrupos ni planos que coincidan con la búsqueda.</div>
+                        </div>
                     @endif
+                </div>
+
+                </div>
+
+                <aside class="activity-panel">
+                    <div class="activity-head">
+                        <i class="fas fa-history"></i> Registro de actividad
+                    </div>
+                    <div class="activity-list">
+                        @forelse($planos->sortByDesc('created_at') as $actividad)
+                        @php
+                            $usuarioActividad = $actividad->usuario;
+                            $nombreActividad = $usuarioActividad
+                                ? ($usuarioActividad->nombre_completo ?: $usuarioActividad->nombre)
+                                : 'Usuario desconocido';
+                        @endphp
+                        <div class="activity-item">
+                            <div class="activity-icon"><i class="fas fa-upload"></i></div>
+                            <div>
+                                <div class="activity-text"><strong>{{ $nombreActividad }}</strong> subió el plano <strong>{{ $actividad->descripcion }}</strong></div>
+                                <div class="activity-time">{{ $actividad->created_at?->format('d/m/Y H:i') }} hs</div>
+                            </div>
+                        </div>
+                        @empty
+                        <div class="activity-empty">Todavía no hay actividad registrada.</div>
+                        @endforelse
+                    </div>
+                </aside>
+
                 </div>
 
             </div>
@@ -542,6 +652,62 @@
     @if($errors->any())
     abrirModalNuevoPlano();
     @endif
+
+    /* ─── Buscador de grupo / subgrupo / plano ────────────── */
+    const inputBuscarPlano = document.getElementById('input-buscar-plano');
+
+    if (inputBuscarPlano) {
+        const btnBuscarClear = document.getElementById('btn-buscar-clear');
+        const gruposArbol = document.querySelectorAll('.tree-grupo');
+        const emptyBusqueda = document.getElementById('empty-busqueda');
+
+        inputBuscarPlano.addEventListener('input', function () {
+            const q = this.value.trim().toLowerCase();
+            btnBuscarClear.classList.toggle('show', q.length > 0);
+
+            let hayGrupoVisible = false;
+
+            gruposArbol.forEach(grupo => {
+                const grupoNombre = grupo.dataset.nombre || '';
+                const grupoMatch = q === '' || grupoNombre.includes(q);
+                let grupoTieneVisible = false;
+
+                grupo.querySelectorAll(':scope > .tree-subgrupo').forEach(subgrupo => {
+                    const subgrupoNombre = subgrupo.dataset.nombre || '';
+                    const subgrupoMatch = grupoMatch || subgrupoNombre.includes(q);
+                    let subgrupoTieneVisible = false;
+
+                    subgrupo.querySelectorAll(':scope > .pl-row').forEach(fila => {
+                        const planoNombre = fila.dataset.nombre || '';
+                        const visible = q === '' || subgrupoMatch || planoNombre.includes(q);
+                        fila.style.display = visible ? '' : 'none';
+                        if (visible) subgrupoTieneVisible = true;
+                    });
+
+                    const subgrupoVisible = q === '' || subgrupoMatch || subgrupoTieneVisible;
+                    subgrupo.style.display = subgrupoVisible ? '' : 'none';
+                    if (subgrupoVisible) grupoTieneVisible = true;
+
+                    subgrupo.open = q === '' ? false : subgrupoVisible;
+                });
+
+                const grupoVisible = q === '' || grupoMatch || grupoTieneVisible;
+                grupo.style.display = grupoVisible ? '' : 'none';
+                if (grupoVisible) hayGrupoVisible = true;
+
+                grupo.open = true;
+            });
+
+            if (emptyBusqueda) emptyBusqueda.style.display = hayGrupoVisible ? 'none' : '';
+        });
+    }
+
+    function limpiarBusquedaPlano() {
+        const input = document.getElementById('input-buscar-plano');
+        input.value = '';
+        input.dispatchEvent(new Event('input'));
+        input.focus();
+    }
 </script>
 </body>
 </html>
