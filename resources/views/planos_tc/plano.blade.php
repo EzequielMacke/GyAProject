@@ -199,25 +199,70 @@
         <nav class="toolbar-vertical">
             <div class="tool-submenu-wrap activo" id="danos-wrap">
                 <button type="button" class="tool-btn" id="tool-danos" title="Daños">
-                    <span class="tool-swatch" style="background:#e53e3e"></span>
+                    <span class="tool-swatch" style="background:#e53e3e; display:none"></span>
+                    <img class="tool-icon-img" src="{{ asset('img/iconos/Fisura.svg') }}" alt="">
                     Daños
                 </button>
                 <div class="submenu-lateral" id="submenu-danos">
                     <button type="button" class="tool-btn tool-submenu-item activo" data-tool="fisura" title="Fisura">
-                        <span class="tool-swatch" style="background:#e53e3e"></span>
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Fisura.svg') }}" alt="">
                         Fisura
                     </button>
                     <button type="button" class="tool-btn tool-submenu-item" data-tool="corrosion" title="Corrosión">
-                        <span class="tool-swatch" style="background:#d800c9"></span>
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Corrosion.svg') }}" alt="">
                         Corrosión
                     </button>
                     <button type="button" class="tool-btn tool-submenu-item" data-tool="humedad" title="Humedad">
-                        <span class="tool-swatch" style="background:#1565c0"></span>
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Humedad.svg') }}" alt="">
                         Humedad
                     </button>
                     <button type="button" class="tool-btn tool-submenu-item" data-tool="coqueras" title="Coqueras">
-                        <span class="tool-swatch" style="background:#0a8a3a"></span>
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Coqueras.svg') }}" alt="">
                         Coqueras
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="fisura_ducto" title="Fisura por ducto">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Fisuras por ductos.svg') }}" alt="">
+                        Fisura por ducto
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="junta_fria" title="Junta fría">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Junta fria.svg') }}" alt="">
+                        Junta fría
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="armadura_expuesta" title="Armadura expuesta">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Armadura expuesta.svg') }}" alt="">
+                        Armadura expuesta
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="eflorescencia" title="Eflorescencia">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Eflorescencia.svg') }}" alt="">
+                        Eflorescencia
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="socavacion" title="Socavación">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/socavacion.svg') }}" alt="">
+                        Socavación
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="desprendimiento" title="Desprendimiento">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/desprendimiento.svg') }}" alt="">
+                        Desprendimiento
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="exfoliacion" title="Exfoliación">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/exfoliacion.svg') }}" alt="">
+                        Exfoliación
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="desaplome" title="Desaplome">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/desaplome.svg') }}" alt="">
+                        Desaplome
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="fisura_vertical" title="Fisura vertical">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Fisura vertical.svg') }}" alt="">
+                        Fisura vertical
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="fisura_inclinada" title="Fisura inclinada">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Fisura inclinada.svg') }}" alt="">
+                        Fisura inclinada
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="fisura_semiinclinada" title="Fisura semi-inclinada">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Fisura seminclinada.svg') }}" alt="">
+                        Fisura semi-inclinada
                     </button>
                 </div>
             </div>
@@ -294,10 +339,26 @@
         ];
 
         const DANOS = [
-            { tool: 'fisura', nombre: 'Fisura', color: '#e53e3e' },
-            { tool: 'corrosion', nombre: 'Corrosión', color: '#d800c9' },
-            { tool: 'humedad', nombre: 'Humedad', color: '#1565c0' },
-            { tool: 'coqueras', nombre: 'Coqueras', color: '#0a8a3a' },
+            { tool: 'fisura', nombre: 'Fisura', color: '#e53e3e', url: @json(asset('img/iconos/Fisura.svg')) },
+            { tool: 'corrosion', nombre: 'Corrosión', color: '#d800c9', url: @json(asset('img/iconos/Corrosion.svg')) },
+            { tool: 'humedad', nombre: 'Humedad', color: '#1565c0', url: @json(asset('img/iconos/Humedad.svg')) },
+            { tool: 'coqueras', nombre: 'Coqueras', color: '#0a8a3a', url: @json(asset('img/iconos/Coqueras.svg')) },
+            { tool: 'fisura_ducto', nombre: 'Fisura por ducto', color: '#16a34a', url: @json(asset('img/iconos/Fisuras por ductos.svg')) },
+            { tool: 'junta_fria', nombre: 'Junta fría', color: '#f97316', url: @json(asset('img/iconos/Junta fria.svg')) },
+            { tool: 'armadura_expuesta', nombre: 'Armadura expuesta', color: '#2563eb', url: @json(asset('img/iconos/Armadura expuesta.svg')) },
+            { tool: 'eflorescencia', nombre: 'Eflorescencia', color: '#06b6d4', url: @json(asset('img/iconos/Eflorescencia.svg')) },
+            { tool: 'socavacion', nombre: 'Socavación', color: '#78350f', url: @json(asset('img/iconos/socavacion.svg')) },
+            { tool: 'desprendimiento', nombre: 'Desprendimiento', color: '#b91c1c', url: @json(asset('img/iconos/desprendimiento.svg')) },
+            { tool: 'exfoliacion', nombre: 'Exfoliación', color: '#c2410c', url: @json(asset('img/iconos/exfoliacion.svg')) },
+            { tool: 'desaplome', nombre: 'Desaplome', color: '#eab308', url: @json(asset('img/iconos/desaplome.svg')) },
+        ];
+
+        /* Estos daños se insertan como ícono (igual que un ensayo) pero
+           sin numerar: no llevan prefijo ni contador. */
+        const DANOS_ICONO = [
+            { tool: 'fisura_vertical', url: @json(asset('img/iconos/Fisura vertical.svg')), nombre: 'Fisura vertical' },
+            { tool: 'fisura_inclinada', url: @json(asset('img/iconos/Fisura inclinada.svg')), nombre: 'Fisura inclinada' },
+            { tool: 'fisura_semiinclinada', url: @json(asset('img/iconos/Fisura seminclinada.svg')), nombre: 'Fisura semi-inclinada' },
         ];
 
         /* La fotografía comparte el mecanismo de ícono con los ensayos
@@ -320,6 +381,14 @@
             corrosion: { tipo: 'trazo', color: '#d800c9', grosor: 0.25, cierreAutomatico: true },
             humedad: { tipo: 'trazo', color: '#1565c0', grosor: 0.25, cierreAutomatico: true },
             coqueras: { tipo: 'trazo', color: '#0a8a3a', grosor: 0.25, cierreAutomatico: true },
+            fisura_ducto: { tipo: 'trazo', color: '#16a34a', grosor: 0.25 },
+            junta_fria: { tipo: 'trazo', color: '#f97316', grosor: 0.25 },
+            armadura_expuesta: { tipo: 'linea', color: '#2563eb', grosor: 0.25 },
+            eflorescencia: { tipo: 'trazo', color: '#06b6d4', grosor: 0.25, cierreAutomatico: true },
+            socavacion: { tipo: 'trazo', color: '#78350f', grosor: 0.25, cierreAutomatico: true },
+            desprendimiento: { tipo: 'trazo', color: '#b91c1c', grosor: 0.25, cierreAutomatico: true },
+            exfoliacion: { tipo: 'trazo', color: '#c2410c', grosor: 0.25, cierreAutomatico: true },
+            desaplome: { tipo: 'trazo', color: '#eab308', grosor: 0.25, cierreAutomatico: true },
         };
 
         ENSAYOS_Y_FOTO.forEach(({ tool, url, tamano }) => {
@@ -327,6 +396,13 @@
             img.onload = () => redibujarTrazos();
             img.src = url;
             HERRAMIENTAS[tool] = { tipo: 'icono', imagen: img, tamano: tamano || 26 };
+        });
+
+        DANOS_ICONO.forEach(({ tool, url }) => {
+            const img = new Image();
+            img.onload = () => redibujarTrazos();
+            img.src = url;
+            HERRAMIENTAS[tool] = { tipo: 'icono', imagen: img, tamano: 10 };
         });
 
         /* ─── Panel de capas: solo lista lo que ya se dibujó ──
@@ -437,6 +513,7 @@
         panelCapas.appendChild(grupoCapasFoto);
 
         DANOS.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasDanos }; });
+        DANOS_ICONO.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasDanos }; });
         ENSAYOS.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasEnsayos }; });
         metaCapas[FOTO.tool] = { ...FOTO, grupo: grupoCapasFoto };
 
@@ -480,8 +557,22 @@
                     const btnPrincipal = wrapPadre.querySelector(':scope > .tool-btn');
                     const imgOrigen = btn.querySelector('img');
                     const swatchOrigen = btn.querySelector('.tool-swatch');
-                    if (imgOrigen) btnPrincipal.querySelector('img').src = imgOrigen.src;
-                    if (swatchOrigen) btnPrincipal.querySelector('.tool-swatch').style.background = swatchOrigen.style.background;
+                    const imgPrincipal = btnPrincipal.querySelector('img');
+                    const swatchPrincipal = btnPrincipal.querySelector('.tool-swatch');
+
+                    if (imgOrigen) {
+                        if (imgPrincipal) {
+                            imgPrincipal.src = imgOrigen.src;
+                            imgPrincipal.style.display = '';
+                        }
+                        if (swatchPrincipal) swatchPrincipal.style.display = 'none';
+                    } else if (swatchOrigen) {
+                        if (swatchPrincipal) {
+                            swatchPrincipal.style.background = swatchOrigen.style.background;
+                            swatchPrincipal.style.display = '';
+                        }
+                        if (imgPrincipal) imgPrincipal.style.display = 'none';
+                    }
 
                     wrapPadre.querySelector('.submenu-lateral').classList.remove('abierto');
                 }
@@ -863,6 +954,11 @@
                 }
                 trazos.push({ tipo: 'icono', tool: herramientaActual, imagen: herramienta.imagen, x: mundoPunto.x, y: mundoPunto.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
                 redibujarTrazos();
+            } else if (herramienta.tipo === 'linea') {
+                dibujando = true;
+                trazoActual = { tipo: 'trazo', tool: herramientaActual, color: herramienta.color, grosor: herramienta.grosor, puntos: [puntosMundo[0], mundoPunto] };
+                trazos.push(trazoActual);
+                redibujarTrazos();
             } else {
                 dibujando = true;
                 trazoActual = { tipo: 'trazo', tool: herramientaActual, color: herramienta.color, grosor: herramienta.grosor, puntos: [...puntosMundo] };
@@ -941,9 +1037,14 @@
             if (dibujando) {
                 const pantalla = posicionPantalla(e);
                 const mundo = pantallaAMundo(pantalla.x, pantalla.y);
-                trazoActual.puntos.push(mundo);
-                drawCtx.lineTo(pantalla.x, pantalla.y);
-                drawCtx.stroke();
+                if (HERRAMIENTAS[herramientaActual].tipo === 'linea') {
+                    trazoActual.puntos[1] = mundo;
+                    redibujarTrazos();
+                } else {
+                    trazoActual.puntos.push(mundo);
+                    drawCtx.lineTo(pantalla.x, pantalla.y);
+                    drawCtx.stroke();
+                }
             }
         });
 
