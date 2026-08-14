@@ -497,10 +497,15 @@
         }
 
         /* ─── Dibujo y pellizco (mouse, lápiz y táctil) ───────
-             Un puntero dibuja; dos puntero hacen zoom + paneo. ─ */
+             Un puntero dibuja; dos puntero hacen zoom + paneo.
+             En táctil, el primer dedo espera un instante antes de
+             confirmar el trazo/ícono, por si llega un segundo dedo
+             (pellizco) unos milisegundos más tarde. ─ */
         const punterosActivos = new Map();
         let dibujando = false;
         let pinchInfo = null;
+        let punteroPendiente = null;
+        const RETRASO_CONFIRMACION_TACTIL = 150;
 
         function distancia(p1, p2) { return Math.hypot(p1.x - p2.x, p1.y - p2.y); }
 
@@ -509,12 +514,49 @@
             return { x: e.clientX - rect.left, y: e.clientY - rect.top };
         }
 
+        function cancelarPunteroPendiente() {
+            if (punteroPendiente) {
+                clearTimeout(punteroPendiente.temporizador);
+                punteroPendiente = null;
+            }
+        }
+
+        function iniciarAccionPuntero(puntosMundo) {
+            const herramienta = HERRAMIENTAS[herramientaActual];
+
+            if (herramienta.tipo === 'icono') {
+                const mundo = puntosMundo[puntosMundo.length - 1];
+                const prefijo = PREFIJOS_ENSAYO[herramientaActual];
+                let etiqueta = null;
+                if (prefijo) {
+                    contadoresEnsayo[herramientaActual]++;
+                    etiqueta = prefijo + contadoresEnsayo[herramientaActual];
+                }
+                trazos.push({ tipo: 'icono', imagen: herramienta.imagen, x: mundo.x, y: mundo.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
+                redibujarTrazos();
+            } else {
+                dibujando = true;
+                trazoActual = { tipo: 'trazo', color: herramienta.color, grosor: herramienta.grosor, puntos: [...puntosMundo] };
+                trazos.push(trazoActual);
+                drawCtx.strokeStyle = herramienta.color;
+                drawCtx.lineWidth = herramienta.grosor * vista.scale;
+                drawCtx.beginPath();
+                puntosMundo.forEach((p, i) => {
+                    const ps = mundoAPantalla(p.x, p.y);
+                    if (i === 0) drawCtx.moveTo(ps.x, ps.y); else drawCtx.lineTo(ps.x, ps.y);
+                });
+                if (puntosMundo.length > 1) drawCtx.stroke();
+            }
+        }
+
         lienzoWrap.addEventListener('pointerdown', e => {
             lienzoWrap.setPointerCapture(e.pointerId);
             punterosActivos.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
             if (punterosActivos.size === 2) {
+                cancelarPunteroPendiente();
                 dibujando = false;
+                trazoActual = null;
                 const pts = Array.from(punterosActivos.values());
                 const rect = lienzoWrap.getBoundingClientRect();
                 const cx = (pts[0].x + pts[1].x) / 2 - rect.left;
@@ -525,27 +567,22 @@
                     mundo: pantallaAMundo(cx, cy),
                 };
             } else if (punterosActivos.size === 1) {
-                const herramienta = HERRAMIENTAS[herramientaActual];
                 const pantalla = posicionPantalla(e);
                 const mundo = pantallaAMundo(pantalla.x, pantalla.y);
 
-                if (herramienta.tipo === 'icono') {
-                    const prefijo = PREFIJOS_ENSAYO[herramientaActual];
-                    let etiqueta = null;
-                    if (prefijo) {
-                        contadoresEnsayo[herramientaActual]++;
-                        etiqueta = prefijo + contadoresEnsayo[herramientaActual];
-                    }
-                    trazos.push({ tipo: 'icono', imagen: herramienta.imagen, x: mundo.x, y: mundo.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
-                    redibujarTrazos();
+                if (e.pointerType === 'touch') {
+                    punteroPendiente = {
+                        pointerId: e.pointerId,
+                        puntos: [mundo],
+                        temporizador: setTimeout(() => {
+                            if (!punteroPendiente || punterosActivos.size !== 1) return;
+                            const pendiente = punteroPendiente;
+                            punteroPendiente = null;
+                            iniciarAccionPuntero(pendiente.puntos);
+                        }, RETRASO_CONFIRMACION_TACTIL),
+                    };
                 } else {
-                    dibujando = true;
-                    trazoActual = { tipo: 'trazo', color: herramienta.color, grosor: herramienta.grosor, puntos: [mundo] };
-                    trazos.push(trazoActual);
-                    drawCtx.strokeStyle = herramienta.color;
-                    drawCtx.lineWidth = herramienta.grosor * vista.scale;
-                    drawCtx.beginPath();
-                    drawCtx.moveTo(pantalla.x, pantalla.y);
+                    iniciarAccionPuntero([mundo]);
                 }
             }
         });
@@ -565,6 +602,13 @@
                 return;
             }
 
+            if (punteroPendiente && punteroPendiente.pointerId === e.pointerId) {
+                const pantalla = posicionPantalla(e);
+                const mundo = pantallaAMundo(pantalla.x, pantalla.y);
+                punteroPendiente.puntos.push(mundo);
+                return;
+            }
+
             if (dibujando) {
                 const pantalla = posicionPantalla(e);
                 const mundo = pantallaAMundo(pantalla.x, pantalla.y);
@@ -575,7 +619,17 @@
         });
 
         function finalizarPuntero(e) {
-            punterosActivos.delete(e.pointerId);
+            if (punteroPendiente && punteroPendiente.pointerId === e.pointerId) {
+                clearTimeout(punteroPendiente.temporizador);
+                const pendiente = punteroPendiente;
+                punteroPendiente = null;
+                punterosActivos.delete(e.pointerId);
+                if (e.type === 'pointerup' && punterosActivos.size === 0) {
+                    iniciarAccionPuntero(pendiente.puntos);
+                }
+            } else {
+                punterosActivos.delete(e.pointerId);
+            }
 
             if (dibujando && trazoActual && trazoActual.puntos.length > 3 && HERRAMIENTAS[herramientaActual].cierreAutomatico) {
                 const inicio = trazoActual.puntos[0];
