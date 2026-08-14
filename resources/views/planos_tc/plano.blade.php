@@ -300,9 +300,10 @@
             { tool: 'coqueras', nombre: 'Coqueras', color: '#0a8a3a' },
         ];
 
-        /* La fotografía comparte el mecanismo de ícono numerado (prefijo/color/
-           contador) con los ensayos, pero no es un ensayo: se agrupa aparte. */
-        const FOTO = { tool: 'foto', url: @json(asset('img/iconos/foto.svg')), prefijo: 'F', color: '#e6a400', nombre: 'Fotografía' };
+        /* La fotografía comparte el mecanismo de ícono con los ensayos
+           (imagen + tamaño), pero no se numera y no es un ensayo: se
+           agrupa aparte y su ícono se ve más chico en el plano. */
+        const FOTO = { tool: 'foto', url: @json(asset('img/iconos/foto.svg')), color: '#e6a400', nombre: 'Fotografía', tamano: 6.5 };
         const ENSAYOS_Y_FOTO = [...ENSAYOS, FOTO];
 
         const PREFIJOS_ENSAYO = {};
@@ -321,11 +322,11 @@
             coqueras: { tipo: 'trazo', color: '#0a8a3a', grosor: 0.25, cierreAutomatico: true },
         };
 
-        ENSAYOS_Y_FOTO.forEach(({ tool, url }) => {
+        ENSAYOS_Y_FOTO.forEach(({ tool, url, tamano }) => {
             const img = new Image();
             img.onload = () => redibujarTrazos();
             img.src = url;
-            HERRAMIENTAS[tool] = { tipo: 'icono', imagen: img, tamano: 26 };
+            HERRAMIENTAS[tool] = { tipo: 'icono', imagen: img, tamano: tamano || 26 };
         });
 
         /* ─── Panel de capas: solo lista lo que ya se dibujó ──
@@ -805,7 +806,6 @@
             lector.onload = () => {
                 const dataUrl = lector.result;
                 registrarUsoCapa('foto');
-                contadoresEnsayo.foto++;
                 trazos.push({
                     tipo: 'icono',
                     tool: 'foto',
@@ -813,8 +813,7 @@
                     x: mundo.x,
                     y: mundo.y,
                     tamano: HERRAMIENTAS.foto.tamano,
-                    etiqueta: PREFIJOS_ENSAYO.foto + contadoresEnsayo.foto,
-                    colorEtiqueta: COLORES_ENSAYO.foto,
+                    etiqueta: null,
                     dataUrl,
                 });
                 redibujarTrazos();
