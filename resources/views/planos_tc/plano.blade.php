@@ -62,6 +62,8 @@
             gap: 0.3rem;
             z-index: 30;
             box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            max-height: calc(100vh - 1.5rem);
+            overflow-y: auto;
         }
         .submenu-lateral.abierto { display: flex; }
         .submenu-lateral .tool-btn {
