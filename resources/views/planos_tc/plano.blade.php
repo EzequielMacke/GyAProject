@@ -70,15 +70,62 @@
             gap: 0.5rem;
         }
 
-        /* ── BOTÓN VOLVER (flotante, arriba a la derecha) ── */
-        .btn-volver {
+        /* ── BARRA SUPERIOR DERECHA (Capas + Volver, flotante) ── */
+        .barra-superior-derecha {
             position: fixed; top: 12px; right: 12px; z-index: 20;
-            display: inline-flex; align-items: center; gap: 0.4rem;
-            background: #444; color: #fff; text-decoration: none;
-            padding: 0.5rem 0.9rem; border-radius: 0.5rem;
-            font-size: 0.82rem; font-weight: 600;
+            display: flex; align-items: flex-start; gap: 0.5rem;
         }
-        .btn-volver:hover { background: #555; }
+        .btn-superior {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            background: #444; color: #fff; text-decoration: none; border: none; cursor: pointer;
+            padding: 0.5rem 0.9rem; border-radius: 0.5rem;
+            font-size: 0.82rem; font-weight: 600; font-family: inherit;
+        }
+        .btn-superior:hover { background: #555; }
+        .btn-superior.activo { background: #2a6fdb; }
+
+        .capas-wrap { position: relative; }
+
+        .panel-capas {
+            position: absolute; top: calc(100% + 0.4rem); right: 0;
+            background: #222; border-radius: 0.55rem; padding: 0.6rem;
+            display: none; flex-direction: column; gap: 0.7rem;
+            min-width: 200px; max-height: 70vh; overflow-y: auto;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        .panel-capas.abierto { display: flex; }
+        .panel-capas-acciones {
+            display: flex; gap: 0.4rem;
+            padding-bottom: 0.5rem; margin-bottom: 0.1rem;
+            border-bottom: 1px solid #333;
+        }
+        .capa-accion {
+            flex: 1; background: #2f2f2f; border: none; cursor: pointer;
+            color: #ccc; font-size: 0.72rem; font-weight: 600; font-family: inherit;
+            padding: 0.4rem 0.4rem; border-radius: 0.4rem;
+        }
+        .capa-accion:hover { background: #3a3a3a; color: #fff; }
+        .panel-capas-vacio { color: #888; font-size: 0.78rem; padding: 0.2rem 0.3rem; }
+        .panel-capas-grupo { display: flex; flex-direction: column; gap: 0.15rem; }
+        .panel-capas-titulo {
+            color: #888; font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em; padding: 0 0.3rem 0.2rem;
+        }
+        .capa-item {
+            display: flex; align-items: center; gap: 0.55rem;
+            background: none; border: none; cursor: pointer;
+            color: #eee; font-size: 0.8rem; font-weight: 500;
+            padding: 0.4rem 0.35rem; border-radius: 0.4rem;
+            width: 100%; text-align: left; font-family: inherit;
+        }
+        .capa-item:hover { background: #2f2f2f; }
+        .capa-item .tool-swatch, .capa-item .tool-icon-img {
+            width: 18px; height: 18px; flex-shrink: 0;
+        }
+        .capa-nombre { flex: 1; }
+        .capa-ojo { display: inline-flex; color: #ccc; flex-shrink: 0; }
+        .capa-item.oculta { color: #888; }
+        .capa-item.oculta .capa-ojo { color: #666; }
 
         .lienzo-wrap {
             flex: 1;
@@ -87,6 +134,33 @@
             background: #333;
             touch-action: none;
         }
+
+        /* ── VISTA PREVIA DE FOTOGRAFÍA (modal pequeño) ── */
+        .overlay-foto {
+            position: fixed; inset: 0; z-index: 50;
+            background: rgba(0,0,0,0.6);
+            display: none; align-items: center; justify-content: center;
+            padding: 2rem;
+        }
+        .overlay-foto.abierto { display: flex; }
+        .overlay-foto-contenido {
+            position: relative;
+            max-width: min(420px, 90vw); max-height: 80vh;
+            background: #222; border-radius: 0.6rem; padding: 0.6rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+        .overlay-foto-contenido img {
+            display: block; max-width: 100%; max-height: 70vh;
+            border-radius: 0.4rem;
+        }
+        .overlay-foto-cerrar {
+            position: absolute; top: -14px; right: -14px;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #444; color: #fff; border: none; cursor: pointer;
+            font-size: 1.1rem; font-weight: 700; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .overlay-foto-cerrar:hover { background: #555; }
 
         .lienzo {
             position: absolute;
@@ -106,7 +180,20 @@
 </head>
 <body>
 
-    <a href="{{ route('planos_tc.index', $obraTc->id) }}" class="btn-volver">&larr; Volver</a>
+    <div class="barra-superior-derecha">
+        <div class="capas-wrap" id="capas-wrap">
+            <button type="button" class="btn-superior" id="btn-capas">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+                Capas
+            </button>
+            <div class="panel-capas" id="panel-capas"></div>
+        </div>
+        <a href="{{ route('planos_tc.index', $obraTc->id) }}" class="btn-superior">&larr; Volver</a>
+    </div>
 
     <div class="app">
         <nav class="toolbar-vertical">
@@ -162,6 +249,10 @@
                     </button>
                 </div>
             </div>
+            <button type="button" class="tool-btn" data-tool="foto" title="Fotografía">
+                <img class="tool-icon-img" src="{{ asset('img/iconos/foto.svg') }}" alt="">
+                Foto
+            </button>
         </nav>
 
         <div class="lienzo-wrap" id="lienzo-wrap">
@@ -169,6 +260,15 @@
                 <canvas id="pdf-canvas"></canvas>
             </div>
             <canvas id="draw-canvas"></canvas>
+        </div>
+    </div>
+
+    <input type="file" accept="image/*" capture="environment" id="input-foto" style="display:none">
+
+    <div class="overlay-foto" id="overlay-foto">
+        <div class="overlay-foto-contenido">
+            <button type="button" class="overlay-foto-cerrar" id="overlay-foto-cerrar">&times;</button>
+            <img id="overlay-foto-img" src="" alt="Fotografía">
         </div>
     </div>
 
@@ -186,17 +286,29 @@
 
         /* ─── Herramientas de dibujo ───────────────────────── */
         const ENSAYOS = [
-            { tool: 'esclerometria', url: @json(asset('img/iconos/esclerometria.svg')), prefijo: 'E', color: '#d800c9' },
-            { tool: 'carbonatacion', url: @json(asset('img/iconos/carbonatacion.svg')), prefijo: 'C', color: '#1f4fd8' },
-            { tool: 'pachometria', url: @json(asset('img/iconos/pachometria.svg')), prefijo: 'Pch', color: '#1f4fd8' },
-            { tool: 'testigos', url: @json(asset('img/iconos/testigos.svg')), prefijo: 'T', color: '#0a5c26' },
-            { tool: 'ultrasonido', url: @json(asset('img/iconos/ultrasonido.svg')), prefijo: 'U', color: '#e00000' },
+            { tool: 'esclerometria', url: @json(asset('img/iconos/esclerometria.svg')), prefijo: 'E', color: '#d800c9', nombre: 'Esclerometría' },
+            { tool: 'carbonatacion', url: @json(asset('img/iconos/carbonatacion.svg')), prefijo: 'C', color: '#1f4fd8', nombre: 'Carbonatación' },
+            { tool: 'pachometria', url: @json(asset('img/iconos/pachometria.svg')), prefijo: 'Pch', color: '#1f4fd8', nombre: 'Pachometría' },
+            { tool: 'testigos', url: @json(asset('img/iconos/testigos.svg')), prefijo: 'T', color: '#0a5c26', nombre: 'Testigos' },
+            { tool: 'ultrasonido', url: @json(asset('img/iconos/ultrasonido.svg')), prefijo: 'U', color: '#e00000', nombre: 'Ultrasonido' },
         ];
+
+        const DANOS = [
+            { tool: 'fisura', nombre: 'Fisura', color: '#e53e3e' },
+            { tool: 'corrosion', nombre: 'Corrosión', color: '#d800c9' },
+            { tool: 'humedad', nombre: 'Humedad', color: '#1565c0' },
+            { tool: 'coqueras', nombre: 'Coqueras', color: '#0a8a3a' },
+        ];
+
+        /* La fotografía comparte el mecanismo de ícono numerado (prefijo/color/
+           contador) con los ensayos, pero no es un ensayo: se agrupa aparte. */
+        const FOTO = { tool: 'foto', url: @json(asset('img/iconos/foto.svg')), prefijo: 'F', color: '#e6a400', nombre: 'Fotografía' };
+        const ENSAYOS_Y_FOTO = [...ENSAYOS, FOTO];
 
         const PREFIJOS_ENSAYO = {};
         const COLORES_ENSAYO = {};
         const contadoresEnsayo = {};
-        ENSAYOS.forEach(({ tool, prefijo, color }) => {
+        ENSAYOS_Y_FOTO.forEach(({ tool, prefijo, color }) => {
             PREFIJOS_ENSAYO[tool] = prefijo;
             COLORES_ENSAYO[tool] = color;
             contadoresEnsayo[tool] = 0;
@@ -209,11 +321,145 @@
             coqueras: { tipo: 'trazo', color: '#0a8a3a', grosor: 0.25, cierreAutomatico: true },
         };
 
-        ENSAYOS.forEach(({ tool, url }) => {
+        ENSAYOS_Y_FOTO.forEach(({ tool, url }) => {
             const img = new Image();
             img.onload = () => redibujarTrazos();
             img.src = url;
             HERRAMIENTAS[tool] = { tipo: 'icono', imagen: img, tamano: 26 };
+        });
+
+        /* ─── Panel de capas: solo lista lo que ya se dibujó ──
+             Cada tipo aparece recién cuando se usa por primera vez. ─ */
+        const capasVisibles = {};
+        const metaCapas = {};
+        const itemsCapaDom = {};
+        const ICONO_OJO_ABIERTO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+        const ICONO_OJO_CERRADO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a18.32 18.32 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+        function establecerVisibilidadCapa(tool, visible) {
+            capasVisibles[tool] = visible;
+            const refs = itemsCapaDom[tool];
+            if (refs) {
+                refs.btn.classList.toggle('oculta', !visible);
+                refs.ojo.innerHTML = visible ? ICONO_OJO_ABIERTO : ICONO_OJO_CERRADO;
+            }
+        }
+
+        function crearItemCapa({ tool, nombre, color, url }) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'capa-item';
+            btn.dataset.capa = tool;
+
+            if (url) {
+                const marca = document.createElement('img');
+                marca.className = 'tool-icon-img';
+                marca.src = url;
+                marca.alt = '';
+                btn.appendChild(marca);
+            } else {
+                const marca = document.createElement('span');
+                marca.className = 'tool-swatch';
+                marca.style.background = color;
+                btn.appendChild(marca);
+            }
+
+            const nombreSpan = document.createElement('span');
+            nombreSpan.className = 'capa-nombre';
+            nombreSpan.textContent = nombre;
+            btn.appendChild(nombreSpan);
+
+            const ojo = document.createElement('span');
+            ojo.className = 'capa-ojo';
+            ojo.innerHTML = ICONO_OJO_ABIERTO;
+            btn.appendChild(ojo);
+
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                establecerVisibilidadCapa(tool, !capasVisibles[tool]);
+                redibujarTrazos();
+            });
+
+            itemsCapaDom[tool] = { btn, ojo };
+            return btn;
+        }
+
+        function crearGrupoCapas(titulo) {
+            const grupo = document.createElement('div');
+            grupo.className = 'panel-capas-grupo';
+            grupo.style.display = 'none';
+            const tituloEl = document.createElement('span');
+            tituloEl.className = 'panel-capas-titulo';
+            tituloEl.textContent = titulo;
+            grupo.appendChild(tituloEl);
+            return grupo;
+        }
+
+        const panelCapas = document.getElementById('panel-capas');
+
+        const accionesCapas = document.createElement('div');
+        accionesCapas.className = 'panel-capas-acciones';
+
+        const btnMostrarTodo = document.createElement('button');
+        btnMostrarTodo.type = 'button';
+        btnMostrarTodo.className = 'capa-accion';
+        btnMostrarTodo.textContent = 'Mostrar todo';
+        btnMostrarTodo.addEventListener('click', e => {
+            e.stopPropagation();
+            Object.keys(itemsCapaDom).forEach(tool => establecerVisibilidadCapa(tool, true));
+            redibujarTrazos();
+        });
+
+        const btnOcultarTodo = document.createElement('button');
+        btnOcultarTodo.type = 'button';
+        btnOcultarTodo.className = 'capa-accion';
+        btnOcultarTodo.textContent = 'Ocultar todo';
+        btnOcultarTodo.addEventListener('click', e => {
+            e.stopPropagation();
+            Object.keys(itemsCapaDom).forEach(tool => establecerVisibilidadCapa(tool, false));
+            redibujarTrazos();
+        });
+
+        accionesCapas.append(btnMostrarTodo, btnOcultarTodo);
+        panelCapas.appendChild(accionesCapas);
+
+        const panelCapasVacio = document.createElement('span');
+        panelCapasVacio.className = 'panel-capas-vacio';
+        panelCapasVacio.textContent = 'Todavía no se dibujó nada';
+        panelCapas.appendChild(panelCapasVacio);
+
+        const grupoCapasDanos = crearGrupoCapas('Daños');
+        const grupoCapasEnsayos = crearGrupoCapas('Ensayos');
+        const grupoCapasFoto = crearGrupoCapas('Fotografía');
+        panelCapas.appendChild(grupoCapasDanos);
+        panelCapas.appendChild(grupoCapasEnsayos);
+        panelCapas.appendChild(grupoCapasFoto);
+
+        DANOS.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasDanos }; });
+        ENSAYOS.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasEnsayos }; });
+        metaCapas[FOTO.tool] = { ...FOTO, grupo: grupoCapasFoto };
+
+        function registrarUsoCapa(tool) {
+            if (itemsCapaDom[tool]) return;
+            capasVisibles[tool] = true;
+            const meta = metaCapas[tool];
+            meta.grupo.appendChild(crearItemCapa(meta));
+            meta.grupo.style.display = 'flex';
+            panelCapasVacio.style.display = 'none';
+        }
+
+        const capasWrap = document.getElementById('capas-wrap');
+        const btnCapas = document.getElementById('btn-capas');
+        btnCapas.addEventListener('click', e => {
+            e.stopPropagation();
+            panelCapas.classList.toggle('abierto');
+            btnCapas.classList.toggle('activo', panelCapas.classList.contains('abierto'));
+        });
+        document.addEventListener('click', e => {
+            if (!capasWrap.contains(e.target)) {
+                panelCapas.classList.remove('abierto');
+                btnCapas.classList.remove('activo');
+            }
         });
 
         let herramientaActual = 'fisura';
@@ -229,13 +475,15 @@
                 const wrapPadre = btn.closest('.tool-submenu-wrap');
                 wrapsSubmenu.forEach(w => w.classList.toggle('activo', w === wrapPadre));
 
-                const btnPrincipal = wrapPadre.querySelector(':scope > .tool-btn');
-                const imgOrigen = btn.querySelector('img');
-                const swatchOrigen = btn.querySelector('.tool-swatch');
-                if (imgOrigen) btnPrincipal.querySelector('img').src = imgOrigen.src;
-                if (swatchOrigen) btnPrincipal.querySelector('.tool-swatch').style.background = swatchOrigen.style.background;
+                if (wrapPadre) {
+                    const btnPrincipal = wrapPadre.querySelector(':scope > .tool-btn');
+                    const imgOrigen = btn.querySelector('img');
+                    const swatchOrigen = btn.querySelector('.tool-swatch');
+                    if (imgOrigen) btnPrincipal.querySelector('img').src = imgOrigen.src;
+                    if (swatchOrigen) btnPrincipal.querySelector('.tool-swatch').style.background = swatchOrigen.style.background;
 
-                wrapPadre.querySelector('.submenu-lateral').classList.remove('abierto');
+                    wrapPadre.querySelector('.submenu-lateral').classList.remove('abierto');
+                }
             });
         });
 
@@ -365,6 +613,8 @@
             drawCtx.clearRect(0, 0, lienzoWrap.clientWidth, lienzoWrap.clientHeight);
 
             trazos.forEach(item => {
+                if (capasVisibles[item.tool] === false) return;
+
                 if (item.tipo === 'icono') {
                     if (!item.imagen.complete || !item.imagen.naturalWidth) return;
                     const ratio = item.imagen.naturalWidth / item.imagen.naturalHeight;
@@ -486,7 +736,7 @@
 
             factorActual = SOBREMUESTREO;
             trazos = [];
-            ENSAYOS.forEach(({ tool }) => { contadoresEnsayo[tool] = 0; });
+            ENSAYOS_Y_FOTO.forEach(({ tool }) => { contadoresEnsayo[tool] = 0; });
             centrarVista();
         }
 
@@ -521,22 +771,102 @@
             }
         }
 
+        /* ─── Fotografía: pin + cámara + vista previa ─────── */
+        const inputFoto = document.getElementById('input-foto');
+        const overlayFoto = document.getElementById('overlay-foto');
+        const overlayFotoImg = document.getElementById('overlay-foto-img');
+        const overlayFotoCerrar = document.getElementById('overlay-foto-cerrar');
+        let pinFotoPendiente = null;
+
+        function buscarFotoEnPunto(mundo) {
+            const margenPantalla = 12;
+            for (let i = trazos.length - 1; i >= 0; i--) {
+                const item = trazos[i];
+                if (item.tool !== 'foto' || capasVisibles[item.tool] === false) continue;
+                const radioMundo = item.tamano / 2 + margenPantalla / vista.scale;
+                if (Math.hypot(item.x - mundo.x, item.y - mundo.y) <= radioMundo) return item;
+            }
+            return null;
+        }
+
+        function solicitarFoto(mundo) {
+            pinFotoPendiente = mundo;
+            inputFoto.value = '';
+            inputFoto.click();
+        }
+
+        inputFoto.addEventListener('change', () => {
+            const archivo = inputFoto.files && inputFoto.files[0];
+            const mundo = pinFotoPendiente;
+            pinFotoPendiente = null;
+            if (!archivo || !mundo) return;
+
+            const lector = new FileReader();
+            lector.onload = () => {
+                const dataUrl = lector.result;
+                registrarUsoCapa('foto');
+                contadoresEnsayo.foto++;
+                trazos.push({
+                    tipo: 'icono',
+                    tool: 'foto',
+                    imagen: HERRAMIENTAS.foto.imagen,
+                    x: mundo.x,
+                    y: mundo.y,
+                    tamano: HERRAMIENTAS.foto.tamano,
+                    etiqueta: PREFIJOS_ENSAYO.foto + contadoresEnsayo.foto,
+                    colorEtiqueta: COLORES_ENSAYO.foto,
+                    dataUrl,
+                });
+                redibujarTrazos();
+            };
+            lector.readAsDataURL(archivo);
+        });
+        inputFoto.addEventListener('cancel', () => { pinFotoPendiente = null; });
+
+        function mostrarFotoEnGrande(item) {
+            overlayFotoImg.src = item.dataUrl;
+            overlayFoto.classList.add('abierto');
+        }
+
+        function cerrarFotoGrande() {
+            overlayFoto.classList.remove('abierto');
+            overlayFotoImg.src = '';
+        }
+
+        overlayFotoCerrar.addEventListener('click', cerrarFotoGrande);
+        overlayFoto.addEventListener('click', e => {
+            if (e.target === overlayFoto) cerrarFotoGrande();
+        });
+
         function iniciarAccionPuntero(puntosMundo) {
+            const mundoPunto = puntosMundo[puntosMundo.length - 1];
+
+            const fotoExistente = buscarFotoEnPunto(mundoPunto);
+            if (fotoExistente) {
+                mostrarFotoEnGrande(fotoExistente);
+                return;
+            }
+
+            if (herramientaActual === 'foto') {
+                solicitarFoto(mundoPunto);
+                return;
+            }
+
             const herramienta = HERRAMIENTAS[herramientaActual];
+            registrarUsoCapa(herramientaActual);
 
             if (herramienta.tipo === 'icono') {
-                const mundo = puntosMundo[puntosMundo.length - 1];
                 const prefijo = PREFIJOS_ENSAYO[herramientaActual];
                 let etiqueta = null;
                 if (prefijo) {
                     contadoresEnsayo[herramientaActual]++;
                     etiqueta = prefijo + contadoresEnsayo[herramientaActual];
                 }
-                trazos.push({ tipo: 'icono', imagen: herramienta.imagen, x: mundo.x, y: mundo.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
+                trazos.push({ tipo: 'icono', tool: herramientaActual, imagen: herramienta.imagen, x: mundoPunto.x, y: mundoPunto.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
                 redibujarTrazos();
             } else {
                 dibujando = true;
-                trazoActual = { tipo: 'trazo', color: herramienta.color, grosor: herramienta.grosor, puntos: [...puntosMundo] };
+                trazoActual = { tipo: 'trazo', tool: herramientaActual, color: herramienta.color, grosor: herramienta.grosor, puntos: [...puntosMundo] };
                 trazos.push(trazoActual);
                 drawCtx.strokeStyle = herramienta.color;
                 drawCtx.lineWidth = herramienta.grosor * vista.scale;
