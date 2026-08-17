@@ -71,6 +71,18 @@
             white-space: nowrap;
             gap: 0.5rem;
         }
+        .submenu-color {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.6rem;
+            padding: 0.3rem 0.4rem 0.55rem;
+            margin-bottom: 0.2rem;
+            border-bottom: 1px solid #333;
+            color: #ccc; font-size: 0.72rem; font-weight: 600;
+        }
+        .submenu-color input[type="color"] {
+            width: 34px; height: 26px; border: none; border-radius: 0.35rem;
+            background: none; cursor: pointer; padding: 0;
+        }
 
         /* ── BARRA SUPERIOR DERECHA (Capas + Volver, flotante) ── */
         .barra-superior-derecha {
@@ -86,7 +98,25 @@
         .btn-superior:hover { background: #555; }
         .btn-superior.activo { background: #2a6fdb; }
 
-        .capas-wrap { position: relative; }
+        .capas-wrap, .escala-wrap { position: relative; }
+
+        .panel-escala {
+            position: absolute; top: calc(100% + 0.4rem); right: 0;
+            background: #222; border-radius: 0.55rem; padding: 0.7rem 0.8rem;
+            display: none; flex-direction: column; gap: 0.9rem;
+            min-width: 220px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        .panel-escala.abierto { display: flex; }
+        .escala-item { display: flex; flex-direction: column; gap: 0.35rem; }
+        .escala-item-cabecera {
+            display: flex; justify-content: space-between; align-items: center;
+            color: #ddd; font-size: 0.78rem; font-weight: 600;
+        }
+        .escala-item-valor { color: #999; font-weight: 500; }
+        .escala-item input[type="range"] {
+            width: 100%; accent-color: #2a6fdb;
+        }
 
         .panel-capas {
             position: absolute; top: calc(100% + 0.4rem); right: 0;
@@ -178,6 +208,20 @@
             display: block;
             cursor: crosshair;
         }
+        .input-texto-flotante {
+            position: absolute;
+            display: none;
+            transform: translateY(-50%);
+            font: 600 16px sans-serif;
+            line-height: 1;
+            background: rgba(255,255,255,0.9);
+            border: 1px dashed #2a6fdb;
+            border-radius: 0.2rem;
+            padding: 0.05em 0.25em;
+            min-width: 3ch;
+            outline: none;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
@@ -193,6 +237,52 @@
                 Capas
             </button>
             <div class="panel-capas" id="panel-capas"></div>
+        </div>
+        <div class="escala-wrap" id="escala-wrap">
+            <button type="button" class="btn-superior" id="btn-escala">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="21" x2="4" y2="14"></line>
+                    <line x1="4" y1="10" x2="4" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12" y2="3"></line>
+                    <line x1="20" y1="21" x2="20" y2="16"></line>
+                    <line x1="20" y1="12" x2="20" y2="3"></line>
+                    <line x1="1" y1="14" x2="7" y2="14"></line>
+                    <line x1="9" y1="8" x2="15" y2="8"></line>
+                    <line x1="17" y1="16" x2="23" y2="16"></line>
+                </svg>
+                Escala
+            </button>
+            <div class="panel-escala" id="panel-escala">
+                <div class="escala-item">
+                    <div class="escala-item-cabecera">
+                        <span>Daños</span>
+                        <span class="escala-item-valor" id="escala-danos-valor">100%</span>
+                    </div>
+                    <input type="range" id="escala-danos" min="50" max="200" step="5" value="100">
+                </div>
+                <div class="escala-item">
+                    <div class="escala-item-cabecera">
+                        <span>Ensayos</span>
+                        <span class="escala-item-valor" id="escala-ensayos-valor">100%</span>
+                    </div>
+                    <input type="range" id="escala-ensayos" min="50" max="200" step="5" value="100">
+                </div>
+                <div class="escala-item">
+                    <div class="escala-item-cabecera">
+                        <span>Fotos</span>
+                        <span class="escala-item-valor" id="escala-fotos-valor">100%</span>
+                    </div>
+                    <input type="range" id="escala-fotos" min="50" max="200" step="5" value="100">
+                </div>
+                <div class="escala-item">
+                    <div class="escala-item-cabecera">
+                        <span>Texto</span>
+                        <span class="escala-item-valor" id="escala-texto-valor">100%</span>
+                    </div>
+                    <input type="range" id="escala-texto" min="50" max="200" step="5" value="100">
+                </div>
+            </div>
         </div>
         <a href="{{ route('planos_tc.index', $obraTc->id) }}" class="btn-superior">&larr; Volver</a>
     </div>
@@ -294,6 +384,66 @@
                         <img class="tool-icon-img" src="{{ asset('img/iconos/ultrasonido.svg') }}" alt="">
                         Ultrasonido
                     </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="resistividad" title="Resistividad">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Resistividad.svg') }}" alt="">
+                        Resistividad
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="potencial" title="Potencial">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Potencial.svg') }}" alt="">
+                        Potencial
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="cloruros" title="Cloruros">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/Cloruros.svg') }}" alt="">
+                        Cloruros
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="georradar" title="Georradar">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/georradar.svg') }}" alt="">
+                        Georradar
+                    </button>
+                </div>
+            </div>
+            <div class="tool-submenu-wrap" id="anotaciones-wrap">
+                <button type="button" class="tool-btn" id="tool-anotaciones" title="Anotaciones">
+                    <img class="tool-icon-img" src="{{ asset('img/iconos/anotacion.svg') }}" alt="">
+                    Anotaciones
+                </button>
+                <div class="submenu-lateral" id="submenu-anotaciones">
+                    <div class="submenu-color">
+                        <label for="color-anotacion">Color</label>
+                        <input type="color" id="color-anotacion" value="#000000">
+                    </div>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="texto" title="Texto">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/texto.svg') }}" alt="">
+                        Texto
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="dibujo_libre" title="Dibujo a mano alzada">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/mano_alzada.svg') }}" alt="">
+                        Mano alzada
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="dibujo_libre_relleno" title="Mano alzada con relleno">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/mano_alzada_relleno.svg') }}" alt="">
+                        Mano alzada con relleno
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="circulo" title="Círculo">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/circulo.svg') }}" alt="">
+                        Círculo
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="circulo_relleno" title="Círculo con relleno">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/circulo_relleno.svg') }}" alt="">
+                        Círculo con relleno
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="rectangulo" title="Rectángulo">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/rectangulo.svg') }}" alt="">
+                        Rectángulo
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="rectangulo_relleno" title="Rectángulo con relleno">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/rectangulo_relleno.svg') }}" alt="">
+                        Rectángulo con relleno
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="linea_recta" title="Línea recta">
+                        <img class="tool-icon-img" src="{{ asset('img/iconos/linea_recta.svg') }}" alt="">
+                        Línea recta
+                    </button>
                 </div>
             </div>
             <button type="button" class="tool-btn" data-tool="foto" title="Fotografía">
@@ -307,6 +457,7 @@
                 <canvas id="pdf-canvas"></canvas>
             </div>
             <canvas id="draw-canvas"></canvas>
+            <input type="text" id="input-texto-flotante" class="input-texto-flotante" autocomplete="off">
         </div>
     </div>
 
@@ -338,6 +489,10 @@
             { tool: 'pachometria', url: @json(asset('img/iconos/pachometria.svg')), prefijo: 'Pch', color: '#1f4fd8', nombre: 'Pachometría' },
             { tool: 'testigos', url: @json(asset('img/iconos/testigos.svg')), prefijo: 'T', color: '#0a5c26', nombre: 'Testigos' },
             { tool: 'ultrasonido', url: @json(asset('img/iconos/ultrasonido.svg')), prefijo: 'U', color: '#e00000', nombre: 'Ultrasonido' },
+            { tool: 'resistividad', url: @json(asset('img/iconos/Resistividad.svg')), prefijo: 'R', color: '#cf9c26', nombre: 'Resistividad' },
+            { tool: 'potencial', url: @json(asset('img/iconos/Potencial.svg')), prefijo: 'P', color: '#ea0d0d', nombre: 'Potencial' },
+            { tool: 'cloruros', url: @json(asset('img/iconos/Cloruros.svg')), prefijo: 'CL', color: '#ea0d0d', nombre: 'Cloruros' },
+            { tool: 'georradar', url: @json(asset('img/iconos/georradar.svg')), prefijo: 'Geo', color: '#006400', nombre: 'Georradar' },
         ];
 
         const DANOS = [
@@ -363,11 +518,32 @@
             { tool: 'fisura_semiinclinada', url: @json(asset('img/iconos/Fisura seminclinada.svg')), nombre: 'Fisura semi-inclinada' },
         ];
 
+        /* Anotaciones libres: texto, dibujo a mano alzada y línea recta.
+           Comparten un mismo color, elegido en vivo con el selector del
+           submenú (ver HERRAMIENTAS.texto/dibujo_libre/linea_recta más abajo). */
+        const ANOTACIONES = [
+            { tool: 'texto', nombre: 'Texto', url: @json(asset('img/iconos/texto.svg')) },
+            { tool: 'dibujo_libre', nombre: 'Dibujo a mano alzada', url: @json(asset('img/iconos/mano_alzada.svg')) },
+            { tool: 'dibujo_libre_relleno', nombre: 'Mano alzada con relleno', url: @json(asset('img/iconos/mano_alzada_relleno.svg')) },
+            { tool: 'circulo', nombre: 'Círculo', url: @json(asset('img/iconos/circulo.svg')) },
+            { tool: 'circulo_relleno', nombre: 'Círculo con relleno', url: @json(asset('img/iconos/circulo_relleno.svg')) },
+            { tool: 'rectangulo', nombre: 'Rectángulo', url: @json(asset('img/iconos/rectangulo.svg')) },
+            { tool: 'rectangulo_relleno', nombre: 'Rectángulo con relleno', url: @json(asset('img/iconos/rectangulo_relleno.svg')) },
+            { tool: 'linea_recta', nombre: 'Línea recta', url: @json(asset('img/iconos/linea_recta.svg')) },
+        ];
+
         /* La fotografía comparte el mecanismo de ícono con los ensayos
            (imagen + tamaño), pero no se numera y no es un ensayo: se
-           agrupa aparte y su ícono se ve más chico en el plano. */
-        const FOTO = { tool: 'foto', url: @json(asset('img/iconos/foto.svg')), color: '#e6a400', nombre: 'Fotografía', tamano: 6.5 };
+           agrupa aparte. Usa el mismo tamaño que los íconos de ensayos. */
+        const FOTO = { tool: 'foto', url: @json(asset('img/iconos/foto.svg')), color: '#e6a400', nombre: 'Fotografía' };
         const ENSAYOS_Y_FOTO = [...ENSAYOS, FOTO];
+
+        /* Grupo de escala al que pertenece cada ícono, para el panel
+           de "Escala" (daños-ícono, ensayos o fotos). */
+        const GRUPO_ESCALA = {};
+        DANOS_ICONO.forEach(({ tool }) => { GRUPO_ESCALA[tool] = 'danos'; });
+        ENSAYOS.forEach(({ tool }) => { GRUPO_ESCALA[tool] = 'ensayos'; });
+        GRUPO_ESCALA[FOTO.tool] = 'fotos';
 
         const PREFIJOS_ENSAYO = {};
         const COLORES_ENSAYO = {};
@@ -391,6 +567,14 @@
             desprendimiento: { tipo: 'trazo', color: '#b91c1c', grosor: 0.25, cierreAutomatico: true },
             exfoliacion: { tipo: 'trazo', color: '#c2410c', grosor: 0.25, cierreAutomatico: true },
             desaplome: { tipo: 'trazo', color: '#eab308', grosor: 0.25, cierreAutomatico: true },
+            texto: { tipo: 'texto', color: '#000000', tamano: 8.32 }, // = tamano ensayo (26) * 0.32, la misma fuente de sus etiquetas
+            dibujo_libre: { tipo: 'trazo', color: '#000000', grosor: 0.2 },
+            dibujo_libre_relleno: { tipo: 'trazo', color: '#000000', grosor: 0.2, cierreAutomatico: true },
+            circulo: { tipo: 'circulo', color: '#000000', grosor: 0.2, relleno: false },
+            circulo_relleno: { tipo: 'circulo', color: '#000000', grosor: 0.2, relleno: true },
+            rectangulo: { tipo: 'rectangulo', color: '#000000', grosor: 0.2, relleno: false },
+            rectangulo_relleno: { tipo: 'rectangulo', color: '#000000', grosor: 0.2, relleno: true },
+            linea_recta: { tipo: 'linea', color: '#000000', grosor: 0.2 },
         };
 
         ENSAYOS_Y_FOTO.forEach(({ tool, url, tamano }) => {
@@ -510,14 +694,17 @@
         const grupoCapasDanos = crearGrupoCapas('Daños');
         const grupoCapasEnsayos = crearGrupoCapas('Ensayos');
         const grupoCapasFoto = crearGrupoCapas('Fotografía');
+        const grupoCapasAnotaciones = crearGrupoCapas('Anotaciones');
         panelCapas.appendChild(grupoCapasDanos);
         panelCapas.appendChild(grupoCapasEnsayos);
         panelCapas.appendChild(grupoCapasFoto);
+        panelCapas.appendChild(grupoCapasAnotaciones);
 
         DANOS.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasDanos }; });
         DANOS_ICONO.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasDanos }; });
         ENSAYOS.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasEnsayos }; });
         metaCapas[FOTO.tool] = { ...FOTO, grupo: grupoCapasFoto };
+        ANOTACIONES.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasAnotaciones }; });
 
         function registrarUsoCapa(tool) {
             if (itemsCapaDom[tool]) return;
@@ -540,6 +727,49 @@
                 panelCapas.classList.remove('abierto');
                 btnCapas.classList.remove('activo');
             }
+        });
+
+        const escalaWrap = document.getElementById('escala-wrap');
+        const btnEscala = document.getElementById('btn-escala');
+        const panelEscala = document.getElementById('panel-escala');
+        btnEscala.addEventListener('click', e => {
+            e.stopPropagation();
+            panelEscala.classList.toggle('abierto');
+            btnEscala.classList.toggle('activo', panelEscala.classList.contains('abierto'));
+        });
+        document.addEventListener('click', e => {
+            if (!escalaWrap.contains(e.target)) {
+                panelEscala.classList.remove('abierto');
+                btnEscala.classList.remove('activo');
+            }
+        });
+
+        [
+            ['danos', 'escala-danos', 'escala-danos-valor'],
+            ['ensayos', 'escala-ensayos', 'escala-ensayos-valor'],
+            ['fotos', 'escala-fotos', 'escala-fotos-valor'],
+            ['texto', 'escala-texto', 'escala-texto-valor'],
+        ].forEach(([grupo, idSlider, idValor]) => {
+            const slider = document.getElementById(idSlider);
+            const valor = document.getElementById(idValor);
+            slider.addEventListener('input', () => {
+                estadoPlano.escalas[grupo] = Number(slider.value) / 100;
+                valor.textContent = slider.value + '%';
+                redibujarTrazos();
+            });
+        });
+
+        const inputColorAnotacion = document.getElementById('color-anotacion');
+        inputColorAnotacion.addEventListener('input', () => {
+            const color = inputColorAnotacion.value;
+            HERRAMIENTAS.texto.color = color;
+            HERRAMIENTAS.dibujo_libre.color = color;
+            HERRAMIENTAS.dibujo_libre_relleno.color = color;
+            HERRAMIENTAS.circulo.color = color;
+            HERRAMIENTAS.circulo_relleno.color = color;
+            HERRAMIENTAS.rectangulo.color = color;
+            HERRAMIENTAS.rectangulo_relleno.color = color;
+            HERRAMIENTAS.linea_recta.color = color;
         });
 
         let herramientaActual = 'fisura';
@@ -607,8 +837,55 @@
         const pdfCtx = pdfCanvas.getContext('2d');
         const drawCtx = drawCanvas.getContext('2d');
 
+        /* Estado completo del plano: lo que eventualmente se persiste
+           en la base de datos (trazos/íconos dibujados + escalas elegidas). */
+        const estadoPlano = {
+            trazos: [],
+            escalas: { danos: 1, ensayos: 1, fotos: 1, texto: 1 },
+        };
+
+        /* Devuelve una copia serializable de estadoPlano (sin referencias a
+           objetos Image, que no se pueden guardar como JSON) lista para
+           enviarse al backend cuando se implemente el guardado. */
+        function serializarEstadoPlano() {
+            return {
+                escalas: { ...estadoPlano.escalas },
+                trazos: estadoPlano.trazos.map(item => {
+                    if (item.tipo === 'icono') {
+                        return {
+                            tipo: 'icono',
+                            tool: item.tool,
+                            x: item.x,
+                            y: item.y,
+                            tamano: item.tamano,
+                            etiqueta: item.etiqueta ?? null,
+                            colorEtiqueta: item.colorEtiqueta ?? null,
+                            dataUrl: item.dataUrl ?? null,
+                        };
+                    }
+                    if (item.tipo === 'texto') {
+                        return {
+                            tipo: 'texto',
+                            tool: item.tool,
+                            x: item.x,
+                            y: item.y,
+                            texto: item.texto,
+                            color: item.color,
+                            tamano: item.tamano,
+                        };
+                    }
+                    return {
+                        tipo: 'trazo',
+                        tool: item.tool,
+                        puntos: item.puntos,
+                        cerrado: item.cerrado ?? false,
+                        relleno: item.relleno ?? false,
+                    };
+                }),
+            };
+        }
+
         let pdfDoc = null;
-        let trazos = [];
         let trazoActual = null;
         let anchoBase = 0, altoBase = 0;
         let factorActual = 0;
@@ -623,6 +900,7 @@
         function aplicarTransform() {
             lienzo.style.transform = `translate(${vista.x}px, ${vista.y}px) scale(${vista.scale})`;
             redibujarTrazos();
+            posicionarInputTexto();
         }
 
         function pantallaAMundo(px, py) {
@@ -706,13 +984,14 @@
         function redibujarTrazos() {
             drawCtx.clearRect(0, 0, lienzoWrap.clientWidth, lienzoWrap.clientHeight);
 
-            trazos.forEach(item => {
+            estadoPlano.trazos.forEach(item => {
                 if (capasVisibles[item.tool] === false) return;
 
                 if (item.tipo === 'icono') {
                     if (!item.imagen.complete || !item.imagen.naturalWidth) return;
                     const ratio = item.imagen.naturalWidth / item.imagen.naturalHeight;
-                    const base = item.tamano * vista.scale;
+                    const factorEscala = estadoPlano.escalas[GRUPO_ESCALA[item.tool]] ?? 1;
+                    const base = item.tamano * vista.scale * factorEscala;
                     const anchoPantalla = ratio >= 1 ? base : base * ratio;
                     const altoPantalla = ratio >= 1 ? base / ratio : base;
                     const centro = mundoAPantalla(item.x, item.y);
@@ -736,6 +1015,17 @@
                     return;
                 }
 
+                if (item.tipo === 'texto') {
+                    const centro = mundoAPantalla(item.x, item.y);
+                    const tamanoFuente = item.tamano * vista.scale * (estadoPlano.escalas.texto ?? 1);
+                    drawCtx.font = `600 ${tamanoFuente}px sans-serif`;
+                    drawCtx.textBaseline = 'middle';
+                    drawCtx.textAlign = 'left';
+                    drawCtx.fillStyle = item.color;
+                    drawCtx.fillText(item.texto, centro.x, centro.y);
+                    return;
+                }
+
                 if (item.puntos.length < 2) return;
                 const puntosPantalla = item.puntos.map(p => mundoAPantalla(p.x, p.y));
                 const path = new Path2D();
@@ -746,7 +1036,7 @@
 
                 if (item.cerrado) {
                     path.closePath();
-                    dibujarTramaDiagonal(item, puntosPantalla, path);
+                    if (item.relleno) dibujarTramaDiagonal(item, puntosPantalla, path);
                 }
 
                 drawCtx.strokeStyle = item.color;
@@ -829,7 +1119,7 @@
             await pagina.render({ canvasContext: pdfCtx, viewport: viewportRender }).promise;
 
             factorActual = SOBREMUESTREO;
-            trazos = [];
+            estadoPlano.trazos = [];
             ENSAYOS_Y_FOTO.forEach(({ tool }) => { contadoresEnsayo[tool] = 0; });
             centrarVista();
         }
@@ -865,6 +1155,56 @@
             }
         }
 
+        /* ─── Anotación de texto: input flotante posicionado sobre el
+             punto clickeado, en vez de un prompt() desconectado del plano. ─ */
+        const inputTextoFlotante = document.getElementById('input-texto-flotante');
+        let edicionTextoPendiente = null;
+
+        function posicionarInputTexto() {
+            if (!edicionTextoPendiente) return;
+            const herramienta = HERRAMIENTAS.texto;
+            const centro = mundoAPantalla(edicionTextoPendiente.x, edicionTextoPendiente.y);
+            const tamanoFuente = herramienta.tamano * vista.scale * (estadoPlano.escalas.texto ?? 1);
+            inputTextoFlotante.style.left = centro.x + 'px';
+            inputTextoFlotante.style.top = centro.y + 'px';
+            inputTextoFlotante.style.fontSize = tamanoFuente + 'px';
+            inputTextoFlotante.style.color = herramienta.color;
+        }
+
+        function abrirInputTexto(mundo) {
+            edicionTextoPendiente = mundo;
+            inputTextoFlotante.value = '';
+            inputTextoFlotante.style.display = 'block';
+            posicionarInputTexto();
+            /* El foco se difiere: si se llama en el mismo pointerdown/mousedown
+               con el que se abrió, el navegador se lo roba de nuevo apenas
+               termina el evento (el lienzo no es un elemento enfocable), y el
+               input se cierra solo por el blur antes de poder escribir. */
+            setTimeout(() => inputTextoFlotante.focus(), 0);
+        }
+
+        function cerrarInputTexto(confirmar) {
+            if (!edicionTextoPendiente) return;
+            const texto = inputTextoFlotante.value.trim();
+            const mundo = edicionTextoPendiente;
+            edicionTextoPendiente = null;
+            inputTextoFlotante.style.display = 'none';
+            inputTextoFlotante.blur();
+
+            if (confirmar && texto) {
+                const herramienta = HERRAMIENTAS.texto;
+                registrarUsoCapa('texto');
+                estadoPlano.trazos.push({ tipo: 'texto', tool: 'texto', x: mundo.x, y: mundo.y, texto, color: herramienta.color, tamano: herramienta.tamano });
+                redibujarTrazos();
+            }
+        }
+
+        inputTextoFlotante.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); cerrarInputTexto(true); }
+            else if (e.key === 'Escape') { e.preventDefault(); cerrarInputTexto(false); }
+        });
+        inputTextoFlotante.addEventListener('blur', () => cerrarInputTexto(true));
+
         /* ─── Fotografía: pin + cámara + vista previa ─────── */
         const inputFoto = document.getElementById('input-foto');
         const overlayFoto = document.getElementById('overlay-foto');
@@ -872,10 +1212,31 @@
         const overlayFotoCerrar = document.getElementById('overlay-foto-cerrar');
         let pinFotoPendiente = null;
 
+        /* ─── Formas de arrastre (círculo/rectángulo): se recalculan
+             en cada movimiento a partir del punto inicial y el actual. ─ */
+        function puntosRectangulo(a, b) {
+            return [
+                { x: a.x, y: a.y },
+                { x: b.x, y: a.y },
+                { x: b.x, y: b.y },
+                { x: a.x, y: b.y },
+            ];
+        }
+
+        function puntosCirculo(centro, borde, segmentos = 48) {
+            const radio = Math.hypot(borde.x - centro.x, borde.y - centro.y);
+            const puntos = [];
+            for (let i = 0; i < segmentos; i++) {
+                const angulo = (i / segmentos) * Math.PI * 2;
+                puntos.push({ x: centro.x + radio * Math.cos(angulo), y: centro.y + radio * Math.sin(angulo) });
+            }
+            return puntos;
+        }
+
         function buscarFotoEnPunto(mundo) {
             const margenPantalla = 12;
-            for (let i = trazos.length - 1; i >= 0; i--) {
-                const item = trazos[i];
+            for (let i = estadoPlano.trazos.length - 1; i >= 0; i--) {
+                const item = estadoPlano.trazos[i];
                 if (item.tool !== 'foto' || capasVisibles[item.tool] === false) continue;
                 const radioMundo = item.tamano / 2 + margenPantalla / vista.scale;
                 if (Math.hypot(item.x - mundo.x, item.y - mundo.y) <= radioMundo) return item;
@@ -899,7 +1260,7 @@
             lector.onload = () => {
                 const dataUrl = lector.result;
                 registrarUsoCapa('foto');
-                trazos.push({
+                estadoPlano.trazos.push({
                     tipo: 'icono',
                     tool: 'foto',
                     imagen: HERRAMIENTAS.foto.imagen,
@@ -945,6 +1306,12 @@
             }
 
             const herramienta = HERRAMIENTAS[herramientaActual];
+
+            if (herramienta.tipo === 'texto') {
+                abrirInputTexto(mundoPunto);
+                return;
+            }
+
             registrarUsoCapa(herramientaActual);
 
             if (herramienta.tipo === 'icono') {
@@ -954,17 +1321,32 @@
                     contadoresEnsayo[herramientaActual]++;
                     etiqueta = prefijo + contadoresEnsayo[herramientaActual];
                 }
-                trazos.push({ tipo: 'icono', tool: herramientaActual, imagen: herramienta.imagen, x: mundoPunto.x, y: mundoPunto.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
+                estadoPlano.trazos.push({ tipo: 'icono', tool: herramientaActual, imagen: herramienta.imagen, x: mundoPunto.x, y: mundoPunto.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
                 redibujarTrazos();
             } else if (herramienta.tipo === 'linea') {
                 dibujando = true;
                 trazoActual = { tipo: 'trazo', tool: herramientaActual, color: herramienta.color, grosor: herramienta.grosor, puntos: [puntosMundo[0], mundoPunto] };
-                trazos.push(trazoActual);
+                estadoPlano.trazos.push(trazoActual);
+                redibujarTrazos();
+            } else if (herramienta.tipo === 'circulo' || herramienta.tipo === 'rectangulo') {
+                dibujando = true;
+                const generarPuntos = herramienta.tipo === 'circulo' ? puntosCirculo : puntosRectangulo;
+                trazoActual = {
+                    tipo: 'trazo',
+                    tool: herramientaActual,
+                    color: herramienta.color,
+                    grosor: herramienta.grosor,
+                    relleno: herramienta.relleno,
+                    puntoInicio: mundoPunto,
+                    puntos: generarPuntos(mundoPunto, mundoPunto),
+                    cerrado: true,
+                };
+                estadoPlano.trazos.push(trazoActual);
                 redibujarTrazos();
             } else {
                 dibujando = true;
                 trazoActual = { tipo: 'trazo', tool: herramientaActual, color: herramienta.color, grosor: herramienta.grosor, puntos: [...puntosMundo] };
-                trazos.push(trazoActual);
+                estadoPlano.trazos.push(trazoActual);
                 drawCtx.strokeStyle = herramienta.color;
                 drawCtx.lineWidth = herramienta.grosor * vista.scale;
                 drawCtx.beginPath();
@@ -977,6 +1359,8 @@
         }
 
         lienzoWrap.addEventListener('pointerdown', e => {
+            if (e.target === inputTextoFlotante) return;
+            if (edicionTextoPendiente) cerrarInputTexto(true);
             lienzoWrap.setPointerCapture(e.pointerId);
             punterosActivos.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -1039,8 +1423,13 @@
             if (dibujando) {
                 const pantalla = posicionPantalla(e);
                 const mundo = pantallaAMundo(pantalla.x, pantalla.y);
-                if (HERRAMIENTAS[herramientaActual].tipo === 'linea') {
+                const tipoHerramienta = HERRAMIENTAS[herramientaActual].tipo;
+                if (tipoHerramienta === 'linea') {
                     trazoActual.puntos[1] = mundo;
+                    redibujarTrazos();
+                } else if (tipoHerramienta === 'circulo' || tipoHerramienta === 'rectangulo') {
+                    const generarPuntos = tipoHerramienta === 'circulo' ? puntosCirculo : puntosRectangulo;
+                    trazoActual.puntos = generarPuntos(trazoActual.puntoInicio, mundo);
                     redibujarTrazos();
                 } else {
                     trazoActual.puntos.push(mundo);
@@ -1067,6 +1456,7 @@
                 const inicio = trazoActual.puntos[0];
                 trazoActual.puntos.push({ x: inicio.x, y: inicio.y });
                 trazoActual.cerrado = true;
+                trazoActual.relleno = true;
                 redibujarTrazos();
             }
 

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   version="1.1"
+   id="svg1"
+   width="1656.97534"
+   height="2603.7734"
+   viewBox="-414.243845 -650.9434 1656.97538 2603.7734"
+   sodipodi:docname="Cloruros.pdf"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1">
+    <inkscape:page
+       x="0"
+       y="0"
+       width="828.48767"
+       height="1301.8867"
+       id="page2"
+       margin="0"
+       bleed="0" />
+  </sodipodi:namedview>
+  <g
+     id="layer-oc1"
+     inkscape:groupmode="layer"
+     inkscape:label="CLORURO"
+     transform="translate(-673.96446,-114.01675)">
+    <path
+       style="fill:#ea0d0d;fill-opacity:1;stroke:#ea0d0d;stroke-width:1.96913;stroke-opacity:1;paint-order:markers stroke fill"
+       d="m 1088.1834,114.13135 c 0,0 -59.0335,503.75217 -413.23421,881.5663 0,0 -1.96778,393.55635 413.23421,419.13755 z"
+       id="path163" />
+    <path
+       style="fill:none;fill-opacity:1;stroke:#ea0d0d;stroke-width:1.96913;stroke-opacity:1;paint-order:markers stroke fill"
+       d="m 1088.2331,114.15238 c 0,0 59.0335,503.75217 413.2343,881.56625 0,0 1.9677,393.55647 -413.2343,419.13767 z"
+       id="path163-8" />
+  </g>
+</svg>
