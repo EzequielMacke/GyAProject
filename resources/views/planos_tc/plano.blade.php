@@ -1669,11 +1669,14 @@
         }
 
         function centrarVista() {
-            vista.scale = 1;
             const anchoWrap = lienzoWrap.clientWidth;
             const altoWrap = lienzoWrap.clientHeight;
-            vista.x = Math.max((anchoWrap - anchoBase) / 2, 0);
-            vista.y = altoBase < altoWrap ? (altoWrap - altoBase) / 2 : 24;
+            const anchoDisponible = Math.min(anchoWrap - 48, 1400);
+            vista.scale = clamp(anchoDisponible / anchoBase, ZOOM_MIN, ZOOM_MAX);
+            const anchoEscalado = anchoBase * vista.scale;
+            const altoEscalado = altoBase * vista.scale;
+            vista.x = Math.max((anchoWrap - anchoEscalado) / 2, 0);
+            vista.y = altoEscalado < altoWrap ? (altoWrap - altoEscalado) / 2 : 24;
             aplicarTransform();
             programarRenderNitidez();
         }
@@ -1689,14 +1692,18 @@
         async function renderPagina() {
             clearTimeout(temporizadorNitidez);
             const pagina = await pdfDoc.getPage(1);
-            const anchoDisponible = Math.min(lienzoWrap.clientWidth - 48, 1400);
             const viewportBase = pagina.getViewport({ scale: 1, rotation: rotacionPlano });
-            const escalaVisible = anchoDisponible / viewportBase.width;
-            const viewportVisible = pagina.getViewport({ scale: escalaVisible, rotation: rotacionPlano });
-            const viewportRender = pagina.getViewport({ scale: escalaVisible * SOBREMUESTREO, rotation: rotacionPlano });
+            const viewportRender = pagina.getViewport({ scale: SOBREMUESTREO, rotation: rotacionPlano });
 
-            anchoBase = viewportVisible.width;
-            altoBase = viewportVisible.height;
+            /* anchoBase/altoBase (y por lo tanto la posición "mundo" de
+               cada elemento dibujado) se miden en puntos del PDF, un
+               tamaño fijo del documento — no en píxeles de pantalla, que
+               varían según el dispositivo. Así, algo dibujado en una
+               tablet cae en el mismo lugar al abrir el plano en una
+               computadora. El ajuste a cada tamaño de pantalla lo hace
+               vista.scale (ver centrarVista), no anchoBase/altoBase. */
+            anchoBase = viewportBase.width;
+            altoBase = viewportBase.height;
 
             pdfCanvas.width = viewportRender.width;
             pdfCanvas.height = viewportRender.height;
