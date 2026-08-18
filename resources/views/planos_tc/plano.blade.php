@@ -106,6 +106,20 @@
         .btn-superior:hover { background: #555; }
         .btn-superior.activo { background: #2a6fdb; }
 
+        .estado-guardado {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.5rem 0.7rem;
+            font-size: 0.78rem; font-weight: 500; color: #999;
+        }
+        .estado-guardado-punto {
+            width: 7px; height: 7px; border-radius: 50%; background: #666;
+            flex-shrink: 0;
+        }
+        .estado-guardado.pendiente .estado-guardado-punto { background: #d9a441; }
+        .estado-guardado.guardando .estado-guardado-punto { background: #2a6fdb; }
+        .estado-guardado.error .estado-guardado-punto { background: #c0392b; }
+        .estado-guardado.error { color: #e07a6f; }
+
         .capas-wrap, .escala-wrap, .preferencias-wrap, .actividad-wrap { position: relative; }
 
         .panel-actividad {
@@ -330,6 +344,10 @@
 <body>
 
     <div class="barra-superior-derecha">
+        <div class="estado-guardado" id="estado-guardado" @if(!$puedeEditar && !$puedeEliminar) style="display:none" @endif>
+            <span class="estado-guardado-punto"></span>
+            <span class="estado-guardado-texto">Guardado</span>
+        </div>
         <div class="capas-wrap" id="capas-wrap">
             <button type="button" class="btn-superior" id="btn-capas">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1314,16 +1332,21 @@
             }
         }
 
+        /* Sincroniza el panel de capas contra estadoPlano.trazos SIN
+           destruir y recrear todo: eso hacía que, tras cada guardado
+           automático, todas las capas volvieran a "prenderse" (perdían
+           el ocultar/mostrar que el usuario había elegido) y parpadearan.
+           registrarUsoCapa/quitarCapaSiVacia ya son no-op si la capa no
+           cambió, así que solo tocan el DOM de lo que realmente entró o
+           quedó vacío. */
         function sincronizarPanelCapas() {
-            Object.keys(itemsCapaDom).forEach(tool => {
-                itemsCapaDom[tool].btn.remove();
-                delete itemsCapaDom[tool];
-                delete capasVisibles[tool];
-            });
-            [grupoCapasDanos, grupoCapasEnsayos, grupoCapasFoto, grupoCapasAnotaciones].forEach(g => { g.style.display = 'none'; });
-            panelCapasVacio.style.display = '';
+            const toolsActuales = new Set(estadoPlano.trazos.map(item => item.tool));
 
-            estadoPlano.trazos.forEach(item => registrarUsoCapa(item.tool));
+            Object.keys(itemsCapaDom).forEach(tool => {
+                if (!toolsActuales.has(tool)) quitarCapaSiVacia(tool);
+            });
+
+            toolsActuales.forEach(tool => registrarUsoCapa(tool));
         }
 
         /* Fusiona un estado recibido del servidor (al cargar el plano por
@@ -1437,17 +1460,34 @@
         }
 
         /* ─── Autoguardado: cada acción (agregar, mover, borrar, cambiar
-             una escala) programa un guardado 3s después de la última,
-             para no mandar un request por cada movimiento del mouse. Se
-             mandan solo las operaciones puntuales (no el plano entero),
-             para que el servidor las pueda fusionar con lo que haya
-             guardado otra persona mientras tanto en vez de pisarlo. ─ */
-        const DEMORA_GUARDADO_MS = 3000;
+             una escala) programa un guardado 15s después de la última
+             acción (se reinicia el temporizador en cada una), para
+             guardar recién cuando el usuario se queda quieto y no
+             interrumpir lo que está haciendo. Se mandan solo las
+             operaciones puntuales (no el plano entero), para que el
+             servidor las pueda fusionar con lo que haya guardado otra
+             persona mientras tanto en vez de pisarlo. ─ */
+        const DEMORA_GUARDADO_MS = 15000;
         let temporizadorGuardado = null;
         let guardadoEnCurso = false;
 
+        const elEstadoGuardado = document.getElementById('estado-guardado');
+        const elEstadoGuardadoTexto = elEstadoGuardado?.querySelector('.estado-guardado-texto');
+        const TEXTOS_ESTADO_GUARDADO = {
+            guardado: 'Guardado',
+            pendiente: 'Cambios sin guardar',
+            guardando: 'Guardando…',
+            error: 'Error al guardar',
+        };
+        function fijarEstadoGuardado(estado) {
+            if (!elEstadoGuardado) return;
+            elEstadoGuardado.className = 'estado-guardado ' + estado;
+            elEstadoGuardadoTexto.textContent = TEXTOS_ESTADO_GUARDADO[estado];
+        }
+
         function programarGuardado() {
             if (!PUEDE_EDITAR && !PUEDE_ELIMINAR) return;
+            fijarEstadoGuardado('pendiente');
             clearTimeout(temporizadorGuardado);
             temporizadorGuardado = setTimeout(guardarEstadoPlano, DEMORA_GUARDADO_MS);
         }
@@ -1471,9 +1511,13 @@
             const operaciones = calcularOperacionesPendientes();
             const hayCambios = operaciones.agregados.length || operaciones.eliminados.length ||
                 operaciones.movidos.length || operaciones.fotosCambiadas.length || operaciones.escalas;
-            if (!hayCambios) return;
+            if (!hayCambios) {
+                fijarEstadoGuardado('guardado');
+                return;
+            }
 
             guardadoEnCurso = true;
+            fijarEstadoGuardado('guardando');
             try {
                 const respuesta = await fetch(urlGuardarEstado, {
                     method: 'PATCH',
@@ -1486,14 +1530,17 @@
                 });
                 if (!respuesta.ok) {
                     console.warn('No se pudo guardar el plano (HTTP ' + respuesta.status + ')');
+                    fijarEstadoGuardado('error');
                     return;
                 }
                 const datos = await respuesta.json();
                 aplicarEstadoRecibido(datos.estado);
+                fijarEstadoGuardado('guardado');
             } catch (e) {
                 /* Si falla, el próximo cambio vuelve a programar un
                    guardado; no hay reintento explícito todavía. */
                 console.warn('No se pudo guardar el plano', e);
+                fijarEstadoGuardado('error');
             } finally {
                 guardadoEnCurso = false;
             }
