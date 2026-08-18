@@ -1272,19 +1272,49 @@
             }
         }
 
-        /* Reemplaza estadoPlano (y el panel de Capas + sliders de Escala)
-           por un estado recibido del servidor: al cargar el plano por
-           primera vez, y también después de cada guardado (la respuesta
-           trae el estado ya fusionado con lo que hayan guardado otros
-           usuarios mientras tanto). */
-        function aplicarEstadoRecibido(estadoJson) {
-            if (dibujando || arrastrandoMover) {
-                estadoRecibidoPendiente = estadoJson;
-                return;
+        function crearItemDesdeGuardado(item) {
+            if (item.tipo === 'icono') {
+                const nuevoItem = {
+                    id: item.id ?? generarIdElemento(),
+                    tipo: 'icono',
+                    tool: item.tool,
+                    imagen: HERRAMIENTAS[item.tool]?.imagen,
+                    x: item.x,
+                    y: item.y,
+                    tamano: item.tamano,
+                    etiqueta: item.etiqueta ?? null,
+                    colorEtiqueta: item.colorEtiqueta ?? null,
+                };
+                if (item.fotos) nuevoItem.fotos = item.fotos;
+                return nuevoItem;
             }
+            return { ...item, id: item.id ?? generarIdElemento() };
+        }
 
-            const idSeleccionado = elementoSeleccionado?.id ?? null;
+        function aplicarCamposRecibidos(item, nuevo) {
+            if (item.tipo === 'icono') {
+                item.x = nuevo.x;
+                item.y = nuevo.y;
+                item.tamano = nuevo.tamano;
+                item.etiqueta = nuevo.etiqueta ?? null;
+                item.colorEtiqueta = nuevo.colorEtiqueta ?? null;
+                if (nuevo.fotos) item.fotos = nuevo.fotos;
+            } else if (item.tipo === 'texto') {
+                item.x = nuevo.x;
+                item.y = nuevo.y;
+                item.texto = nuevo.texto;
+                item.color = nuevo.color;
+                item.tamano = nuevo.tamano;
+            } else {
+                item.puntos = nuevo.puntos;
+                item.color = nuevo.color;
+                item.grosor = nuevo.grosor;
+                item.cerrado = nuevo.cerrado ?? false;
+                item.relleno = nuevo.relleno ?? false;
+            }
+        }
 
+        function sincronizarPanelCapas() {
             Object.keys(itemsCapaDom).forEach(tool => {
                 itemsCapaDom[tool].btn.remove();
                 delete itemsCapaDom[tool];
@@ -1293,45 +1323,60 @@
             [grupoCapasDanos, grupoCapasEnsayos, grupoCapasFoto, grupoCapasAnotaciones].forEach(g => { g.style.display = 'none'; });
             panelCapasVacio.style.display = '';
 
-            estadoPlano.trazos = [];
+            estadoPlano.trazos.forEach(item => registrarUsoCapa(item.tool));
+        }
+
+        /* Fusiona un estado recibido del servidor (al cargar el plano por
+           primera vez, y también después de cada guardado) con lo que hay
+           en pantalla — SIN reemplazar estadoPlano.trazos entero. Los
+           elementos que siguen existiendo se actualizan en el mismo
+           objeto, conservando su referencia: así, cualquier cosa que la
+           tenga guardada mientras tanto (una foto subiéndose a un pin, el
+           elemento seleccionado, etc.) no queda huérfana ni se pierde el
+           cambio que estaba por aplicar. */
+        function aplicarEstadoRecibido(estadoJson) {
+            if (dibujando || arrastrandoMover) {
+                estadoRecibidoPendiente = estadoJson;
+                return;
+            }
+
+            const nuevosPorId = new Map((estadoJson?.trazos || []).map(item => [item.id, item]));
+            const baseAnteriorPorId = new Map((estadoBase.trazos || []).map(item => [item.id, item]));
+
+            for (let i = estadoPlano.trazos.length - 1; i >= 0; i--) {
+                const item = estadoPlano.trazos[i];
+                const nuevo = nuevosPorId.get(item.id);
+
+                if (nuevo) {
+                    aplicarCamposRecibidos(item, nuevo);
+                    continue;
+                }
+
+                if (baseAnteriorPorId.has(item.id)) {
+                    /* El servidor lo conocía y ya no lo tiene: lo borró
+                       otro usuario. */
+                    estadoPlano.trazos.splice(i, 1);
+                    if (elementoSeleccionado === item) deseleccionarElemento();
+                } /* si no, es algo local recién creado que todavía no se
+                     guardó — no se toca. */
+            }
+
+            const idsActuales = new Set(estadoPlano.trazos.map(t => t.id));
+            (estadoJson?.trazos || []).forEach(item => {
+                if (idsActuales.has(item.id)) return;
+                estadoPlano.trazos.push(crearItemDesdeGuardado(item));
+            });
 
             if (estadoJson?.escalas) {
                 Object.assign(estadoPlano.escalas, estadoJson.escalas);
                 actualizarSlidersEscala();
             }
 
-            (estadoJson?.trazos || []).forEach(item => {
-                if (item.tipo === 'icono') {
-                    const nuevoItem = {
-                        id: item.id ?? generarIdElemento(),
-                        tipo: 'icono',
-                        tool: item.tool,
-                        imagen: HERRAMIENTAS[item.tool]?.imagen,
-                        x: item.x,
-                        y: item.y,
-                        tamano: item.tamano,
-                        etiqueta: item.etiqueta ?? null,
-                        colorEtiqueta: item.colorEtiqueta ?? null,
-                    };
-                    if (item.fotos) nuevoItem.fotos = item.fotos;
-                    estadoPlano.trazos.push(nuevoItem);
-                } else {
-                    estadoPlano.trazos.push({ ...item, id: item.id ?? generarIdElemento() });
-                }
-                registrarUsoCapa(item.tool);
-            });
-
+            sincronizarPanelCapas();
             estadoBase = serializarEstadoPlano();
 
-            if (idSeleccionado) {
-                const encontrado = estadoPlano.trazos.find(t => t.id === idSeleccionado);
-                if (encontrado) {
-                    elementoSeleccionado = encontrado;
-                    if (panelSeleccion.classList.contains('abierto')) mostrarPanelSeleccion();
-                } else {
-                    deseleccionarElemento();
-                }
-            }
+            if (fotoAbiertaItem) actualizarOverlayFoto();
+            if (elementoSeleccionado && panelSeleccion.classList.contains('abierto')) mostrarPanelSeleccion();
 
             redibujarTrazos();
         }
