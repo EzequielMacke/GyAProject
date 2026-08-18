@@ -42,6 +42,14 @@
             padding: 3px;
             box-sizing: border-box;
         }
+        .tool-icon-letra {
+            width: 22px; height: 22px;
+            background: #fff;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #ff0000; font-weight: 800; font-size: 0.85rem;
+            box-sizing: border-box; flex-shrink: 0;
+        }
 
         /* ── BOTONES CON SUBMENÚ (expandible hacia la derecha) ── */
         .tool-submenu-wrap {
@@ -151,9 +159,10 @@
             width: 100%; text-align: left; font-family: inherit;
         }
         .capa-item:hover { background: #2f2f2f; }
-        .capa-item .tool-swatch, .capa-item .tool-icon-img {
+        .capa-item .tool-swatch, .capa-item .tool-icon-img, .capa-item .tool-icon-letra {
             width: 18px; height: 18px; flex-shrink: 0;
         }
+        .capa-item .tool-icon-letra { font-size: 0.62rem; }
         .capa-nombre { flex: 1; }
         .capa-ojo { display: inline-flex; color: #ccc; flex-shrink: 0; }
         .capa-item.oculta { color: #888; }
@@ -193,6 +202,29 @@
             display: flex; align-items: center; justify-content: center;
         }
         .overlay-foto-cerrar:hover { background: #555; }
+        .overlay-foto-nav {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 34px; height: 34px; border-radius: 50%;
+            background: rgba(0,0,0,0.55); color: #fff; border: none; cursor: pointer;
+            font-size: 1.4rem; font-weight: 700; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .overlay-foto-nav:hover { background: rgba(0,0,0,0.75); }
+        .overlay-foto-prev { left: 8px; }
+        .overlay-foto-next { right: 8px; }
+        .overlay-foto-pie {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.6rem; padding-top: 0.5rem;
+        }
+        .overlay-foto-contador { color: #ccc; font-size: 0.78rem; font-weight: 600; }
+        .overlay-foto-acciones { display: flex; gap: 0.4rem; margin-left: auto; }
+        .overlay-foto-accion {
+            background: #2f2f2f; border: none; cursor: pointer;
+            color: #eee; font-size: 0.74rem; font-weight: 600; font-family: inherit;
+            padding: 0.4rem 0.6rem; border-radius: 0.4rem;
+        }
+        .overlay-foto-accion:hover { background: #3a3a3a; }
+        .overlay-foto-accion-borrar:hover { background: #7f1d1d; }
 
         .lienzo {
             position: absolute;
@@ -222,6 +254,28 @@
             outline: none;
             z-index: 10;
         }
+
+        .panel-seleccion {
+            position: absolute;
+            display: none;
+            transform: translate(-50%, -100%);
+            gap: 0.4rem;
+            background: #222;
+            padding: 0.35rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            z-index: 15;
+        }
+        .panel-seleccion.abierto { display: flex; }
+        .panel-seleccion-btn {
+            background: #444; color: #fff; border: none; cursor: pointer;
+            padding: 0.4rem 0.7rem; border-radius: 0.4rem;
+            font-size: 0.78rem; font-weight: 600; font-family: inherit;
+            white-space: nowrap;
+        }
+        .panel-seleccion-btn:hover { background: #555; }
+        .panel-seleccion-btn.activo { background: #2a6fdb; }
+        .panel-seleccion-btn.borrar:hover { background: #7f1d1d; }
     </style>
 </head>
 <body>
@@ -258,7 +312,7 @@
                     <div class="escala-item-cabecera">
                         <span>Daños</span>
                         <span class="escala-item-valor" id="escala-danos-valor">100%</span>
-                    </div>
+                    </div> 
                     <input type="range" id="escala-danos" min="50" max="200" step="5" value="100">
                 </div>
                 <div class="escala-item">
@@ -360,6 +414,7 @@
             </div>
             <div class="tool-submenu-wrap" id="ensayos-wrap">
                 <button type="button" class="tool-btn" id="tool-ensayos" title="Ensayos">
+                    <span class="tool-icon-letra" style="display:none">F</span>
                     <img class="tool-icon-img" src="{{ asset('img/iconos/esclerometria.svg') }}" alt="">
                     Ensayos
                 </button>
@@ -399,6 +454,10 @@
                     <button type="button" class="tool-btn tool-submenu-item" data-tool="georradar" title="Georradar">
                         <img class="tool-icon-img" src="{{ asset('img/iconos/georradar.svg') }}" alt="">
                         Georradar
+                    </button>
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="computo_fisuras" title="Cómputo de fisuras">
+                        <span class="tool-icon-letra">F</span>
+                        Cómputo de fisuras
                     </button>
                 </div>
             </div>
@@ -450,6 +509,12 @@
                 <img class="tool-icon-img" src="{{ asset('img/iconos/foto.svg') }}" alt="">
                 Foto
             </button>
+            <button type="button" class="tool-btn" data-tool="seleccion" title="Selección">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
+                </svg>
+                Selección
+            </button>
         </nav>
 
         <div class="lienzo-wrap" id="lienzo-wrap">
@@ -458,15 +523,28 @@
             </div>
             <canvas id="draw-canvas"></canvas>
             <input type="text" id="input-texto-flotante" class="input-texto-flotante" autocomplete="off">
+            <div class="panel-seleccion" id="panel-seleccion">
+                <button type="button" class="panel-seleccion-btn" id="btn-seleccion-mover">Mover</button>
+                <button type="button" class="panel-seleccion-btn borrar" id="btn-seleccion-eliminar">Eliminar</button>
+            </div>
         </div>
     </div>
 
-    <input type="file" accept="image/*" capture="environment" id="input-foto" style="display:none">
+    <input type="file" accept="image/*" capture="environment" multiple id="input-foto" style="display:none">
 
     <div class="overlay-foto" id="overlay-foto">
         <div class="overlay-foto-contenido">
             <button type="button" class="overlay-foto-cerrar" id="overlay-foto-cerrar">&times;</button>
+            <button type="button" class="overlay-foto-nav overlay-foto-prev" id="overlay-foto-prev">&lsaquo;</button>
             <img id="overlay-foto-img" src="" alt="Fotografía">
+            <button type="button" class="overlay-foto-nav overlay-foto-next" id="overlay-foto-next">&rsaquo;</button>
+            <div class="overlay-foto-pie">
+                <span class="overlay-foto-contador" id="overlay-foto-contador"></span>
+                <div class="overlay-foto-acciones">
+                    <button type="button" class="overlay-foto-accion" id="overlay-foto-agregar">Agregar foto</button>
+                    <button type="button" class="overlay-foto-accion overlay-foto-accion-borrar" id="overlay-foto-eliminar">Eliminar</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -544,6 +622,7 @@
         DANOS_ICONO.forEach(({ tool }) => { GRUPO_ESCALA[tool] = 'danos'; });
         ENSAYOS.forEach(({ tool }) => { GRUPO_ESCALA[tool] = 'ensayos'; });
         GRUPO_ESCALA[FOTO.tool] = 'fotos';
+        GRUPO_ESCALA.computo_fisuras = 'ensayos';
 
         const PREFIJOS_ENSAYO = {};
         const COLORES_ENSAYO = {};
@@ -553,6 +632,7 @@
             COLORES_ENSAYO[tool] = color;
             contadoresEnsayo[tool] = 0;
         });
+        contadoresEnsayo.computo_fisuras = 0;
 
         const HERRAMIENTAS = {
             fisura: { tipo: 'trazo', color: '#e53e3e', grosor: 0.25 },
@@ -568,6 +648,7 @@
             exfoliacion: { tipo: 'trazo', color: '#c2410c', grosor: 0.25, cierreAutomatico: true },
             desaplome: { tipo: 'trazo', color: '#eab308', grosor: 0.25, cierreAutomatico: true },
             texto: { tipo: 'texto', color: '#000000', tamano: 8.32 }, // = tamano ensayo (26) * 0.32, la misma fuente de sus etiquetas
+            computo_fisuras: { tipo: 'texto_contador', color: '#ff0000', tamano: 8.32, prefijo: 'F' },
             dibujo_libre: { tipo: 'trazo', color: '#000000', grosor: 0.2 },
             dibujo_libre_relleno: { tipo: 'trazo', color: '#000000', grosor: 0.2, cierreAutomatico: true },
             circulo: { tipo: 'circulo', color: '#000000', grosor: 0.2, relleno: false },
@@ -608,7 +689,7 @@
             }
         }
 
-        function crearItemCapa({ tool, nombre, color, url }) {
+        function crearItemCapa({ tool, nombre, color, url, letra }) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'capa-item';
@@ -619,6 +700,11 @@
                 marca.className = 'tool-icon-img';
                 marca.src = url;
                 marca.alt = '';
+                btn.appendChild(marca);
+            } else if (letra) {
+                const marca = document.createElement('span');
+                marca.className = 'tool-icon-letra';
+                marca.textContent = letra;
                 btn.appendChild(marca);
             } else {
                 const marca = document.createElement('span');
@@ -703,6 +789,7 @@
         DANOS.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasDanos }; });
         DANOS_ICONO.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasDanos }; });
         ENSAYOS.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasEnsayos }; });
+        metaCapas.computo_fisuras = { tool: 'computo_fisuras', nombre: 'Cómputo de fisuras', color: '#ff0000', letra: 'F', grupo: grupoCapasEnsayos };
         metaCapas[FOTO.tool] = { ...FOTO, grupo: grupoCapasFoto };
         ANOTACIONES.forEach(item => { metaCapas[item.tool] = { ...item, grupo: grupoCapasAnotaciones }; });
 
@@ -778,6 +865,7 @@
 
         document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
             btn.addEventListener('click', () => {
+                deseleccionarElemento();
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('activo'));
                 btn.classList.add('activo');
                 herramientaActual = btn.dataset.tool;
@@ -789,21 +877,24 @@
                     const btnPrincipal = wrapPadre.querySelector(':scope > .tool-btn');
                     const imgOrigen = btn.querySelector('img');
                     const swatchOrigen = btn.querySelector('.tool-swatch');
+                    const letraOrigen = btn.querySelector('.tool-icon-letra');
                     const imgPrincipal = btnPrincipal.querySelector('img');
                     const swatchPrincipal = btnPrincipal.querySelector('.tool-swatch');
+                    const letraPrincipal = btnPrincipal.querySelector('.tool-icon-letra');
 
-                    if (imgOrigen) {
-                        if (imgPrincipal) {
-                            imgPrincipal.src = imgOrigen.src;
-                            imgPrincipal.style.display = '';
-                        }
-                        if (swatchPrincipal) swatchPrincipal.style.display = 'none';
-                    } else if (swatchOrigen) {
-                        if (swatchPrincipal) {
-                            swatchPrincipal.style.background = swatchOrigen.style.background;
-                            swatchPrincipal.style.display = '';
-                        }
-                        if (imgPrincipal) imgPrincipal.style.display = 'none';
+                    if (imgPrincipal) imgPrincipal.style.display = 'none';
+                    if (swatchPrincipal) swatchPrincipal.style.display = 'none';
+                    if (letraPrincipal) letraPrincipal.style.display = 'none';
+
+                    if (imgOrigen && imgPrincipal) {
+                        imgPrincipal.src = imgOrigen.src;
+                        imgPrincipal.style.display = '';
+                    } else if (letraOrigen && letraPrincipal) {
+                        letraPrincipal.textContent = letraOrigen.textContent;
+                        letraPrincipal.style.display = '';
+                    } else if (swatchOrigen && swatchPrincipal) {
+                        swatchPrincipal.style.background = swatchOrigen.style.background;
+                        swatchPrincipal.style.display = '';
                     }
 
                     wrapPadre.querySelector('.submenu-lateral').classList.remove('abierto');
@@ -860,7 +951,7 @@
                             tamano: item.tamano,
                             etiqueta: item.etiqueta ?? null,
                             colorEtiqueta: item.colorEtiqueta ?? null,
-                            dataUrl: item.dataUrl ?? null,
+                            fotos: item.fotos ?? null,
                         };
                     }
                     if (item.tipo === 'texto') {
@@ -1017,7 +1108,8 @@
 
                 if (item.tipo === 'texto') {
                     const centro = mundoAPantalla(item.x, item.y);
-                    const tamanoFuente = item.tamano * vista.scale * (estadoPlano.escalas.texto ?? 1);
+                    const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
+                    const tamanoFuente = item.tamano * vista.scale * (estadoPlano.escalas[grupoEscala] ?? 1);
                     drawCtx.font = `600 ${tamanoFuente}px sans-serif`;
                     drawCtx.textBaseline = 'middle';
                     drawCtx.textAlign = 'left';
@@ -1043,6 +1135,11 @@
                 drawCtx.lineWidth = item.grosor * vista.scale;
                 drawCtx.stroke(path);
             });
+
+            dibujarResaltadoSeleccion();
+            if (elementoSeleccionado && panelSeleccion.classList.contains('abierto')) {
+                posicionarPanelSeleccion();
+            }
         }
 
         function dibujarTramaDiagonal(item, puntosPantalla, path) {
@@ -1068,6 +1165,50 @@
                 drawCtx.lineTo(x, diagonal);
             }
             drawCtx.stroke();
+            drawCtx.restore();
+        }
+
+        /* ─── Selección: bounding box en pantalla de cualquier elemento
+             (ícono, texto o trazo), usado para el resaltado y para
+             ubicar el panel de Mover/Eliminar. ─ */
+        function calcularBBoxPantalla(item) {
+            if (item.tipo === 'icono') {
+                const ratio = item.imagen && item.imagen.naturalWidth
+                    ? item.imagen.naturalWidth / item.imagen.naturalHeight : 1;
+                const factorEscala = estadoPlano.escalas[GRUPO_ESCALA[item.tool]] ?? 1;
+                const base = item.tamano * vista.scale * factorEscala;
+                const ancho = ratio >= 1 ? base : base * ratio;
+                const alto = ratio >= 1 ? base / ratio : base;
+                const centro = mundoAPantalla(item.x, item.y);
+                return { minX: centro.x - ancho / 2, maxX: centro.x + ancho / 2, minY: centro.y - alto / 2, maxY: centro.y + alto / 2 };
+            }
+
+            if (item.tipo === 'texto') {
+                const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
+                const tamanoFuente = item.tamano * vista.scale * (estadoPlano.escalas[grupoEscala] ?? 1);
+                drawCtx.font = `600 ${tamanoFuente}px sans-serif`;
+                const ancho = drawCtx.measureText(item.texto).width;
+                const centro = mundoAPantalla(item.x, item.y);
+                return { minX: centro.x, maxX: centro.x + ancho, minY: centro.y - tamanoFuente / 2, maxY: centro.y + tamanoFuente / 2 };
+            }
+
+            if (!item.puntos || !item.puntos.length) return null;
+            const puntosPantalla = item.puntos.map(p => mundoAPantalla(p.x, p.y));
+            const xs = puntosPantalla.map(p => p.x);
+            const ys = puntosPantalla.map(p => p.y);
+            return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+        }
+
+        function dibujarResaltadoSeleccion() {
+            if (!elementoSeleccionado) return;
+            const bbox = calcularBBoxPantalla(elementoSeleccionado);
+            if (!bbox) return;
+            const pad = 8;
+            drawCtx.save();
+            drawCtx.strokeStyle = '#2a6fdb';
+            drawCtx.lineWidth = 2;
+            drawCtx.setLineDash([6, 4]);
+            drawCtx.strokeRect(bbox.minX - pad, bbox.minY - pad, (bbox.maxX - bbox.minX) + pad * 2, (bbox.maxY - bbox.minY) + pad * 2);
             drawCtx.restore();
         }
 
@@ -1120,7 +1261,9 @@
 
             factorActual = SOBREMUESTREO;
             estadoPlano.trazos = [];
+            deseleccionarElemento();
             ENSAYOS_Y_FOTO.forEach(({ tool }) => { contadoresEnsayo[tool] = 0; });
+            contadoresEnsayo.computo_fisuras = 0;
             centrarVista();
         }
 
@@ -1210,7 +1353,18 @@
         const overlayFoto = document.getElementById('overlay-foto');
         const overlayFotoImg = document.getElementById('overlay-foto-img');
         const overlayFotoCerrar = document.getElementById('overlay-foto-cerrar');
-        let pinFotoPendiente = null;
+        const overlayFotoPrev = document.getElementById('overlay-foto-prev');
+        const overlayFotoNext = document.getElementById('overlay-foto-next');
+        const overlayFotoContador = document.getElementById('overlay-foto-contador');
+        const overlayFotoAgregar = document.getElementById('overlay-foto-agregar');
+        const overlayFotoEliminar = document.getElementById('overlay-foto-eliminar');
+
+        /* contextoFotoPendiente distingue si el selector de archivos se
+           abrió para crear un pin nuevo (modo 'nuevo') o para sumar más
+           fotos a un pin ya existente (modo 'agregar'). */
+        let contextoFotoPendiente = null;
+        let fotoAbiertaItem = null;
+        let fotoAbiertaIndice = 0;
 
         /* ─── Formas de arrastre (círculo/rectángulo): se recalculan
              en cada movimiento a partir del punto inicial y el actual. ─ */
@@ -1245,45 +1399,77 @@
         }
 
         function solicitarFoto(mundo) {
-            pinFotoPendiente = mundo;
+            contextoFotoPendiente = { modo: 'nuevo', mundo };
             inputFoto.value = '';
             inputFoto.click();
         }
 
-        inputFoto.addEventListener('change', () => {
-            const archivo = inputFoto.files && inputFoto.files[0];
-            const mundo = pinFotoPendiente;
-            pinFotoPendiente = null;
-            if (!archivo || !mundo) return;
+        function solicitarAgregarFotos(item) {
+            contextoFotoPendiente = { modo: 'agregar', item };
+            inputFoto.value = '';
+            inputFoto.click();
+        }
 
-            const lector = new FileReader();
-            lector.onload = () => {
-                const dataUrl = lector.result;
-                registrarUsoCapa('foto');
-                estadoPlano.trazos.push({
-                    tipo: 'icono',
-                    tool: 'foto',
-                    imagen: HERRAMIENTAS.foto.imagen,
-                    x: mundo.x,
-                    y: mundo.y,
-                    tamano: HERRAMIENTAS.foto.tamano,
-                    etiqueta: null,
-                    dataUrl,
-                });
-                redibujarTrazos();
-            };
-            lector.readAsDataURL(archivo);
+        function leerComoDataUrl(archivo) {
+            return new Promise(resolve => {
+                const lector = new FileReader();
+                lector.onload = () => resolve(lector.result);
+                lector.readAsDataURL(archivo);
+            });
+        }
+
+        inputFoto.addEventListener('change', () => {
+            const archivos = Array.from(inputFoto.files || []);
+            const contexto = contextoFotoPendiente;
+            contextoFotoPendiente = null;
+            if (!archivos.length || !contexto) return;
+
+            Promise.all(archivos.map(leerComoDataUrl)).then(dataUrls => {
+                if (contexto.modo === 'nuevo') {
+                    registrarUsoCapa('foto');
+                    estadoPlano.trazos.push({
+                        tipo: 'icono',
+                        tool: 'foto',
+                        imagen: HERRAMIENTAS.foto.imagen,
+                        x: contexto.mundo.x,
+                        y: contexto.mundo.y,
+                        tamano: HERRAMIENTAS.foto.tamano,
+                        etiqueta: null,
+                        fotos: dataUrls,
+                    });
+                    redibujarTrazos();
+                } else {
+                    contexto.item.fotos.push(...dataUrls);
+                    fotoAbiertaIndice = contexto.item.fotos.length - dataUrls.length;
+                    actualizarOverlayFoto();
+                }
+            });
         });
-        inputFoto.addEventListener('cancel', () => { pinFotoPendiente = null; });
+        inputFoto.addEventListener('cancel', () => { contextoFotoPendiente = null; });
+
+        function actualizarOverlayFoto() {
+            if (!fotoAbiertaItem) return;
+            const fotos = fotoAbiertaItem.fotos;
+            if (!fotos.length) { cerrarFotoGrande(); return; }
+            fotoAbiertaIndice = clamp(fotoAbiertaIndice, 0, fotos.length - 1);
+            overlayFotoImg.src = fotos[fotoAbiertaIndice];
+            const multiples = fotos.length > 1;
+            overlayFotoContador.textContent = multiples ? `${fotoAbiertaIndice + 1} / ${fotos.length}` : '';
+            overlayFotoPrev.style.display = multiples ? 'flex' : 'none';
+            overlayFotoNext.style.display = multiples ? 'flex' : 'none';
+        }
 
         function mostrarFotoEnGrande(item) {
-            overlayFotoImg.src = item.dataUrl;
+            fotoAbiertaItem = item;
+            fotoAbiertaIndice = 0;
+            actualizarOverlayFoto();
             overlayFoto.classList.add('abierto');
         }
 
         function cerrarFotoGrande() {
             overlayFoto.classList.remove('abierto');
             overlayFotoImg.src = '';
+            fotoAbiertaItem = null;
         }
 
         overlayFotoCerrar.addEventListener('click', cerrarFotoGrande);
@@ -1291,8 +1477,197 @@
             if (e.target === overlayFoto) cerrarFotoGrande();
         });
 
+        overlayFotoPrev.addEventListener('click', () => {
+            if (!fotoAbiertaItem) return;
+            const total = fotoAbiertaItem.fotos.length;
+            fotoAbiertaIndice = (fotoAbiertaIndice - 1 + total) % total;
+            actualizarOverlayFoto();
+        });
+
+        overlayFotoNext.addEventListener('click', () => {
+            if (!fotoAbiertaItem) return;
+            fotoAbiertaIndice = (fotoAbiertaIndice + 1) % fotoAbiertaItem.fotos.length;
+            actualizarOverlayFoto();
+        });
+
+        overlayFotoAgregar.addEventListener('click', () => {
+            if (fotoAbiertaItem) solicitarAgregarFotos(fotoAbiertaItem);
+        });
+
+        overlayFotoEliminar.addEventListener('click', () => {
+            if (!fotoAbiertaItem) return;
+            fotoAbiertaItem.fotos.splice(fotoAbiertaIndice, 1);
+            if (!fotoAbiertaItem.fotos.length) {
+                const idx = estadoPlano.trazos.indexOf(fotoAbiertaItem);
+                if (idx !== -1) estadoPlano.trazos.splice(idx, 1);
+                cerrarFotoGrande();
+                redibujarTrazos();
+                return;
+            }
+            actualizarOverlayFoto();
+        });
+
+        /* ─── Selección: elegir un elemento ya dibujado para moverlo o
+             eliminarlo. Mientras esta herramienta está activa, toma el
+             control completo del puntero sobre el lienzo (no dibuja). ─ */
+        const panelSeleccion = document.getElementById('panel-seleccion');
+        const btnSeleccionMover = document.getElementById('btn-seleccion-mover');
+        const btnSeleccionEliminar = document.getElementById('btn-seleccion-eliminar');
+
+        let elementoSeleccionado = null;
+        let modoMover = false;
+        let arrastrandoMover = false;
+        let arrastreMoverInicio = null;
+        let arrastreMoverOrigen = null;
+
+        function distanciaPuntoSegmento(p, a, b) {
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const largoSq = dx * dx + dy * dy;
+            if (largoSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+            const t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / largoSq, 0, 1);
+            return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+        }
+
+        function puntoEnPoligono(p, puntos) {
+            let dentro = false;
+            for (let i = 0, j = puntos.length - 1; i < puntos.length; j = i++) {
+                const xi = puntos[i].x, yi = puntos[i].y;
+                const xj = puntos[j].x, yj = puntos[j].y;
+                const interseca = ((yi > p.y) !== (yj > p.y)) &&
+                    (p.x < (xj - xi) * (p.y - yi) / (yj - yi) + xi);
+                if (interseca) dentro = !dentro;
+            }
+            return dentro;
+        }
+
+        function buscarElementoEnPunto(mundo) {
+            const margenPantalla = 12;
+            for (let i = estadoPlano.trazos.length - 1; i >= 0; i--) {
+                const item = estadoPlano.trazos[i];
+                if (capasVisibles[item.tool] === false) continue;
+
+                if (item.tipo === 'icono') {
+                    const factorEscala = estadoPlano.escalas[GRUPO_ESCALA[item.tool]] ?? 1;
+                    const radioMundo = (item.tamano * factorEscala) / 2 + margenPantalla / vista.scale;
+                    if (Math.hypot(item.x - mundo.x, item.y - mundo.y) <= radioMundo) return item;
+                    continue;
+                }
+
+                if (item.tipo === 'texto') {
+                    const bbox = calcularBBoxPantalla(item);
+                    if (!bbox) continue;
+                    const punto = mundoAPantalla(mundo.x, mundo.y);
+                    if (punto.x >= bbox.minX - margenPantalla && punto.x <= bbox.maxX + margenPantalla &&
+                        punto.y >= bbox.minY - margenPantalla && punto.y <= bbox.maxY + margenPantalla) return item;
+                    continue;
+                }
+
+                if (!item.puntos || item.puntos.length < 2) continue;
+                const umbralMundo = Math.max(8, (item.grosor || 0.2) * vista.scale * 4) / vista.scale;
+                let cerca = false;
+                for (let j = 0; j < item.puntos.length - 1 && !cerca; j++) {
+                    if (distanciaPuntoSegmento(mundo, item.puntos[j], item.puntos[j + 1]) <= umbralMundo) cerca = true;
+                }
+                if (!cerca && item.cerrado && item.puntos.length > 2 && puntoEnPoligono(mundo, item.puntos)) cerca = true;
+                if (cerca) return item;
+            }
+            return null;
+        }
+
+        function mostrarPanelSeleccion() {
+            panelSeleccion.classList.add('abierto');
+            posicionarPanelSeleccion();
+        }
+
+        function ocultarPanelSeleccion() {
+            panelSeleccion.classList.remove('abierto');
+        }
+
+        function posicionarPanelSeleccion() {
+            if (!elementoSeleccionado) return;
+            const bbox = calcularBBoxPantalla(elementoSeleccionado);
+            if (!bbox) { ocultarPanelSeleccion(); return; }
+            const cx = (bbox.minX + bbox.maxX) / 2;
+            panelSeleccion.style.left = cx + 'px';
+            panelSeleccion.style.top = Math.max(bbox.minY - 14, 12) + 'px';
+        }
+
+        function seleccionarElemento(item) {
+            elementoSeleccionado = item;
+            modoMover = false;
+            btnSeleccionMover.classList.remove('activo');
+            if (item) mostrarPanelSeleccion(); else ocultarPanelSeleccion();
+            redibujarTrazos();
+        }
+
+        function deseleccionarElemento() {
+            elementoSeleccionado = null;
+            modoMover = false;
+            arrastrandoMover = false;
+            btnSeleccionMover.classList.remove('activo');
+            ocultarPanelSeleccion();
+        }
+
+        function eliminarElementoSeleccionado() {
+            if (!elementoSeleccionado) return;
+            const idx = estadoPlano.trazos.indexOf(elementoSeleccionado);
+            if (idx !== -1) estadoPlano.trazos.splice(idx, 1);
+            deseleccionarElemento();
+            redibujarTrazos();
+        }
+
+        function iniciarArrastreMover(mundo) {
+            arrastrandoMover = true;
+            arrastreMoverInicio = mundo;
+            arrastreMoverOrigen = elementoSeleccionado.puntos
+                ? elementoSeleccionado.puntos.map(p => ({ x: p.x, y: p.y }))
+                : { x: elementoSeleccionado.x, y: elementoSeleccionado.y };
+            ocultarPanelSeleccion();
+        }
+
+        function moverElementoSeleccionado(mundo) {
+            if (!elementoSeleccionado || !arrastreMoverInicio) return;
+            const dx = mundo.x - arrastreMoverInicio.x;
+            const dy = mundo.y - arrastreMoverInicio.y;
+            if (elementoSeleccionado.puntos) {
+                elementoSeleccionado.puntos = arrastreMoverOrigen.map(p => ({ x: p.x + dx, y: p.y + dy }));
+            } else {
+                elementoSeleccionado.x = arrastreMoverOrigen.x + dx;
+                elementoSeleccionado.y = arrastreMoverOrigen.y + dy;
+            }
+            redibujarTrazos();
+        }
+
+        function finalizarArrastreMover() {
+            arrastrandoMover = false;
+            modoMover = false;
+            btnSeleccionMover.classList.remove('activo');
+            if (elementoSeleccionado) mostrarPanelSeleccion();
+        }
+
+        function manejarClickSeleccion(mundo) {
+            if (modoMover && elementoSeleccionado) {
+                iniciarArrastreMover(mundo);
+                return;
+            }
+            seleccionarElemento(buscarElementoEnPunto(mundo));
+        }
+
+        btnSeleccionMover.addEventListener('click', () => {
+            if (!elementoSeleccionado) return;
+            modoMover = !modoMover;
+            btnSeleccionMover.classList.toggle('activo', modoMover);
+        });
+
+        btnSeleccionEliminar.addEventListener('click', eliminarElementoSeleccionado);
+
         function iniciarAccionPuntero(puntosMundo) {
             const mundoPunto = puntosMundo[puntosMundo.length - 1];
+
+            if (herramientaActual === 'seleccion') {
+                manejarClickSeleccion(mundoPunto);
+                return;
+            }
 
             const fotoExistente = buscarFotoEnPunto(mundoPunto);
             if (fotoExistente) {
@@ -1322,6 +1697,11 @@
                     etiqueta = prefijo + contadoresEnsayo[herramientaActual];
                 }
                 estadoPlano.trazos.push({ tipo: 'icono', tool: herramientaActual, imagen: herramienta.imagen, x: mundoPunto.x, y: mundoPunto.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
+                redibujarTrazos();
+            } else if (herramienta.tipo === 'texto_contador') {
+                contadoresEnsayo[herramientaActual]++;
+                const texto = herramienta.prefijo + contadoresEnsayo[herramientaActual];
+                estadoPlano.trazos.push({ tipo: 'texto', tool: herramientaActual, x: mundoPunto.x, y: mundoPunto.y, texto, color: herramienta.color, tamano: herramienta.tamano });
                 redibujarTrazos();
             } else if (herramienta.tipo === 'linea') {
                 dibujando = true;
@@ -1360,6 +1740,7 @@
 
         lienzoWrap.addEventListener('pointerdown', e => {
             if (e.target === inputTextoFlotante) return;
+            if (panelSeleccion.contains(e.target)) return;
             if (edicionTextoPendiente) cerrarInputTexto(true);
             lienzoWrap.setPointerCapture(e.pointerId);
             punterosActivos.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1368,6 +1749,7 @@
                 cancelarPunteroPendiente();
                 dibujando = false;
                 trazoActual = null;
+                if (arrastrandoMover) finalizarArrastreMover();
                 const pts = Array.from(punterosActivos.values());
                 const rect = lienzoWrap.getBoundingClientRect();
                 const cx = (pts[0].x + pts[1].x) / 2 - rect.left;
@@ -1413,6 +1795,12 @@
                 return;
             }
 
+            if (arrastrandoMover) {
+                const pantalla = posicionPantalla(e);
+                moverElementoSeleccionado(pantallaAMundo(pantalla.x, pantalla.y));
+                return;
+            }
+
             if (punteroPendiente && punteroPendiente.pointerId === e.pointerId) {
                 const pantalla = posicionPantalla(e);
                 const mundo = pantallaAMundo(pantalla.x, pantalla.y);
@@ -1440,6 +1828,12 @@
         });
 
         function finalizarPuntero(e) {
+            if (arrastrandoMover) {
+                punterosActivos.delete(e.pointerId);
+                finalizarArrastreMover();
+                return;
+            }
+
             if (punteroPendiente && punteroPendiente.pointerId === e.pointerId) {
                 clearTimeout(punteroPendiente.temporizador);
                 const pendiente = punteroPendiente;
@@ -1452,7 +1846,7 @@
                 punterosActivos.delete(e.pointerId);
             }
 
-            if (dibujando && trazoActual && trazoActual.puntos.length > 3 && HERRAMIENTAS[herramientaActual].cierreAutomatico) {
+            if (dibujando && trazoActual && trazoActual.puntos.length > 3 && HERRAMIENTAS[herramientaActual]?.cierreAutomatico) {
                 const inicio = trazoActual.puntos[0];
                 trazoActual.puntos.push({ x: inicio.x, y: inicio.y });
                 trazoActual.cerrado = true;
