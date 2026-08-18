@@ -1256,12 +1256,33 @@
            tanto, no se pisan entre sí. */
         let estadoBase = { escalas: {}, trazos: [] };
 
+        /* Si llega una respuesta de guardado justo mientras el usuario
+           está dibujando o moviendo algo, aplicarla ahora reemplazaría
+           estadoPlano.trazos por debajo del trazo/movimiento en curso
+           (que todavía no se guardó) y lo cortaría a mitad de camino. En
+           vez de eso, se guarda acá y se aplica apenas termine esa
+           acción (ver aplicarEstadoPendienteSiHay). */
+        let estadoRecibidoPendiente = null;
+
+        function aplicarEstadoPendienteSiHay() {
+            if (estadoRecibidoPendiente && !dibujando && !arrastrandoMover) {
+                const pendiente = estadoRecibidoPendiente;
+                estadoRecibidoPendiente = null;
+                aplicarEstadoRecibido(pendiente);
+            }
+        }
+
         /* Reemplaza estadoPlano (y el panel de Capas + sliders de Escala)
            por un estado recibido del servidor: al cargar el plano por
            primera vez, y también después de cada guardado (la respuesta
            trae el estado ya fusionado con lo que hayan guardado otros
            usuarios mientras tanto). */
         function aplicarEstadoRecibido(estadoJson) {
+            if (dibujando || arrastrandoMover) {
+                estadoRecibidoPendiente = estadoJson;
+                return;
+            }
+
             const idSeleccionado = elementoSeleccionado?.id ?? null;
 
             Object.keys(itemsCapaDom).forEach(tool => {
@@ -2119,6 +2140,7 @@
             btnSeleccionMover.classList.remove('activo');
             if (elementoSeleccionado) mostrarPanelSeleccion();
             programarGuardado();
+            aplicarEstadoPendienteSiHay();
         }
 
         function manejarClickSeleccion(mundo) {
@@ -2253,6 +2275,7 @@
                 dibujando = false;
                 trazoActual = null;
                 if (arrastrandoMover) finalizarArrastreMover();
+                aplicarEstadoPendienteSiHay();
                 const pts = Array.from(punterosActivos.values());
                 const rect = lienzoWrap.getBoundingClientRect();
                 const cx = (pts[0].x + pts[1].x) / 2 - rect.left;
@@ -2362,6 +2385,7 @@
             dibujando = false;
             trazoActual = null;
             pinchInfo = null;
+            aplicarEstadoPendienteSiHay();
         }
         ['pointerup', 'pointercancel', 'pointerleave'].forEach(evt =>
             lienzoWrap.addEventListener(evt, finalizarPuntero)
