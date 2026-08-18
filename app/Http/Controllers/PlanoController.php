@@ -150,7 +150,10 @@ class PlanoController extends Controller
             'movidos.*.id' => 'required|string',
             'fotosCambiadas' => 'array',
             'fotosCambiadas.*.id' => 'required|string',
-            'fotosCambiadas.*.accion' => 'required|in:agregar_foto,eliminar_foto',
+            'fotosCambiadas.*.fotosAgregadas' => 'array',
+            'fotosCambiadas.*.fotosAgregadas.*' => 'string',
+            'fotosCambiadas.*.fotosEliminadas' => 'array',
+            'fotosCambiadas.*.fotosEliminadas.*' => 'string',
             'escalas' => 'nullable|array',
         ]);
 
@@ -164,8 +167,8 @@ class PlanoController extends Controller
         $fotosCambiadas = $request->input('fotosCambiadas', []);
         $escalasNuevas = $request->input('escalas');
 
-        $hayFotoAgregada = collect($fotosCambiadas)->contains(fn ($c) => $c['accion'] === 'agregar_foto');
-        $hayFotoEliminada = collect($fotosCambiadas)->contains(fn ($c) => $c['accion'] === 'eliminar_foto');
+        $hayFotoAgregada = collect($fotosCambiadas)->contains(fn ($c) => ! empty($c['fotosAgregadas'] ?? []));
+        $hayFotoEliminada = collect($fotosCambiadas)->contains(fn ($c) => ! empty($c['fotosEliminadas'] ?? []));
 
         if ((! empty($agregados) || ! empty($movidos) || $hayFotoAgregada) && ! $puedeEditar) {
             abort(403, 'No tenés permiso para agregar o mover elementos.');
@@ -204,12 +207,30 @@ class PlanoController extends Controller
                 $registros[] = $this->filaActividad($plano->id, $usuarioId, 'mover', $item, $ahora);
             }
 
+            /* Se aplica un diff (agregadas/eliminadas) sobre el array de
+               fotos que ya está en $trazos (el estado más reciente,
+               bajo lock), en vez de reemplazarlo por lo que mandó el
+               cliente: así, si dos dispositivos suben fotos distintas
+               al mismo elemento casi al mismo tiempo, el segundo
+               guardado no pisa la foto que subió el primero. */
             foreach ($fotosCambiadas as $cambio) {
                 if (! $trazos->has($cambio['id'])) continue;
                 $item = $trazos->get($cambio['id']);
-                $item['fotos'] = $cambio['fotos'] ?? [];
+                $fotosAgregadas = $cambio['fotosAgregadas'] ?? [];
+                $fotosEliminadas = $cambio['fotosEliminadas'] ?? [];
+
+                $item['fotos'] = array_values(array_unique(array_merge(
+                    array_diff($item['fotos'] ?? [], $fotosEliminadas),
+                    $fotosAgregadas
+                )));
                 $trazos->put($cambio['id'], $item);
-                $registros[] = $this->filaActividad($plano->id, $usuarioId, $cambio['accion'], $item, $ahora);
+
+                if (! empty($fotosAgregadas)) {
+                    $registros[] = $this->filaActividad($plano->id, $usuarioId, 'agregar_foto', $item, $ahora);
+                }
+                if (! empty($fotosEliminadas)) {
+                    $registros[] = $this->filaActividad($plano->id, $usuarioId, 'eliminar_foto', $item, $ahora);
+                }
             }
 
             $estadoNuevo = [

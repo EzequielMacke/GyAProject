@@ -1432,14 +1432,19 @@
                     : (item.x !== base.x || item.y !== base.y);
                 if (seMovio) movidos.push(item);
 
+                /* Se manda qué URLs se agregaron/sacaron (no el array
+                   completo): si mandáramos el array completo, un
+                   dispositivo con el estado desactualizado (p. ej. el PC
+                   sin sincronizar mientras se sube una foto desde el
+                   celular) pisaría en el servidor las fotos que agregó
+                   el otro dispositivo. Con el diff, el servidor aplica
+                   el cambio sobre su propio estado más reciente. */
                 const fotosBase = base.fotos || [];
                 const fotosActuales = item.fotos || [];
-                if (fotosActuales.length !== fotosBase.length) {
-                    fotosCambiadas.push({
-                        id,
-                        fotos: fotosActuales,
-                        accion: fotosActuales.length > fotosBase.length ? 'agregar_foto' : 'eliminar_foto',
-                    });
+                const fotosAgregadas = fotosActuales.filter(url => !fotosBase.includes(url));
+                const fotosEliminadas = fotosBase.filter(url => !fotosActuales.includes(url));
+                if (fotosAgregadas.length || fotosEliminadas.length) {
+                    fotosCambiadas.push({ id, fotosAgregadas, fotosEliminadas });
                 }
             });
 
