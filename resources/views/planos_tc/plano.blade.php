@@ -1222,7 +1222,16 @@
                             tamano: item.tamano,
                             etiqueta: item.etiqueta ?? null,
                             colorEtiqueta: item.colorEtiqueta ?? null,
-                            fotos: item.fotos ?? null,
+                            /* Copia del array, no la misma referencia: item.fotos
+                               se edita con push/splice (in-place). Si acá se
+                               guardara la misma referencia, esa mutación
+                               ensuciaría también a estadoBase (la última
+                               versión confirmada por el servidor), y el
+                               siguiente cálculo de operaciones pendientes
+                               compararía el array contra sí mismo — nunca
+                               detectaría el cambio y la edición de fotos no
+                               se guardaría. */
+                            fotos: item.fotos ? [...item.fotos] : null,
                         };
                     }
                     if (item.tipo === 'texto') {
