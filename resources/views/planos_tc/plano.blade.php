@@ -1574,7 +1574,7 @@
 
         function aplicarTransform() {
             lienzo.style.transform = `translate(${vista.x}px, ${vista.y}px) scale(${vista.scale})`;
-            redibujarTrazos();
+            solicitarRedibujado();
             posicionarInputTexto();
         }
 
@@ -1654,6 +1654,26 @@
             drawCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
             drawCtx.lineCap = 'round';
             drawCtx.lineJoin = 'round';
+        }
+
+        /* En tablets, pointermove llega con mucha más frecuencia de la que
+           la pantalla puede pintar frames nuevos. Sin esto, cada evento
+           dispara un redibujado completo (recorre todas las anotaciones),
+           y la mayoría nunca llega a mostrarse — solo se ve el último
+           antes de cada frame real. Agrupando en requestAnimationFrame,
+           como mucho se redibuja una vez por frame. Se usa en los puntos
+           que se disparan durante un gesto (pellizco de zoom, arrastrar
+           un elemento, previsualizar línea/círculo/rectángulo); el resto
+           de los llamados a redibujarTrazos() son por acciones puntuales
+           (un click, una foto subida) y no lo necesitan. */
+        let redibujadoPendiente = false;
+        function solicitarRedibujado() {
+            if (redibujadoPendiente) return;
+            redibujadoPendiente = true;
+            requestAnimationFrame(() => {
+                redibujadoPendiente = false;
+                redibujarTrazos();
+            });
         }
 
         function redibujarTrazos() {
@@ -2247,7 +2267,7 @@
                 elementoSeleccionado.x = arrastreMoverOrigen.x + dx;
                 elementoSeleccionado.y = arrastreMoverOrigen.y + dy;
             }
-            redibujarTrazos();
+            solicitarRedibujado();
         }
 
         function finalizarArrastreMover() {
@@ -2456,11 +2476,11 @@
                 const tipoHerramienta = HERRAMIENTAS[herramientaActual].tipo;
                 if (tipoHerramienta === 'linea') {
                     trazoActual.puntos[1] = mundo;
-                    redibujarTrazos();
+                    solicitarRedibujado();
                 } else if (tipoHerramienta === 'circulo' || tipoHerramienta === 'rectangulo') {
                     const generarPuntos = tipoHerramienta === 'circulo' ? puntosCirculo : puntosRectangulo;
                     trazoActual.puntos = generarPuntos(trazoActual.puntoInicio, mundo);
-                    redibujarTrazos();
+                    solicitarRedibujado();
                 } else {
                     trazoActual.puntos.push(mundo);
                     drawCtx.lineTo(pantalla.x, pantalla.y);
