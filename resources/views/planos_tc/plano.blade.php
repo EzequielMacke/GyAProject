@@ -1413,6 +1413,16 @@
                 return;
             }
 
+            /* Si justo en este instante hay un trazo o un movimiento en
+               curso, no lo guardamos: mandaríamos una foto a medio hacer
+               de estadoPlano, y si la respuesta vuelve después de que esa
+               acción terminó, pisaría la versión final con esa parcial.
+               Mejor esperar a que termine y reintentar. */
+            if (dibujando || arrastrandoMover) {
+                programarGuardado();
+                return;
+            }
+
             const operaciones = calcularOperacionesPendientes();
             const hayCambios = operaciones.agregados.length || operaciones.eliminados.length ||
                 operaciones.movidos.length || operaciones.fotosCambiadas.length || operaciones.escalas;
