@@ -478,9 +478,22 @@ Route::middleware('permiso:dir_tc,agregar')->group(function () {
 });
 Route::middleware('permiso:pla_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'index'])->name('planos_tc.index');
+});
+Route::middleware(['permiso:pla_tc,ver', 'permiso:ano_pla,ver'])->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos/{plano}', [PlanoController::class, 'show'])
         ->where('plano', '[0-9]+')
         ->name('planos_tc.plano');
+    Route::patch('/trabajo-campo/{obraTc}/planos/{plano}/estado', [PlanoController::class, 'guardarEstado'])
+        ->where('plano', '[0-9]+')
+        ->name('planos_tc.guardarEstado');
+    Route::get('/trabajo-campo/{obraTc}/planos/{plano}/actividad', [PlanoController::class, 'actividad'])
+        ->where('plano', '[0-9]+')
+        ->name('planos_tc.actividad');
+});
+Route::middleware(['permiso:pla_tc,ver', 'permiso:ano_pla,editar'])->group(function () {
+    Route::post('/trabajo-campo/{obraTc}/planos/{plano}/fotos', [PlanoController::class, 'subirFoto'])
+        ->where('plano', '[0-9]+')
+        ->name('planos_tc.subirFoto');
 });
 Route::middleware('permiso:pla_tc,agregar')->group(function () {
     Route::post('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'store'])->name('planos_tc.store');

@@ -152,6 +152,8 @@
         .pl-row:hover { background: var(--surface2); }
         .pl-row i.fa-file-pdf { color: #c0392b; flex-shrink: 0; }
         .pl-desc { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+        .pl-row-disabled { cursor: not-allowed; opacity: 0.55; }
+        .pl-row-disabled:hover { background: none; }
 
         /* ── EMPTY STATE ── */
         .empty-state { padding: 3.5rem 1.5rem; text-align: center; }
@@ -397,10 +399,17 @@
                                 </summary>
 
                                 @foreach($ramaSubgrupo['planos'] as $plano)
+                                @permiso('ano_pla', 'ver')
                                 <a href="{{ route('planos_tc.plano', [$obraTc->id, $plano->id]) }}" class="pl-row" data-nombre="{{ Str::lower($plano->descripcion ?? '') }}">
                                     <i class="fas fa-file-pdf"></i>
                                     <div class="pl-desc">{{ $plano->descripcion }}</div>
                                 </a>
+                                @else
+                                <div class="pl-row pl-row-disabled" data-nombre="{{ Str::lower($plano->descripcion ?? '') }}" title="No tenés permiso para ver este plano">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <div class="pl-desc">{{ $plano->descripcion }}</div>
+                                </div>
+                                @endpermiso
                                 @endforeach
                             </details>
                             @endforeach

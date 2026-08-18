@@ -106,7 +106,56 @@
         .btn-superior:hover { background: #555; }
         .btn-superior.activo { background: #2a6fdb; }
 
-        .capas-wrap, .escala-wrap { position: relative; }
+        .capas-wrap, .escala-wrap, .preferencias-wrap, .actividad-wrap { position: relative; }
+
+        .panel-actividad {
+            position: absolute; top: calc(100% + 0.4rem); right: 0;
+            background: #222; border-radius: 0.55rem; padding: 0.6rem;
+            display: none; flex-direction: column; gap: 0.3rem;
+            min-width: 280px; max-height: 70vh; overflow-y: auto;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        .panel-actividad.abierto { display: flex; }
+        .actividad-item {
+            padding: 0.5rem 0.4rem;
+            border-bottom: 1px solid #333;
+            font-size: 0.78rem; color: #ddd; line-height: 1.4;
+        }
+        .actividad-item:last-child { border-bottom: none; }
+        .actividad-item strong { color: #fff; }
+        .actividad-item-fecha { color: #888; font-size: 0.68rem; margin-top: 0.15rem; }
+        .actividad-vacio { color: #888; font-size: 0.78rem; padding: 0.4rem; }
+
+        .panel-preferencias {
+            position: absolute; top: calc(100% + 0.4rem); right: 0;
+            background: #222; border-radius: 0.55rem; padding: 0.7rem 0.8rem;
+            display: none; flex-direction: column; gap: 0.6rem;
+            min-width: 260px; max-height: 70vh; overflow-y: auto;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        .panel-preferencias.abierto { display: flex; }
+        .panel-preferencias-titulo {
+            color: #888; font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em; padding-bottom: 0.2rem;
+            border-bottom: 1px solid #333;
+        }
+        .preferencia-item {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.6rem;
+        }
+        .preferencia-item-nombre {
+            display: flex; align-items: center; gap: 0.5rem;
+            color: #ddd; font-size: 0.78rem; font-weight: 500;
+        }
+        .preferencia-item-nombre .tool-icon-img, .preferencia-item-nombre .tool-icon-letra {
+            width: 18px; height: 18px; flex-shrink: 0;
+        }
+        .preferencia-item-nombre .tool-icon-letra { font-size: 0.62rem; }
+        .preferencia-item input[type="number"] {
+            width: 60px; padding: 0.3rem 0.4rem;
+            background: #2f2f2f; border: 1px solid #444; border-radius: 0.35rem;
+            color: #fff; font-size: 0.82rem; font-family: inherit;
+        }
 
         .panel-escala {
             position: absolute; top: calc(100% + 0.4rem); right: 0;
@@ -292,6 +341,18 @@
             </button>
             <div class="panel-capas" id="panel-capas"></div>
         </div>
+        <div class="preferencias-wrap" id="preferencias-wrap" @if(!$puedeEditar) style="display:none" @endif>
+            <button type="button" class="btn-superior" id="btn-preferencias">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                Preferencias
+            </button>
+            <div class="panel-preferencias" id="panel-preferencias">
+                <span class="panel-preferencias-titulo">Numeración inicial</span>
+            </div>
+        </div>
         <div class="escala-wrap" id="escala-wrap">
             <button type="button" class="btn-superior" id="btn-escala">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -338,12 +399,22 @@
                 </div>
             </div>
         </div>
+        <div class="actividad-wrap" id="actividad-wrap">
+            <button type="button" class="btn-superior" id="btn-actividad">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Actividad
+            </button>
+            <div class="panel-actividad" id="panel-actividad"></div>
+        </div>
         <a href="{{ route('planos_tc.index', $obraTc->id) }}" class="btn-superior">&larr; Volver</a>
     </div>
 
     <div class="app">
-        <nav class="toolbar-vertical">
-            <div class="tool-submenu-wrap activo" id="danos-wrap">
+        <nav class="toolbar-vertical" @if(!$puedeEditar && !$puedeEliminar) style="display:none" @endif>
+            <div class="tool-submenu-wrap activo" id="danos-wrap" @if(!$puedeEditar) style="display:none" @endif>
                 <button type="button" class="tool-btn" id="tool-danos" title="Daños">
                     <span class="tool-swatch" style="background:#e53e3e; display:none"></span>
                     <img class="tool-icon-img" src="{{ asset('img/iconos/Fisura.svg') }}" alt="">
@@ -412,7 +483,7 @@
                     </button>
                 </div>
             </div>
-            <div class="tool-submenu-wrap" id="ensayos-wrap">
+            <div class="tool-submenu-wrap" id="ensayos-wrap" @if(!$puedeEditar) style="display:none" @endif>
                 <button type="button" class="tool-btn" id="tool-ensayos" title="Ensayos">
                     <span class="tool-icon-letra" style="display:none">F</span>
                     <img class="tool-icon-img" src="{{ asset('img/iconos/esclerometria.svg') }}" alt="">
@@ -461,7 +532,7 @@
                     </button>
                 </div>
             </div>
-            <div class="tool-submenu-wrap" id="anotaciones-wrap">
+            <div class="tool-submenu-wrap" id="anotaciones-wrap" @if(!$puedeEditar) style="display:none" @endif>
                 <button type="button" class="tool-btn" id="tool-anotaciones" title="Anotaciones">
                     <img class="tool-icon-img" src="{{ asset('img/iconos/anotacion.svg') }}" alt="">
                     Anotaciones
@@ -505,7 +576,7 @@
                     </button>
                 </div>
             </div>
-            <button type="button" class="tool-btn" data-tool="foto" title="Fotografía">
+            <button type="button" class="tool-btn" data-tool="foto" title="Fotografía" @if(!$puedeEditar) style="display:none" @endif>
                 <img class="tool-icon-img" src="{{ asset('img/iconos/foto.svg') }}" alt="">
                 Foto
             </button>
@@ -524,8 +595,8 @@
             <canvas id="draw-canvas"></canvas>
             <input type="text" id="input-texto-flotante" class="input-texto-flotante" autocomplete="off">
             <div class="panel-seleccion" id="panel-seleccion">
-                <button type="button" class="panel-seleccion-btn" id="btn-seleccion-mover">Mover</button>
-                <button type="button" class="panel-seleccion-btn borrar" id="btn-seleccion-eliminar">Eliminar</button>
+                <button type="button" class="panel-seleccion-btn" id="btn-seleccion-mover" @if(!$puedeEditar) style="display:none" @endif>Mover</button>
+                <button type="button" class="panel-seleccion-btn borrar" id="btn-seleccion-eliminar" @if(!$puedeEliminar) style="display:none" @endif>Eliminar</button>
             </div>
         </div>
     </div>
@@ -541,8 +612,8 @@
             <div class="overlay-foto-pie">
                 <span class="overlay-foto-contador" id="overlay-foto-contador"></span>
                 <div class="overlay-foto-acciones">
-                    <button type="button" class="overlay-foto-accion" id="overlay-foto-agregar">Agregar foto</button>
-                    <button type="button" class="overlay-foto-accion overlay-foto-accion-borrar" id="overlay-foto-eliminar">Eliminar</button>
+                    <button type="button" class="overlay-foto-accion" id="overlay-foto-agregar" @if(!$puedeEditar) style="display:none" @endif>Agregar foto</button>
+                    <button type="button" class="overlay-foto-accion overlay-foto-accion-borrar" id="overlay-foto-eliminar" @if(!$puedeEliminar) style="display:none" @endif>Eliminar</button>
                 </div>
             </div>
         </div>
@@ -554,6 +625,22 @@
 
         const urlPdf = @json(Storage::url('planos/' . $plano->archivo));
         const rotacionPlano = {{ (int) ($plano->rotacion ?? 0) }};
+
+        /* Permisos del módulo "ano_pla" (Anotaciones - Planos), calculados
+           en el backend (PlanoController::show). "ver" ya está garantizado
+           por el middleware de la ruta con solo llegar a esta vista. */
+        const PUEDE_EDITAR = @json($puedeEditar);
+        const PUEDE_ELIMINAR = @json($puedeEliminar);
+
+        /* Guardado en la base de datos: el estado ya guardado (si lo hay),
+           las URLs de los endpoints y el token CSRF para poder mandar los
+           fetch() de guardado/subida de fotos. */
+        const estadoGuardado = @json($estadoGuardado);
+        const urlGuardarEstado = @json(route('planos_tc.guardarEstado', [$obraTc->id, $plano->id]));
+        const urlSubirFoto = @json(route('planos_tc.subirFoto', [$obraTc->id, $plano->id]));
+        const urlActividad = @json(route('planos_tc.actividad', [$obraTc->id, $plano->id]));
+        const CSRF_TOKEN = @json(csrf_token());
+
         const dpr = window.devicePixelRatio || 1;
         const SOBREMUESTREO = Math.min(Math.max(dpr, 1) * 1.5, 3);
         const ZOOM_MIN = 0.05;
@@ -626,13 +713,60 @@
 
         const PREFIJOS_ENSAYO = {};
         const COLORES_ENSAYO = {};
-        const contadoresEnsayo = {};
         ENSAYOS_Y_FOTO.forEach(({ tool, prefijo, color }) => {
             PREFIJOS_ENSAYO[tool] = prefijo;
             COLORES_ENSAYO[tool] = color;
-            contadoresEnsayo[tool] = 0;
         });
-        contadoresEnsayo.computo_fisuras = 0;
+
+        /* Herramientas con numeración automática (E1, E2, ..., F1, F2, ...),
+           listadas en el panel de "Preferencias" para elegir desde qué
+           número arranca cada una (ver numeroInicial en siguienteNumeroLibre). */
+        const HERRAMIENTAS_NUMERADAS = [
+            ...ENSAYOS.map(({ tool, nombre, prefijo, url }) => ({ tool, nombre, prefijo, url })),
+            { tool: 'computo_fisuras', nombre: 'Cómputo de fisuras', prefijo: 'F', letra: 'F' },
+        ];
+
+        const numeroInicial = {};
+        HERRAMIENTAS_NUMERADAS.forEach(({ tool }) => { numeroInicial[tool] = 1; });
+
+        const panelPreferencias = document.getElementById('panel-preferencias');
+        HERRAMIENTAS_NUMERADAS.forEach(({ tool, nombre, url, letra }) => {
+            const fila = document.createElement('div');
+            fila.className = 'preferencia-item';
+
+            const nombreWrap = document.createElement('span');
+            nombreWrap.className = 'preferencia-item-nombre';
+
+            if (url) {
+                const marca = document.createElement('img');
+                marca.className = 'tool-icon-img';
+                marca.src = url;
+                marca.alt = '';
+                nombreWrap.appendChild(marca);
+            } else if (letra) {
+                const marca = document.createElement('span');
+                marca.className = 'tool-icon-letra';
+                marca.textContent = letra;
+                nombreWrap.appendChild(marca);
+            }
+
+            const textoNombre = document.createElement('span');
+            textoNombre.textContent = nombre;
+            nombreWrap.appendChild(textoNombre);
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.min = '1';
+            input.step = '1';
+            input.value = '1';
+            input.addEventListener('input', () => {
+                const valor = parseInt(input.value, 10);
+                numeroInicial[tool] = Number.isInteger(valor) && valor > 0 ? valor : 1;
+            });
+
+            fila.append(nombreWrap, input);
+            panelPreferencias.appendChild(fila);
+        });
 
         const HERRAMIENTAS = {
             fisura: { tipo: 'trazo', color: '#e53e3e', grosor: 0.25 },
@@ -802,6 +936,30 @@
             panelCapasVacio.style.display = 'none';
         }
 
+        /* Inversa de registrarUsoCapa: si tras un borrado ya no queda
+           ningún elemento de ese tipo en el plano, saca la capa del
+           panel (y oculta el grupo/vuelve al estado vacío si corresponde). */
+        function quitarCapaSiVacia(tool) {
+            const quedanItems = estadoPlano.trazos.some(item => item.tool === tool);
+            if (quedanItems) return;
+
+            const refs = itemsCapaDom[tool];
+            if (!refs) return;
+
+            refs.btn.remove();
+            delete itemsCapaDom[tool];
+            delete capasVisibles[tool];
+
+            const meta = metaCapas[tool];
+            if (meta && meta.grupo.querySelectorAll('.capa-item').length === 0) {
+                meta.grupo.style.display = 'none';
+            }
+
+            if (Object.keys(itemsCapaDom).length === 0) {
+                panelCapasVacio.style.display = '';
+            }
+        }
+
         const capasWrap = document.getElementById('capas-wrap');
         const btnCapas = document.getElementById('btn-capas');
         btnCapas.addEventListener('click', e => {
@@ -813,6 +971,20 @@
             if (!capasWrap.contains(e.target)) {
                 panelCapas.classList.remove('abierto');
                 btnCapas.classList.remove('activo');
+            }
+        });
+
+        const preferenciasWrap = document.getElementById('preferencias-wrap');
+        const btnPreferencias = document.getElementById('btn-preferencias');
+        btnPreferencias.addEventListener('click', e => {
+            e.stopPropagation();
+            panelPreferencias.classList.toggle('abierto');
+            btnPreferencias.classList.toggle('activo', panelPreferencias.classList.contains('abierto'));
+        });
+        document.addEventListener('click', e => {
+            if (!preferenciasWrap.contains(e.target)) {
+                panelPreferencias.classList.remove('abierto');
+                btnPreferencias.classList.remove('activo');
             }
         });
 
@@ -831,6 +1003,76 @@
             }
         });
 
+        /* ─── Actividad: quién hizo qué y cuándo, según el registro que
+             arma el backend al comparar cada guardado con el anterior. ─ */
+        const actividadWrap = document.getElementById('actividad-wrap');
+        const btnActividad = document.getElementById('btn-actividad');
+        const panelActividad = document.getElementById('panel-actividad');
+
+        const ACCION_TEXTO = {
+            agregar: 'agregó',
+            eliminar: 'eliminó',
+            mover: 'movió',
+            agregar_foto: 'agregó una foto a',
+            eliminar_foto: 'eliminó una foto de',
+        };
+
+        function mostrarMensajeActividad(texto) {
+            panelActividad.innerHTML = '';
+            const span = document.createElement('span');
+            span.className = 'actividad-vacio';
+            span.textContent = texto;
+            panelActividad.appendChild(span);
+        }
+
+        function cargarActividad() {
+            mostrarMensajeActividad('Cargando…');
+            fetch(urlActividad, { headers: { 'Accept': 'application/json' } })
+                .then(r => r.json())
+                .then(items => {
+                    if (!items.length) {
+                        mostrarMensajeActividad('Todavía no hay actividad registrada.');
+                        return;
+                    }
+                    panelActividad.innerHTML = '';
+                    items.forEach(item => {
+                        const fila = document.createElement('div');
+                        fila.className = 'actividad-item';
+
+                        const linea = document.createElement('div');
+                        const usuarioEl = document.createElement('strong');
+                        usuarioEl.textContent = item.usuario;
+                        linea.appendChild(usuarioEl);
+                        linea.appendChild(document.createTextNode(
+                            ' ' + (ACCION_TEXTO[item.accion] || item.accion) + ' ' + (item.detalle || '')
+                        ));
+                        fila.appendChild(linea);
+
+                        const fecha = document.createElement('div');
+                        fecha.className = 'actividad-item-fecha';
+                        fecha.textContent = item.fecha || '';
+                        fila.appendChild(fecha);
+
+                        panelActividad.appendChild(fila);
+                    });
+                })
+                .catch(() => mostrarMensajeActividad('No se pudo cargar la actividad.'));
+        }
+
+        btnActividad.addEventListener('click', e => {
+            e.stopPropagation();
+            const abrira = !panelActividad.classList.contains('abierto');
+            panelActividad.classList.toggle('abierto', abrira);
+            btnActividad.classList.toggle('activo', abrira);
+            if (abrira) cargarActividad();
+        });
+        document.addEventListener('click', e => {
+            if (!actividadWrap.contains(e.target)) {
+                panelActividad.classList.remove('abierto');
+                btnActividad.classList.remove('activo');
+            }
+        });
+
         [
             ['danos', 'escala-danos', 'escala-danos-valor'],
             ['ensayos', 'escala-ensayos', 'escala-ensayos-valor'],
@@ -843,6 +1085,7 @@
                 estadoPlano.escalas[grupo] = Number(slider.value) / 100;
                 valor.textContent = slider.value + '%';
                 redibujarTrazos();
+                programarGuardado();
             });
         });
 
@@ -935,15 +1178,25 @@
             escalas: { danos: 1, ensayos: 1, fotos: 1, texto: 1 },
         };
 
+        /* Cada elemento dibujado tiene un id estable (asignado al crearlo)
+           para poder reconocerlo entre un guardado y el siguiente: así el
+           backend puede distinguir "se agregó uno nuevo" de "se movió uno
+           existente" al comparar contra lo guardado antes, y armar el
+           registro de actividad (quién hizo qué y cuándo). */
+        function generarIdElemento() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+
         /* Devuelve una copia serializable de estadoPlano (sin referencias a
            objetos Image, que no se pueden guardar como JSON) lista para
-           enviarse al backend cuando se implemente el guardado. */
+           enviarse al backend. */
         function serializarEstadoPlano() {
             return {
                 escalas: { ...estadoPlano.escalas },
                 trazos: estadoPlano.trazos.map(item => {
                     if (item.tipo === 'icono') {
                         return {
+                            id: item.id,
                             tipo: 'icono',
                             tool: item.tool,
                             x: item.x,
@@ -956,6 +1209,7 @@
                     }
                     if (item.tipo === 'texto') {
                         return {
+                            id: item.id,
                             tipo: 'texto',
                             tool: item.tool,
                             x: item.x,
@@ -966,14 +1220,206 @@
                         };
                     }
                     return {
+                        id: item.id,
                         tipo: 'trazo',
                         tool: item.tool,
+                        color: item.color,
+                        grosor: item.grosor,
                         puntos: item.puntos,
                         cerrado: item.cerrado ?? false,
                         relleno: item.relleno ?? false,
                     };
                 }),
             };
+        }
+
+        function actualizarSlidersEscala() {
+            [
+                ['danos', 'escala-danos', 'escala-danos-valor'],
+                ['ensayos', 'escala-ensayos', 'escala-ensayos-valor'],
+                ['fotos', 'escala-fotos', 'escala-fotos-valor'],
+                ['texto', 'escala-texto', 'escala-texto-valor'],
+            ].forEach(([grupo, idSlider, idValor]) => {
+                const valorPorcentaje = Math.round((estadoPlano.escalas[grupo] ?? 1) * 100);
+                document.getElementById(idSlider).value = valorPorcentaje;
+                document.getElementById(idValor).textContent = valorPorcentaje + '%';
+            });
+        }
+
+        /* estadoBase: la última versión de estadoPlano que sabemos que
+           coincide con lo guardado en el servidor (arranca con lo que
+           había al abrir el plano; se actualiza después de cada guardado
+           exitoso). Sirve para calcular qué cambió localmente sin tener
+           que mandar el plano entero: solo mandamos operaciones puntuales
+           (agregar/mover/borrar), y el servidor las aplica sobre lo que
+           haya en ese momento — así, si otra persona guardó algo mientras
+           tanto, no se pisan entre sí. */
+        let estadoBase = { escalas: {}, trazos: [] };
+
+        /* Reemplaza estadoPlano (y el panel de Capas + sliders de Escala)
+           por un estado recibido del servidor: al cargar el plano por
+           primera vez, y también después de cada guardado (la respuesta
+           trae el estado ya fusionado con lo que hayan guardado otros
+           usuarios mientras tanto). */
+        function aplicarEstadoRecibido(estadoJson) {
+            const idSeleccionado = elementoSeleccionado?.id ?? null;
+
+            Object.keys(itemsCapaDom).forEach(tool => {
+                itemsCapaDom[tool].btn.remove();
+                delete itemsCapaDom[tool];
+                delete capasVisibles[tool];
+            });
+            [grupoCapasDanos, grupoCapasEnsayos, grupoCapasFoto, grupoCapasAnotaciones].forEach(g => { g.style.display = 'none'; });
+            panelCapasVacio.style.display = '';
+
+            estadoPlano.trazos = [];
+
+            if (estadoJson?.escalas) {
+                Object.assign(estadoPlano.escalas, estadoJson.escalas);
+                actualizarSlidersEscala();
+            }
+
+            (estadoJson?.trazos || []).forEach(item => {
+                if (item.tipo === 'icono') {
+                    const nuevoItem = {
+                        id: item.id ?? generarIdElemento(),
+                        tipo: 'icono',
+                        tool: item.tool,
+                        imagen: HERRAMIENTAS[item.tool]?.imagen,
+                        x: item.x,
+                        y: item.y,
+                        tamano: item.tamano,
+                        etiqueta: item.etiqueta ?? null,
+                        colorEtiqueta: item.colorEtiqueta ?? null,
+                    };
+                    if (item.fotos) nuevoItem.fotos = item.fotos;
+                    estadoPlano.trazos.push(nuevoItem);
+                } else {
+                    estadoPlano.trazos.push({ ...item, id: item.id ?? generarIdElemento() });
+                }
+                registrarUsoCapa(item.tool);
+            });
+
+            estadoBase = serializarEstadoPlano();
+
+            if (idSeleccionado) {
+                const encontrado = estadoPlano.trazos.find(t => t.id === idSeleccionado);
+                if (encontrado) {
+                    elementoSeleccionado = encontrado;
+                    if (panelSeleccion.classList.contains('abierto')) mostrarPanelSeleccion();
+                } else {
+                    deseleccionarElemento();
+                }
+            }
+
+            redibujarTrazos();
+        }
+
+        /* Se llama una sola vez, al cargar el plano. */
+        function cargarEstadoGuardado() {
+            aplicarEstadoRecibido(estadoGuardado || { escalas: {}, trazos: [] });
+        }
+
+        /* Compara estadoPlano contra estadoBase y arma la lista de
+           operaciones puntuales a mandar al servidor. */
+        function calcularOperacionesPendientes() {
+            const actual = serializarEstadoPlano();
+            const actualesPorId = new Map(actual.trazos.map(t => [t.id, t]));
+            const basePorId = new Map((estadoBase.trazos || []).map(t => [t.id, t]));
+
+            const agregados = [];
+            const movidos = [];
+            const fotosCambiadas = [];
+
+            actualesPorId.forEach((item, id) => {
+                const base = basePorId.get(id);
+                if (!base) {
+                    agregados.push(item);
+                    return;
+                }
+
+                const seMovio = item.tipo === 'trazo'
+                    ? JSON.stringify(item.puntos) !== JSON.stringify(base.puntos)
+                    : (item.x !== base.x || item.y !== base.y);
+                if (seMovio) movidos.push(item);
+
+                const fotosBase = base.fotos || [];
+                const fotosActuales = item.fotos || [];
+                if (fotosActuales.length !== fotosBase.length) {
+                    fotosCambiadas.push({
+                        id,
+                        fotos: fotosActuales,
+                        accion: fotosActuales.length > fotosBase.length ? 'agregar_foto' : 'eliminar_foto',
+                    });
+                }
+            });
+
+            const eliminados = [];
+            basePorId.forEach((item, id) => {
+                if (!actualesPorId.has(id)) eliminados.push(id);
+            });
+
+            const escalasCambiaron = JSON.stringify(actual.escalas) !== JSON.stringify(estadoBase.escalas || {});
+
+            return {
+                agregados,
+                eliminados,
+                movidos,
+                fotosCambiadas,
+                escalas: escalasCambiaron ? actual.escalas : null,
+            };
+        }
+
+        /* ─── Autoguardado: cada acción (agregar, mover, borrar, cambiar
+             una escala) programa un guardado 1.5s después de la última,
+             para no mandar un request por cada movimiento del mouse. Se
+             mandan solo las operaciones puntuales (no el plano entero),
+             para que el servidor las pueda fusionar con lo que haya
+             guardado otra persona mientras tanto en vez de pisarlo. ─ */
+        let temporizadorGuardado = null;
+        let guardadoEnCurso = false;
+
+        function programarGuardado() {
+            if (!PUEDE_EDITAR && !PUEDE_ELIMINAR) return;
+            clearTimeout(temporizadorGuardado);
+            temporizadorGuardado = setTimeout(guardarEstadoPlano, 1500);
+        }
+
+        async function guardarEstadoPlano() {
+            if (guardadoEnCurso) {
+                programarGuardado();
+                return;
+            }
+
+            const operaciones = calcularOperacionesPendientes();
+            const hayCambios = operaciones.agregados.length || operaciones.eliminados.length ||
+                operaciones.movidos.length || operaciones.fotosCambiadas.length || operaciones.escalas;
+            if (!hayCambios) return;
+
+            guardadoEnCurso = true;
+            try {
+                const respuesta = await fetch(urlGuardarEstado, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify(operaciones),
+                });
+                if (!respuesta.ok) {
+                    console.warn('No se pudo guardar el plano (HTTP ' + respuesta.status + ')');
+                    return;
+                }
+                const datos = await respuesta.json();
+                aplicarEstadoRecibido(datos.estado);
+            } catch (e) {
+                /* Si falla, el próximo cambio vuelve a programar un
+                   guardado; no hay reintento explícito todavía. */
+                console.warn('No se pudo guardar el plano', e);
+            } finally {
+                guardadoEnCurso = false;
+            }
         }
 
         let pdfDoc = null;
@@ -1262,8 +1708,7 @@
             factorActual = SOBREMUESTREO;
             estadoPlano.trazos = [];
             deseleccionarElemento();
-            ENSAYOS_Y_FOTO.forEach(({ tool }) => { contadoresEnsayo[tool] = 0; });
-            contadoresEnsayo.computo_fisuras = 0;
+            cargarEstadoGuardado();
             centrarVista();
         }
 
@@ -1337,8 +1782,9 @@
             if (confirmar && texto) {
                 const herramienta = HERRAMIENTAS.texto;
                 registrarUsoCapa('texto');
-                estadoPlano.trazos.push({ tipo: 'texto', tool: 'texto', x: mundo.x, y: mundo.y, texto, color: herramienta.color, tamano: herramienta.tamano });
+                estadoPlano.trazos.push({ id: generarIdElemento(), tipo: 'texto', tool: 'texto', x: mundo.x, y: mundo.y, texto, color: herramienta.color, tamano: herramienta.tamano });
                 redibujarTrazos();
+                programarGuardado();
             }
         }
 
@@ -1410,12 +1856,20 @@
             inputFoto.click();
         }
 
-        function leerComoDataUrl(archivo) {
-            return new Promise(resolve => {
-                const lector = new FileReader();
-                lector.onload = () => resolve(lector.result);
-                lector.readAsDataURL(archivo);
-            });
+        /* Las fotos se suben al servidor como archivo (igual que los PDF
+           de los planos) y en estadoPlano solo se guarda la URL resultante,
+           en vez de la imagen codificada en base64. */
+        function subirFotoAlServidor(archivo) {
+            const formData = new FormData();
+            formData.append('foto', archivo);
+            return fetch(urlSubirFoto, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
+                body: formData,
+            }).then(r => {
+                if (!r.ok) throw new Error('No se pudo subir la foto');
+                return r.json();
+            }).then(data => data.url);
         }
 
         inputFoto.addEventListener('change', () => {
@@ -1424,10 +1878,11 @@
             contextoFotoPendiente = null;
             if (!archivos.length || !contexto) return;
 
-            Promise.all(archivos.map(leerComoDataUrl)).then(dataUrls => {
+            Promise.all(archivos.map(subirFotoAlServidor)).then(urls => {
                 if (contexto.modo === 'nuevo') {
                     registrarUsoCapa('foto');
                     estadoPlano.trazos.push({
+                        id: generarIdElemento(),
                         tipo: 'icono',
                         tool: 'foto',
                         imagen: HERRAMIENTAS.foto.imagen,
@@ -1435,14 +1890,17 @@
                         y: contexto.mundo.y,
                         tamano: HERRAMIENTAS.foto.tamano,
                         etiqueta: null,
-                        fotos: dataUrls,
+                        fotos: urls,
                     });
                     redibujarTrazos();
                 } else {
-                    contexto.item.fotos.push(...dataUrls);
-                    fotoAbiertaIndice = contexto.item.fotos.length - dataUrls.length;
+                    contexto.item.fotos.push(...urls);
+                    fotoAbiertaIndice = contexto.item.fotos.length - urls.length;
                     actualizarOverlayFoto();
                 }
+                programarGuardado();
+            }).catch(() => {
+                alert('No se pudo subir la foto. Probá de nuevo.');
             });
         });
         inputFoto.addEventListener('cancel', () => { contextoFotoPendiente = null; });
@@ -1491,20 +1949,25 @@
         });
 
         overlayFotoAgregar.addEventListener('click', () => {
+            if (!PUEDE_EDITAR) return;
             if (fotoAbiertaItem) solicitarAgregarFotos(fotoAbiertaItem);
         });
 
         overlayFotoEliminar.addEventListener('click', () => {
+            if (!PUEDE_ELIMINAR) return;
             if (!fotoAbiertaItem) return;
             fotoAbiertaItem.fotos.splice(fotoAbiertaIndice, 1);
             if (!fotoAbiertaItem.fotos.length) {
                 const idx = estadoPlano.trazos.indexOf(fotoAbiertaItem);
                 if (idx !== -1) estadoPlano.trazos.splice(idx, 1);
                 cerrarFotoGrande();
+                quitarCapaSiVacia('foto');
                 redibujarTrazos();
+                programarGuardado();
                 return;
             }
             actualizarOverlayFoto();
+            programarGuardado();
         });
 
         /* ─── Selección: elegir un elemento ya dibujado para moverlo o
@@ -1609,11 +2072,15 @@
         }
 
         function eliminarElementoSeleccionado() {
+            if (!PUEDE_ELIMINAR) return;
             if (!elementoSeleccionado) return;
+            const tool = elementoSeleccionado.tool;
             const idx = estadoPlano.trazos.indexOf(elementoSeleccionado);
             if (idx !== -1) estadoPlano.trazos.splice(idx, 1);
             deseleccionarElemento();
+            quitarCapaSiVacia(tool);
             redibujarTrazos();
+            programarGuardado();
         }
 
         function iniciarArrastreMover(mundo) {
@@ -1643,6 +2110,7 @@
             modoMover = false;
             btnSeleccionMover.classList.remove('activo');
             if (elementoSeleccionado) mostrarPanelSeleccion();
+            programarGuardado();
         }
 
         function manejarClickSeleccion(mundo) {
@@ -1654,12 +2122,33 @@
         }
 
         btnSeleccionMover.addEventListener('click', () => {
+            if (!PUEDE_EDITAR) return;
             if (!elementoSeleccionado) return;
             modoMover = !modoMover;
             btnSeleccionMover.classList.toggle('activo', modoMover);
         });
 
         btnSeleccionEliminar.addEventListener('click', eliminarElementoSeleccionado);
+
+        /* Busca el menor número consecutivo libre para un ícono/texto
+           numerado (E1, E2, F1, F2, ...), a partir de lo que sigue
+           dibujado en el plano y del número inicial elegido en el panel
+           de Preferencias. Así, al borrar un elemento del medio, el
+           próximo que se inserte rellena ese hueco en vez de saltar
+           siempre al último número usado. */
+        function siguienteNumeroLibre(tool, prefijo) {
+            const usados = new Set();
+            estadoPlano.trazos.forEach(item => {
+                if (item.tool !== tool) return;
+                const etiquetaTexto = item.etiqueta ?? item.texto;
+                if (typeof etiquetaTexto !== 'string' || !etiquetaTexto.startsWith(prefijo)) return;
+                const numero = parseInt(etiquetaTexto.slice(prefijo.length), 10);
+                if (Number.isInteger(numero)) usados.add(numero);
+            });
+            let numero = numeroInicial[tool] ?? 1;
+            while (usados.has(numero)) numero++;
+            return numero;
+        }
 
         function iniciarAccionPuntero(puntosMundo) {
             const mundoPunto = puntosMundo[puntosMundo.length - 1];
@@ -1674,6 +2163,11 @@
                 mostrarFotoEnGrande(fotoExistente);
                 return;
             }
+
+            /* Ver los daños/ensayos/fotos ya cargados siempre está permitido
+               (líneas arriba); a partir de acá todo crea o modifica algo,
+               así que requiere permiso de edición. */
+            if (!PUEDE_EDITAR) return;
 
             if (herramientaActual === 'foto') {
                 solicitarFoto(mundoPunto);
@@ -1693,25 +2187,26 @@
                 const prefijo = PREFIJOS_ENSAYO[herramientaActual];
                 let etiqueta = null;
                 if (prefijo) {
-                    contadoresEnsayo[herramientaActual]++;
-                    etiqueta = prefijo + contadoresEnsayo[herramientaActual];
+                    etiqueta = prefijo + siguienteNumeroLibre(herramientaActual, prefijo);
                 }
-                estadoPlano.trazos.push({ tipo: 'icono', tool: herramientaActual, imagen: herramienta.imagen, x: mundoPunto.x, y: mundoPunto.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
+                estadoPlano.trazos.push({ id: generarIdElemento(), tipo: 'icono', tool: herramientaActual, imagen: herramienta.imagen, x: mundoPunto.x, y: mundoPunto.y, tamano: herramienta.tamano, etiqueta, colorEtiqueta: COLORES_ENSAYO[herramientaActual] });
                 redibujarTrazos();
+                programarGuardado();
             } else if (herramienta.tipo === 'texto_contador') {
-                contadoresEnsayo[herramientaActual]++;
-                const texto = herramienta.prefijo + contadoresEnsayo[herramientaActual];
-                estadoPlano.trazos.push({ tipo: 'texto', tool: herramientaActual, x: mundoPunto.x, y: mundoPunto.y, texto, color: herramienta.color, tamano: herramienta.tamano });
+                const texto = herramienta.prefijo + siguienteNumeroLibre(herramientaActual, herramienta.prefijo);
+                estadoPlano.trazos.push({ id: generarIdElemento(), tipo: 'texto', tool: herramientaActual, x: mundoPunto.x, y: mundoPunto.y, texto, color: herramienta.color, tamano: herramienta.tamano });
                 redibujarTrazos();
+                programarGuardado();
             } else if (herramienta.tipo === 'linea') {
                 dibujando = true;
-                trazoActual = { tipo: 'trazo', tool: herramientaActual, color: herramienta.color, grosor: herramienta.grosor, puntos: [puntosMundo[0], mundoPunto] };
+                trazoActual = { id: generarIdElemento(), tipo: 'trazo', tool: herramientaActual, color: herramienta.color, grosor: herramienta.grosor, puntos: [puntosMundo[0], mundoPunto] };
                 estadoPlano.trazos.push(trazoActual);
                 redibujarTrazos();
             } else if (herramienta.tipo === 'circulo' || herramienta.tipo === 'rectangulo') {
                 dibujando = true;
                 const generarPuntos = herramienta.tipo === 'circulo' ? puntosCirculo : puntosRectangulo;
                 trazoActual = {
+                    id: generarIdElemento(),
                     tipo: 'trazo',
                     tool: herramientaActual,
                     color: herramienta.color,
@@ -1725,7 +2220,7 @@
                 redibujarTrazos();
             } else {
                 dibujando = true;
-                trazoActual = { tipo: 'trazo', tool: herramientaActual, color: herramienta.color, grosor: herramienta.grosor, puntos: [...puntosMundo] };
+                trazoActual = { id: generarIdElemento(), tipo: 'trazo', tool: herramientaActual, color: herramienta.color, grosor: herramienta.grosor, puntos: [...puntosMundo] };
                 estadoPlano.trazos.push(trazoActual);
                 drawCtx.strokeStyle = herramienta.color;
                 drawCtx.lineWidth = herramienta.grosor * vista.scale;
@@ -1853,6 +2348,8 @@
                 trazoActual.relleno = true;
                 redibujarTrazos();
             }
+
+            if (dibujando && trazoActual) programarGuardado();
 
             dibujando = false;
             trazoActual = null;

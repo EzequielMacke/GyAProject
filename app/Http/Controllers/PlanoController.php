@@ -5,14 +5,74 @@ namespace App\Http\Controllers;
 use App\Models\DirectorioTc;
 use App\Models\ObraTc;
 use App\Models\Plano;
+use App\Models\PlanoActividad;
 use App\Models\PlanoGrupo;
 use App\Models\PlanoSubgrupo;
+use App\Services\PermisoService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class PlanoController extends Controller
 {
+    /**
+     * Nombre legible de cada herramienta del editor de planos, usado para
+     * armar el detalle del registro de actividad (debe reflejar los
+     * mismos nombres que usa el JS en resources/views/planos_tc/plano.blade.php).
+     */
+    private const NOMBRES_HERRAMIENTA = [
+        'fisura' => 'Fisura',
+        'corrosion' => 'Corrosión',
+        'humedad' => 'Humedad',
+        'coqueras' => 'Coqueras',
+        'fisura_ducto' => 'Fisura por ducto',
+        'junta_fria' => 'Junta fría',
+        'armadura_expuesta' => 'Armadura expuesta',
+        'eflorescencia' => 'Eflorescencia',
+        'socavacion' => 'Socavación',
+        'desprendimiento' => 'Desprendimiento',
+        'exfoliacion' => 'Exfoliación',
+        'desaplome' => 'Desaplome',
+        'fisura_vertical' => 'Fisura vertical',
+        'fisura_inclinada' => 'Fisura inclinada',
+        'fisura_semiinclinada' => 'Fisura semi-inclinada',
+        'esclerometria' => 'Esclerometría',
+        'carbonatacion' => 'Carbonatación',
+        'pachometria' => 'Pachometría',
+        'testigos' => 'Testigos',
+        'ultrasonido' => 'Ultrasonido',
+        'resistividad' => 'Resistividad',
+        'potencial' => 'Potencial',
+        'cloruros' => 'Cloruros',
+        'georradar' => 'Georradar',
+        'computo_fisuras' => 'Cómputo de fisuras',
+        'texto' => 'Texto',
+        'dibujo_libre' => 'Dibujo a mano alzada',
+        'dibujo_libre_relleno' => 'Mano alzada con relleno',
+        'circulo' => 'Círculo',
+        'circulo_relleno' => 'Círculo con relleno',
+        'rectangulo' => 'Rectángulo',
+        'rectangulo_relleno' => 'Rectángulo con relleno',
+        'linea_recta' => 'Línea recta',
+        'foto' => 'Fotografía',
+    ];
+
+    private function describirElemento(array $item): string
+    {
+        $nombre = self::NOMBRES_HERRAMIENTA[$item['tool'] ?? ''] ?? ($item['tool'] ?? 'Elemento');
+
+        if (! empty($item['etiqueta'])) {
+            return "{$nombre} ({$item['etiqueta']})";
+        }
+
+        if (($item['tipo'] ?? null) === 'texto' && ($item['tool'] ?? null) !== 'texto' && ! empty($item['texto'])) {
+            return "{$nombre} ({$item['texto']})";
+        }
+
+        return $nombre;
+    }
+
     public function index(ObraTc $obraTc)
     {
         $usuarioId = session('usuario_id');
@@ -64,7 +124,159 @@ class PlanoController extends Controller
 
     public function show(ObraTc $obraTc, Plano $plano)
     {
-        return view('planos_tc.plano', compact('obraTc', 'plano'));
+        $permisoService = app(PermisoService::class);
+        $puedeEditar = $permisoService->puede('ano_pla', 'editar');
+        $puedeEliminar = $permisoService->puede('ano_pla', 'eliminar');
+        $estadoGuardado = $plano->estado ? json_decode($plano->estado, true) : null;
+
+        return view('planos_tc.plano', compact('obraTc', 'plano', 'puedeEditar', 'puedeEliminar', 'estadoGuardado'));
+    }
+
+    /**
+     * Recibe operaciones puntuales (no el plano entero) y las aplica sobre
+     * el estado más reciente guardado en la base de datos, con lockForUpdate
+     * dentro de una transacción: así, si dos personas guardan casi al mismo
+     * tiempo, la segunda se aplica sobre el resultado de la primera en vez
+     * de pisarlo. Cada operación además genera su fila de actividad.
+     */
+    public function guardarEstado(Request $request, ObraTc $obraTc, Plano $plano)
+    {
+        $request->validate([
+            'agregados' => 'array',
+            'agregados.*.id' => 'required|string',
+            'eliminados' => 'array',
+            'eliminados.*' => 'string',
+            'movidos' => 'array',
+            'movidos.*.id' => 'required|string',
+            'fotosCambiadas' => 'array',
+            'fotosCambiadas.*.id' => 'required|string',
+            'fotosCambiadas.*.accion' => 'required|in:agregar_foto,eliminar_foto',
+            'escalas' => 'nullable|array',
+        ]);
+
+        $permisoService = app(PermisoService::class);
+        $puedeEditar = $permisoService->puede('ano_pla', 'editar');
+        $puedeEliminar = $permisoService->puede('ano_pla', 'eliminar');
+
+        $agregados = $request->input('agregados', []);
+        $idsEliminados = $request->input('eliminados', []);
+        $movidos = $request->input('movidos', []);
+        $fotosCambiadas = $request->input('fotosCambiadas', []);
+        $escalasNuevas = $request->input('escalas');
+
+        $hayFotoAgregada = collect($fotosCambiadas)->contains(fn ($c) => $c['accion'] === 'agregar_foto');
+        $hayFotoEliminada = collect($fotosCambiadas)->contains(fn ($c) => $c['accion'] === 'eliminar_foto');
+
+        if ((! empty($agregados) || ! empty($movidos) || $hayFotoAgregada) && ! $puedeEditar) {
+            abort(403, 'No tenés permiso para agregar o mover elementos.');
+        }
+        if ((! empty($idsEliminados) || $hayFotoEliminada) && ! $puedeEliminar) {
+            abort(403, 'No tenés permiso para eliminar elementos.');
+        }
+
+        $usuarioId = session('usuario_id');
+        $ahora = now()->toDateTimeString();
+        $registros = [];
+
+        $estadoFinal = DB::transaction(function () use (
+            $plano, $agregados, $idsEliminados, $movidos, $fotosCambiadas, $escalasNuevas,
+            $usuarioId, $ahora, &$registros
+        ) {
+            $planoBloqueado = Plano::whereKey($plano->id)->lockForUpdate()->firstOrFail();
+            $estadoActual = $planoBloqueado->estado ? json_decode($planoBloqueado->estado, true) : [];
+            $trazos = collect($estadoActual['trazos'] ?? [])->keyBy('id');
+
+            foreach ($agregados as $item) {
+                if ($trazos->has($item['id'])) continue; // ya estaba (reintento de un guardado anterior)
+                $trazos->put($item['id'], $item);
+                $registros[] = $this->filaActividad($plano->id, $usuarioId, 'agregar', $item, $ahora);
+            }
+
+            foreach ($idsEliminados as $id) {
+                if (! $trazos->has($id)) continue; // ya lo había borrado otro guardado
+                $item = $trazos->pull($id);
+                $registros[] = $this->filaActividad($plano->id, $usuarioId, 'eliminar', $item, $ahora);
+            }
+
+            foreach ($movidos as $item) {
+                if (! $trazos->has($item['id'])) continue; // otro usuario lo borró mientras tanto
+                $trazos->put($item['id'], $item);
+                $registros[] = $this->filaActividad($plano->id, $usuarioId, 'mover', $item, $ahora);
+            }
+
+            foreach ($fotosCambiadas as $cambio) {
+                if (! $trazos->has($cambio['id'])) continue;
+                $item = $trazos->get($cambio['id']);
+                $item['fotos'] = $cambio['fotos'] ?? [];
+                $trazos->put($cambio['id'], $item);
+                $registros[] = $this->filaActividad($plano->id, $usuarioId, $cambio['accion'], $item, $ahora);
+            }
+
+            $estadoNuevo = [
+                'escalas' => $escalasNuevas ?: ($estadoActual['escalas'] ?? []),
+                'trazos' => $trazos->values()->all(),
+            ];
+
+            $planoBloqueado->update(['estado' => json_encode($estadoNuevo)]);
+
+            return $estadoNuevo;
+        });
+
+        if (! empty($registros)) {
+            PlanoActividad::insert($registros);
+        }
+
+        return response()->json(['success' => true, 'estado' => $estadoFinal]);
+    }
+
+    private function filaActividad(int $planoId, ?int $usuarioId, string $accion, array $item, string $fecha): array
+    {
+        return [
+            'plano_id' => $planoId,
+            'usuario_id' => $usuarioId,
+            'accion' => $accion,
+            'tool' => $item['tool'] ?? '?',
+            'detalle' => $this->describirElemento($item),
+            'created_at' => $fecha,
+        ];
+    }
+
+    public function actividad(ObraTc $obraTc, Plano $plano)
+    {
+        $actividades = PlanoActividad::where('plano_id', $plano->id)
+            ->with('usuario')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get()
+            ->map(function (PlanoActividad $actividad) {
+                $usuario = $actividad->usuario;
+
+                return [
+                    'usuario' => $usuario ? ($usuario->nombre_completo ?: $usuario->nombre) : 'Usuario desconocido',
+                    'accion' => $actividad->accion,
+                    'detalle' => $actividad->detalle,
+                    'fecha' => $actividad->created_at?->format('d/m/Y H:i'),
+                ];
+            });
+
+        return response()->json($actividades);
+    }
+
+    public function subirFoto(Request $request, ObraTc $obraTc, Plano $plano)
+    {
+        $request->validate([
+            'foto' => 'required|image|max:10240',
+        ]);
+
+        $carpeta = "fotos_planos/{$plano->id}";
+        if (! Storage::disk('public')->exists($carpeta)) {
+            Storage::disk('public')->makeDirectory($carpeta);
+        }
+
+        $ruta = $request->file('foto')->store($carpeta, 'public');
+
+        return response()->json(['url' => Storage::url($ruta)]);
     }
 
     public function store(Request $request, ObraTc $obraTc)
