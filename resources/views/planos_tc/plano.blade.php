@@ -1371,18 +1371,19 @@
         }
 
         /* ─── Autoguardado: cada acción (agregar, mover, borrar, cambiar
-             una escala) programa un guardado 1.5s después de la última,
+             una escala) programa un guardado 3s después de la última,
              para no mandar un request por cada movimiento del mouse. Se
              mandan solo las operaciones puntuales (no el plano entero),
              para que el servidor las pueda fusionar con lo que haya
              guardado otra persona mientras tanto en vez de pisarlo. ─ */
+        const DEMORA_GUARDADO_MS = 3000;
         let temporizadorGuardado = null;
         let guardadoEnCurso = false;
 
         function programarGuardado() {
             if (!PUEDE_EDITAR && !PUEDE_ELIMINAR) return;
             clearTimeout(temporizadorGuardado);
-            temporizadorGuardado = setTimeout(guardarEstadoPlano, 1500);
+            temporizadorGuardado = setTimeout(guardarEstadoPlano, DEMORA_GUARDADO_MS);
         }
 
         async function guardarEstadoPlano() {
