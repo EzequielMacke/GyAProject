@@ -4,46 +4,19 @@
 <svg
    version="1.1"
    id="svg1"
-   width="2455.2918"
+   width="2455.2917"
    height="2435.0256"
    viewBox="-613.82295 -608.7564 2455.2918 2435.0256"
-   sodipodi:docname="Resistividad.pdf"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
      id="defs1" />
-  <sodipodi:namedview
-     id="namedview1"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1">
-    <inkscape:page
-       x="0"
-       y="0"
-       width="1227.6459"
-       height="1217.5128"
-       id="page2"
-       margin="0"
-       bleed="0" />
-  </sodipodi:namedview>
-  <g
-     id="layer-oc1"
-     inkscape:groupmode="layer"
-     inkscape:label="ENSAYOS"
-     transform="translate(-479.28621,-201.97098)">
-    <path
-       style="fill:none;stroke:#cf9c26;stroke-width:1.96913;stroke-opacity:1;paint-order:markers stroke fill"
-       d="M 480.13879,1418.7708 1029.1499,468.33209 1176.7336,710.36927 1706.0669,202.68154 1170.8302,1188.5403 1017.3432,907.14746 Z"
-       id="path11" />
-    <path
-       style="fill:#cf9c26;fill-opacity:1;stroke:#cf9c26;stroke-width:3.87483;stroke-opacity:1;paint-order:markers stroke fill"
-       d="m 491.94548,1403.7351 c 0,-1.765 533.43212,-925.23524 535.96902,-927.86211 1.6651,-1.72415 20.4006,27.62169 75.0273,117.51692 40.0443,65.8982 73.3179,119.61967 73.9413,119.38102 0.6234,-0.23864 117.0669,-111.69079 258.7633,-247.67147 141.6965,-135.98068 257.9532,-246.93552 258.3482,-246.56631 1.0395,0.97147 -521.5391,963.11985 -523.1062,963.11985 -0.7227,0 -35.227,-62.2065 -76.6764,-138.2366 -41.4493,-76.03022 -75.6259,-138.53028 -75.948,-138.88908 -0.4886,-0.54427 -471.85652,447.28708 -513.036,487.41878 -7.30539,7.1196 -13.28252,12.4246 -13.28252,11.789 z"
-       id="path12" />
-  </g>
+  <path
+     style="fill:none;stroke:#cf9c26;stroke-width:1.96913;stroke-opacity:1;paint-order:markers stroke fill"
+     d="M 0.85258,1216.7998 549.86369,266.36111 697.44739,508.39829 1226.7807,0.71056 691.54399,986.56932 538.05699,705.17648 Z"
+     id="path11" />
+  <path
+     style="fill:#cf9c26;fill-opacity:1;stroke:#cf9c26;stroke-width:3.87483;stroke-opacity:1;paint-order:markers stroke fill"
+     d="m 12.65927,1201.7641 c 0,-1.765 533.43212,-925.23522 535.96902,-927.86209 1.6651,-1.72415 20.4006,27.62169 75.0273,117.51692 40.0443,65.8982 73.3179,119.61967 73.9413,119.38102 0.6234,-0.23864 117.0669,-111.69079 258.7633,-247.67147 C 1098.0567,127.1478 1214.3134,16.19296 1214.7084,16.56217 c 1.0395,0.97147 -521.53911,963.11985 -523.10621,963.11985 -0.7227,0 -35.227,-62.2065 -76.6764,-138.2366 -41.4493,-76.03022 -75.6259,-138.53028 -75.948,-138.88908 -0.4886,-0.54427 -471.85652,447.28706 -513.036,487.41876 -7.30539,7.1196 -13.28252,12.4246 -13.28252,11.789 z"
+     id="path12" />
 </svg>

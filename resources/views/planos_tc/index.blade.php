@@ -125,6 +125,19 @@
             border-radius: 999px; padding: 0.1rem 0.55rem;
         }
 
+        .grupo-edit-btn {
+            margin-left: 0.5rem;
+            background: none; border: none; cursor: pointer;
+            color: var(--muted); font-size: 0.72rem;
+            padding: 0.35rem; border-radius: 0.4rem;
+            transition: color 0.14s, background 0.14s;
+            flex-shrink: 0;
+        }
+        .grupo-edit-btn:hover { color: var(--accent); background: var(--surface); }
+        .pl-anotado-icon { color: var(--accent); font-size: 0.75rem; flex-shrink: 0; }
+        .pl-actions { margin-left: auto; display: flex; align-items: center; gap: 0.15rem; flex-shrink: 0; }
+        .pl-delete-btn:hover { color: #c0392b; background: #fff0f0; }
+
         .tree-subgrupo { border-top: 1px solid var(--border); }
         .tree-subgrupo > summary {
             list-style: none;
@@ -387,6 +400,11 @@
                                 <i class="fas fa-folder"></i>
                                 {{ $ramaGrupo['grupo']->descripcion ?? '-' }}
                                 <span class="tree-count">{{ $ramaGrupo['subgrupos']->sum(fn($r) => $r['planos']->count()) }}</span>
+                                @permiso('pla_tc', 'editar')
+                                <button type="button" class="grupo-edit-btn" title="Editar grupo" onclick="event.preventDefault(); event.stopPropagation(); abrirModalEditarGrupo({{ $grupoId }}, @js($ramaGrupo['grupo']->descripcion ?? ''))">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                @endpermiso
                             </summary>
 
                             @foreach($ramaGrupo['subgrupos'] as $subgrupoId => $ramaSubgrupo)
@@ -396,6 +414,11 @@
                                     <i class="fas fa-layer-group"></i>
                                     {{ $ramaSubgrupo['subgrupo']->descripcion ?? '-' }}
                                     <span class="tree-count">{{ $ramaSubgrupo['planos']->count() }}</span>
+                                    @permiso('pla_tc', 'editar')
+                                    <button type="button" class="grupo-edit-btn" title="Editar subgrupo" onclick="event.preventDefault(); event.stopPropagation(); abrirModalEditarSubgrupo({{ $subgrupoId }}, @js($ramaSubgrupo['subgrupo']->descripcion ?? ''))">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
+                                    @endpermiso
                                 </summary>
 
                                 @foreach($ramaSubgrupo['planos'] as $plano)
@@ -403,11 +426,41 @@
                                 <a href="{{ route('planos_tc.plano', [$obraTc->id, $plano->id]) }}" class="pl-row" data-nombre="{{ Str::lower($plano->descripcion ?? '') }}">
                                     <i class="fas fa-file-pdf"></i>
                                     <div class="pl-desc">{{ $plano->descripcion }}</div>
+                                    @if($plano->tiene_anotaciones)
+                                    <i class="fas fa-draw-polygon pl-anotado-icon" title="Este plano tiene anotaciones cargadas"></i>
+                                    @endif
+                                    <div class="pl-actions">
+                                        @permiso('pla_tc', 'editar')
+                                        <button type="button" class="grupo-edit-btn" title="Editar plano" onclick="event.preventDefault(); event.stopPropagation(); abrirModalEditarPlano({{ $plano->id }}, @js($plano->descripcion ?? ''))">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        @endpermiso
+                                        @permiso('pla_tc', 'eliminar')
+                                        <button type="button" class="grupo-edit-btn pl-delete-btn" title="Eliminar plano" onclick="event.preventDefault(); event.stopPropagation(); eliminarPlano({{ $plano->id }}, @js($plano->descripcion ?? ''))">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        @endpermiso
+                                    </div>
                                 </a>
                                 @else
                                 <div class="pl-row pl-row-disabled" data-nombre="{{ Str::lower($plano->descripcion ?? '') }}" title="No tenés permiso para ver este plano">
                                     <i class="fas fa-file-pdf"></i>
                                     <div class="pl-desc">{{ $plano->descripcion }}</div>
+                                    @if($plano->tiene_anotaciones)
+                                    <i class="fas fa-draw-polygon pl-anotado-icon" title="Este plano tiene anotaciones cargadas"></i>
+                                    @endif
+                                    <div class="pl-actions">
+                                        @permiso('pla_tc', 'editar')
+                                        <button type="button" class="grupo-edit-btn" title="Editar plano" onclick="event.preventDefault(); event.stopPropagation(); abrirModalEditarPlano({{ $plano->id }}, @js($plano->descripcion ?? ''))">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        @endpermiso
+                                        @permiso('pla_tc', 'eliminar')
+                                        <button type="button" class="grupo-edit-btn pl-delete-btn" title="Eliminar plano" onclick="event.preventDefault(); event.stopPropagation(); eliminarPlano({{ $plano->id }}, @js($plano->descripcion ?? ''))">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        @endpermiso
+                                    </div>
                                 </div>
                                 @endpermiso
                                 @endforeach
@@ -431,18 +484,33 @@
                         <i class="fas fa-history"></i> Registro de actividad
                     </div>
                     <div class="activity-list">
-                        @forelse($planos->sortByDesc('created_at') as $actividad)
-                        @php
-                            $usuarioActividad = $actividad->usuario;
-                            $nombreActividad = $usuarioActividad
-                                ? ($usuarioActividad->nombre_completo ?: $usuarioActividad->nombre)
-                                : 'Usuario desconocido';
-                        @endphp
+                        @forelse($actividad as $item)
                         <div class="activity-item">
-                            <div class="activity-icon"><i class="fas fa-upload"></i></div>
+                            <div class="activity-icon">
+                                <i class="fas {{ match($item['accion']) { 'subida' => 'fa-upload', 'eliminacion' => 'fa-trash', default => 'fa-pen' } }}"></i>
+                            </div>
                             <div>
-                                <div class="activity-text"><strong>{{ $nombreActividad }}</strong> subió el plano <strong>{{ $actividad->descripcion }}</strong></div>
-                                <div class="activity-time">{{ $actividad->created_at?->format('d/m/Y H:i') }} hs</div>
+                                <div class="activity-text">
+                                    <strong>{{ $item['usuario'] }}</strong>
+                                    @switch($item['accion'])
+                                        @case('subida')
+                                            subió el plano <strong>{{ $item['detalle'] }}</strong>
+                                            @break
+                                        @case('grupo')
+                                            editó el grupo {{ $item['detalle'] }}
+                                            @break
+                                        @case('subgrupo')
+                                            editó el subgrupo {{ $item['detalle'] }}
+                                            @break
+                                        @case('plano')
+                                            editó el plano {{ $item['detalle'] }}
+                                            @break
+                                        @case('eliminacion')
+                                            eliminó el plano <strong>{{ $item['detalle'] }}</strong>
+                                            @break
+                                    @endswitch
+                                </div>
+                                <div class="activity-time">{{ $item['fecha']?->format('d/m/Y H:i') }} hs</div>
                             </div>
                         </div>
                         @empty
@@ -508,6 +576,104 @@
         </form>
     </div>
 </div>
+
+{{-- ══════════════════════════════════════════════════════
+     MODAL EDITAR GRUPO
+══════════════════════════════════════════════════════ --}}
+<div class="modal-overlay" id="modal-editar-grupo">
+    <div class="modal-nuevo" style="height:auto;">
+        <div class="modal-head">
+            <div class="modal-head-title"><i class="fas fa-folder"></i> Editar grupo</div>
+            <button class="modal-close" onclick="cerrarModalEditarGrupo()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <form id="form-editar-grupo" method="POST" action="">
+            @csrf
+            @method('PATCH')
+
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" for="input-editar-nombre-grupo">Nombre del grupo <span>*</span></label>
+                    <input type="text" id="input-editar-nombre-grupo" name="descripcion" class="form-control" placeholder="Ej: Planta baja" autocomplete="off" required>
+                </div>
+            </div>
+
+            <div class="modal-foot">
+                <button type="button" class="btn-cancel" onclick="cerrarModalEditarGrupo()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════
+     MODAL EDITAR SUBGRUPO
+══════════════════════════════════════════════════════ --}}
+<div class="modal-overlay" id="modal-editar-subgrupo">
+    <div class="modal-nuevo" style="height:auto;">
+        <div class="modal-head">
+            <div class="modal-head-title"><i class="fas fa-layer-group"></i> Editar subgrupo</div>
+            <button class="modal-close" onclick="cerrarModalEditarSubgrupo()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <form id="form-editar-subgrupo" method="POST" action="">
+            @csrf
+            @method('PATCH')
+
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" for="input-editar-nombre-subgrupo">Nombre del subgrupo <span>*</span></label>
+                    <input type="text" id="input-editar-nombre-subgrupo" name="descripcion" class="form-control" placeholder="Ej: Columnas" autocomplete="off" required>
+                </div>
+            </div>
+
+            <div class="modal-foot">
+                <button type="button" class="btn-cancel" onclick="cerrarModalEditarSubgrupo()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════
+     MODAL EDITAR PLANO
+══════════════════════════════════════════════════════ --}}
+<div class="modal-overlay" id="modal-editar-plano">
+    <div class="modal-nuevo" style="height:auto;">
+        <div class="modal-head">
+            <div class="modal-head-title"><i class="fas fa-file-pdf"></i> Editar plano</div>
+            <button class="modal-close" onclick="cerrarModalEditarPlano()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <form id="form-editar-plano" method="POST" action="">
+            @csrf
+            @method('PATCH')
+
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" for="input-editar-nombre-plano">Nombre del plano <span>*</span></label>
+                    <input type="text" id="input-editar-nombre-plano" name="descripcion" class="form-control" placeholder="Ej: Plano de fundación" autocomplete="off" required>
+                </div>
+            </div>
+
+            <div class="modal-foot">
+                <button type="button" class="btn-cancel" onclick="cerrarModalEditarPlano()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="form-eliminar-plano" method="POST" action="" style="display:none">
+    @csrf
+    @method('DELETE')
+</form>
 
 <script>
     let archivosPlanoSeleccionados = [];
@@ -716,6 +882,71 @@
         input.value = '';
         input.dispatchEvent(new Event('input'));
         input.focus();
+    }
+
+    /* ─── Editar grupo ─────────────────────────────────────── */
+    const rutaEditarGrupoBase = "{{ route('planos_tc.grupos.update', [$obraTc->id, '__ID__']) }}";
+
+    function abrirModalEditarGrupo(id, nombreActual) {
+        document.getElementById('form-editar-grupo').action = rutaEditarGrupoBase.replace('__ID__', id);
+        document.getElementById('input-editar-nombre-grupo').value = nombreActual;
+        document.getElementById('modal-editar-grupo').classList.add('active');
+        setTimeout(() => document.getElementById('input-editar-nombre-grupo').focus(), 0);
+    }
+
+    function cerrarModalEditarGrupo() {
+        document.getElementById('modal-editar-grupo').classList.remove('active');
+    }
+
+    document.getElementById('modal-editar-grupo').addEventListener('click', function (e) {
+        if (e.target === this) cerrarModalEditarGrupo();
+    });
+
+    /* ─── Editar subgrupo ──────────────────────────────────── */
+    const rutaEditarSubgrupoBase = "{{ route('planos_tc.subgrupos.update', [$obraTc->id, '__ID__']) }}";
+
+    function abrirModalEditarSubgrupo(id, nombreActual) {
+        document.getElementById('form-editar-subgrupo').action = rutaEditarSubgrupoBase.replace('__ID__', id);
+        document.getElementById('input-editar-nombre-subgrupo').value = nombreActual;
+        document.getElementById('modal-editar-subgrupo').classList.add('active');
+        setTimeout(() => document.getElementById('input-editar-nombre-subgrupo').focus(), 0);
+    }
+
+    function cerrarModalEditarSubgrupo() {
+        document.getElementById('modal-editar-subgrupo').classList.remove('active');
+    }
+
+    document.getElementById('modal-editar-subgrupo').addEventListener('click', function (e) {
+        if (e.target === this) cerrarModalEditarSubgrupo();
+    });
+
+    /* ─── Editar plano ─────────────────────────────────────── */
+    const rutaEditarPlanoBase = "{{ route('planos_tc.plano.update', [$obraTc->id, '__ID__']) }}";
+
+    function abrirModalEditarPlano(id, nombreActual) {
+        document.getElementById('form-editar-plano').action = rutaEditarPlanoBase.replace('__ID__', id);
+        document.getElementById('input-editar-nombre-plano').value = nombreActual;
+        document.getElementById('modal-editar-plano').classList.add('active');
+        setTimeout(() => document.getElementById('input-editar-nombre-plano').focus(), 0);
+    }
+
+    function cerrarModalEditarPlano() {
+        document.getElementById('modal-editar-plano').classList.remove('active');
+    }
+
+    document.getElementById('modal-editar-plano').addEventListener('click', function (e) {
+        if (e.target === this) cerrarModalEditarPlano();
+    });
+
+    /* ─── Eliminar plano ───────────────────────────────────── */
+    const rutaEliminarPlanoBase = "{{ route('planos_tc.plano.destroy', [$obraTc->id, '__ID__']) }}";
+
+    function eliminarPlano(id, nombreActual) {
+        if (!confirm(`¿Eliminar el plano "${nombreActual}"?\n\nSe moverá a la papelera junto con sus anotaciones, fotos y ensayos.`)) return;
+
+        const form = document.getElementById('form-eliminar-plano');
+        form.action = rutaEliminarPlanoBase.replace('__ID__', id);
+        form.submit();
     }
 </script>
 </body>

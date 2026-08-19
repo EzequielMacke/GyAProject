@@ -7,7 +7,9 @@ use App\Models\ObraTc;
 use App\Models\Plano;
 use App\Models\PlanoActividad;
 use App\Models\PlanoGrupo;
+use App\Models\PlanoPapelera;
 use App\Models\PlanoSubgrupo;
+use App\Models\PlanoTcActividad;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -119,7 +121,39 @@ class PlanoController extends Controller
             ->pluck('descripcion')
             ->unique();
 
-        return view('planos_tc.index', compact('obraTc', 'planos', 'arbol', 'pendientesCount', 'gruposExistentes'));
+        $actividadSubidas = $planos->map(function (Plano $plano) {
+            $usuarioActividad = $plano->usuario;
+
+            return [
+                'accion' => 'subida',
+                'usuario' => $usuarioActividad ? ($usuarioActividad->nombre_completo ?: $usuarioActividad->nombre) : 'Usuario desconocido',
+                'detalle' => $plano->descripcion,
+                'fecha' => $plano->created_at,
+            ];
+        });
+
+        $actividadEdiciones = PlanoTcActividad::where('obra_id', $obraTc->id)
+            ->with('usuario')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(function (PlanoTcActividad $item) {
+                $usuarioActividad = $item->usuario;
+
+                return [
+                    'accion' => $item->accion,
+                    'usuario' => $usuarioActividad ? ($usuarioActividad->nombre_completo ?: $usuarioActividad->nombre) : 'Usuario desconocido',
+                    'detalle' => $item->detalle,
+                    'fecha' => $item->created_at,
+                ];
+            });
+
+        $actividad = $actividadSubidas->concat($actividadEdiciones)
+            ->sortByDesc('fecha')
+            ->take(40)
+            ->values();
+
+        return view('planos_tc.index', compact('obraTc', 'planos', 'arbol', 'pendientesCount', 'gruposExistentes', 'actividad'));
     }
 
     public function show(ObraTc $obraTc, Plano $plano)
@@ -340,6 +374,158 @@ class PlanoController extends Controller
         }
 
         return redirect()->route('planos_tc.index', $obraTc->id)->with('success', 'Planos cargados como pendientes de nombrar y clasificar.');
+    }
+
+    public function actualizarGrupo(Request $request, ObraTc $obraTc, PlanoGrupo $grupo)
+    {
+        if ($grupo->obra_id !== $obraTc->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'descripcion' => [
+                'required', 'string', 'max:255',
+                Rule::unique('plano_grupo', 'descripcion')->where('obra_id', $obraTc->id)->ignore($grupo->id),
+            ],
+        ], [
+            'descripcion.unique' => 'Ya existe un grupo con ese nombre en esta obra.',
+        ]);
+
+        $nombreAnterior = $grupo->descripcion;
+
+        if ($nombreAnterior !== $request->descripcion) {
+            $grupo->update(['descripcion' => $request->descripcion]);
+
+            PlanoTcActividad::create([
+                'obra_id' => $obraTc->id,
+                'usuario_id' => session('usuario_id'),
+                'accion' => 'grupo',
+                'detalle' => "'{$nombreAnterior}' → '{$request->descripcion}'",
+                'created_at' => now(),
+            ]);
+        }
+
+        return redirect()->route('planos_tc.index', $obraTc->id)->with('success', 'Grupo actualizado correctamente.');
+    }
+
+    public function actualizarSubgrupo(Request $request, ObraTc $obraTc, PlanoSubgrupo $subgrupo)
+    {
+        if ($subgrupo->obra_id !== $obraTc->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'descripcion' => [
+                'required', 'string', 'max:255',
+                Rule::unique('plano_subgrupo', 'descripcion')
+                    ->where('obra_id', $obraTc->id)
+                    ->where('grupo_id', $subgrupo->grupo_id)
+                    ->ignore($subgrupo->id),
+            ],
+        ], [
+            'descripcion.unique' => 'Ya existe un subgrupo con ese nombre en este grupo.',
+        ]);
+
+        $nombreAnterior = $subgrupo->descripcion;
+
+        if ($nombreAnterior !== $request->descripcion) {
+            $subgrupo->update(['descripcion' => $request->descripcion]);
+
+            PlanoTcActividad::create([
+                'obra_id' => $obraTc->id,
+                'usuario_id' => session('usuario_id'),
+                'accion' => 'subgrupo',
+                'detalle' => "'{$nombreAnterior}' → '{$request->descripcion}'",
+                'created_at' => now(),
+            ]);
+        }
+
+        return redirect()->route('planos_tc.index', $obraTc->id)->with('success', 'Subgrupo actualizado correctamente.');
+    }
+
+    public function actualizarPlano(Request $request, ObraTc $obraTc, Plano $plano)
+    {
+        if ($plano->obra_id !== $obraTc->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'descripcion' => [
+                'required', 'string', 'max:255',
+                Rule::unique('planos', 'descripcion')->where('obra_id', $obraTc->id)->ignore($plano->id),
+            ],
+        ], [
+            'descripcion.unique' => 'Ya existe un plano con ese nombre en esta obra.',
+        ]);
+
+        $nombreAnterior = $plano->descripcion;
+
+        if ($nombreAnterior !== $request->descripcion) {
+            $plano->update(['descripcion' => $request->descripcion]);
+
+            PlanoTcActividad::create([
+                'obra_id' => $obraTc->id,
+                'usuario_id' => session('usuario_id'),
+                'accion' => 'plano',
+                'detalle' => "'{$nombreAnterior}' → '{$request->descripcion}'",
+                'created_at' => now(),
+            ]);
+        }
+
+        return redirect()->route('planos_tc.index', $obraTc->id)->with('success', 'Plano actualizado correctamente.');
+    }
+
+    /**
+     * Mueve el plano a la papelera: guarda una copia completa (incluido el
+     * estado con sus trazos/fotos/ensayos/daños y un snapshot del registro
+     * de actividad, que se perdería con el borrado en cascada) y recién
+     * después borra la fila original. El PDF y las fotos en storage no se
+     * tocan acá, quedan disponibles para una futura restauración.
+     */
+    public function eliminarPlano(ObraTc $obraTc, Plano $plano)
+    {
+        if ($plano->obra_id !== $obraTc->id) {
+            abort(404);
+        }
+
+        $usuarioId = session('usuario_id');
+        $descripcionPlano = $plano->descripcion ?? $plano->archivo_original ?? 'sin nombre';
+
+        DB::transaction(function () use ($plano, $obraTc, $usuarioId) {
+            $actividades = PlanoActividad::where('plano_id', $plano->id)
+                ->orderBy('created_at')
+                ->get()
+                ->toArray();
+
+            PlanoPapelera::create([
+                'plano_id_original' => $plano->id,
+                'descripcion' => $plano->descripcion,
+                'obra_id' => $plano->obra_id,
+                'grupo_id' => $plano->grupo_id,
+                'subgrupo_id' => $plano->subgrupo_id,
+                'archivo' => $plano->archivo,
+                'archivo_original' => $plano->archivo_original,
+                'usuario_id' => $plano->usuario_id,
+                'rotacion' => $plano->rotacion,
+                'estado' => $plano->estado,
+                'actividades' => json_encode($actividades),
+                'creado_originalmente_at' => $plano->created_at,
+                'eliminado_por' => $usuarioId,
+                'eliminado_at' => now(),
+            ]);
+
+            $plano->delete();
+        });
+
+        PlanoTcActividad::create([
+            'obra_id' => $obraTc->id,
+            'usuario_id' => $usuarioId,
+            'accion' => 'eliminacion',
+            'detalle' => $descripcionPlano,
+            'created_at' => now(),
+        ]);
+
+        return redirect()->route('planos_tc.index', $obraTc->id)->with('success', 'Plano movido a la papelera.');
     }
 
     public function aprobar(ObraTc $obraTc)

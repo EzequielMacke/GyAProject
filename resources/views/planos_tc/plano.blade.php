@@ -289,6 +289,42 @@
         .overlay-foto-accion:hover { background: #3a3a3a; }
         .overlay-foto-accion-borrar:hover { background: #7f1d1d; }
 
+        /* ── DESCARGA (modal de opciones PDF/PNG) ── */
+        .overlay-descarga {
+            position: fixed; inset: 0; z-index: 50;
+            background: rgba(0,0,0,0.6);
+            display: none; align-items: center; justify-content: center;
+            padding: 2rem;
+        }
+        .overlay-descarga.abierto { display: flex; }
+        .overlay-descarga-contenido {
+            width: min(320px, 90vw);
+            background: #222; border-radius: 0.6rem; padding: 1.1rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; gap: 0.9rem;
+        }
+        .overlay-descarga-titulo {
+            color: #fff; font-size: 0.95rem; font-weight: 700;
+        }
+        .overlay-descarga-opciones {
+            display: flex; gap: 0.5rem;
+        }
+        .overlay-descarga-formato {
+            flex: 1;
+            display: flex; flex-direction: column; align-items: center; gap: 0.45rem;
+            background: #2f2f2f; border: 2px solid transparent; cursor: pointer;
+            color: #ccc; font-size: 0.78rem; font-weight: 600; font-family: inherit;
+            padding: 0.9rem 0.5rem; border-radius: 0.5rem;
+        }
+        .overlay-descarga-formato:hover { background: #3a3a3a; }
+        .overlay-descarga-formato.activo { border-color: #2a6fdb; color: #fff; background: #24344d; }
+        .overlay-descarga-acciones {
+            display: flex; justify-content: flex-end; gap: 0.5rem;
+        }
+        .overlay-descarga-confirmar { background: #2a6fdb; color: #fff; }
+        .overlay-descarga-confirmar:hover { background: #3a7fe8; }
+        .overlay-descarga-confirmar:disabled { background: #2f4a73; cursor: default; }
+
         .lienzo {
             position: absolute;
             left: 0; top: 0;
@@ -426,6 +462,16 @@
                 Actividad
             </button>
             <div class="panel-actividad" id="panel-actividad"></div>
+        </div>
+        <div class="descarga-wrap" id="descarga-wrap">
+            <button type="button" class="btn-superior" id="btn-descarga">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Descargar
+            </button>
         </div>
         <a href="{{ route('planos_tc.index', $obraTc->id) }}" class="btn-superior">&larr; Volver</a>
     </div>
@@ -637,12 +683,41 @@
         </div>
     </div>
 
+    <div class="overlay-descarga" id="overlay-descarga">
+        <div class="overlay-descarga-contenido">
+            <span class="overlay-descarga-titulo">Descargar plano</span>
+            <div class="overlay-descarga-opciones">
+                <button type="button" class="overlay-descarga-formato activo" data-formato="pdf">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    PDF
+                </button>
+                <button type="button" class="overlay-descarga-formato" data-formato="png">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    PNG
+                </button>
+            </div>
+            <div class="overlay-descarga-acciones">
+                <button type="button" class="overlay-foto-accion" id="btn-descarga-cancelar">Cancelar</button>
+                <button type="button" class="overlay-foto-accion overlay-descarga-confirmar" id="btn-descarga-confirmar">Descargar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         const urlPdf = @json(Storage::url('planos/' . $plano->archivo));
         const rotacionPlano = {{ (int) ($plano->rotacion ?? 0) }};
+        const nombrePlanoBase = @json($plano->descripcion ?? 'plano');
 
         /* Permisos del módulo "ano_pla" (Anotaciones - Planos), calculados
            en el backend (PlanoController::show). "ver" ya está garantizado
@@ -1678,7 +1753,18 @@
 
         function redibujarTrazos() {
             drawCtx.clearRect(0, 0, lienzoWrap.clientWidth, lienzoWrap.clientHeight);
+            dibujarItems(drawCtx, mundoAPantalla, vista.scale);
+            dibujarResaltadoSeleccion();
+            if (elementoSeleccionado && panelSeleccion.classList.contains('abierto')) {
+                posicionarPanelSeleccion();
+            }
+        }
 
+        /* Motor de dibujo compartido entre la vista en pantalla
+           (drawCtx + mundoAPantalla + vista.scale, con pan/zoom) y la
+           exportación a PDF/PNG (un canvas offscreen + una proyección
+           simple "mundo * factor", sin pan: se exporta el plano entero). */
+        function dibujarItems(ctx, proyectar, escala) {
             estadoPlano.trazos.forEach(item => {
                 if (capasVisibles[item.tool] === false) return;
 
@@ -1686,91 +1772,752 @@
                     if (!item.imagen.complete || !item.imagen.naturalWidth) return;
                     const ratio = item.imagen.naturalWidth / item.imagen.naturalHeight;
                     const factorEscala = estadoPlano.escalas[GRUPO_ESCALA[item.tool]] ?? 1;
-                    const base = item.tamano * vista.scale * factorEscala;
-                    const anchoPantalla = ratio >= 1 ? base : base * ratio;
-                    const altoPantalla = ratio >= 1 ? base / ratio : base;
-                    const centro = mundoAPantalla(item.x, item.y);
-                    drawCtx.drawImage(
+                    const base = item.tamano * escala * factorEscala;
+                    const anchoItem = ratio >= 1 ? base : base * ratio;
+                    const altoItem = ratio >= 1 ? base / ratio : base;
+                    const centro = proyectar(item.x, item.y);
+                    ctx.drawImage(
                         item.imagen,
-                        centro.x - anchoPantalla / 2,
-                        centro.y - altoPantalla / 2,
-                        anchoPantalla,
-                        altoPantalla
+                        centro.x - anchoItem / 2,
+                        centro.y - altoItem / 2,
+                        anchoItem,
+                        altoItem
                     );
 
                     if (item.etiqueta) {
                         const tamanoFuente = base * 0.32;
-                        drawCtx.font = `bold ${tamanoFuente}px sans-serif`;
-                        drawCtx.textBaseline = 'middle';
-                        drawCtx.textAlign = 'left';
-                        const textoX = centro.x + anchoPantalla / 2 - base * 0.14;
-                        drawCtx.fillStyle = item.colorEtiqueta || '#000';
-                        drawCtx.fillText(item.etiqueta, textoX, centro.y);
+                        ctx.font = `bold ${tamanoFuente}px sans-serif`;
+                        ctx.textBaseline = 'middle';
+                        ctx.textAlign = 'left';
+                        const textoX = centro.x + anchoItem / 2 - base * 0.14;
+                        ctx.fillStyle = item.colorEtiqueta || '#000';
+                        ctx.fillText(item.etiqueta, textoX, centro.y);
                     }
                     return;
                 }
 
                 if (item.tipo === 'texto') {
-                    const centro = mundoAPantalla(item.x, item.y);
+                    const centro = proyectar(item.x, item.y);
                     const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
-                    const tamanoFuente = item.tamano * vista.scale * (estadoPlano.escalas[grupoEscala] ?? 1);
-                    drawCtx.font = `600 ${tamanoFuente}px sans-serif`;
-                    drawCtx.textBaseline = 'middle';
-                    drawCtx.textAlign = 'left';
-                    drawCtx.fillStyle = item.color;
-                    drawCtx.fillText(item.texto, centro.x, centro.y);
+                    const tamanoFuente = item.tamano * escala * (estadoPlano.escalas[grupoEscala] ?? 1);
+                    ctx.font = `600 ${tamanoFuente}px sans-serif`;
+                    ctx.textBaseline = 'middle';
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = item.color;
+                    ctx.fillText(item.texto, centro.x, centro.y);
                     return;
                 }
 
                 if (item.puntos.length < 2) return;
-                const puntosPantalla = item.puntos.map(p => mundoAPantalla(p.x, p.y));
+                const puntosProyectados = item.puntos.map(p => proyectar(p.x, p.y));
                 const path = new Path2D();
-                path.moveTo(puntosPantalla[0].x, puntosPantalla[0].y);
-                for (let i = 1; i < puntosPantalla.length; i++) {
-                    path.lineTo(puntosPantalla[i].x, puntosPantalla[i].y);
+                path.moveTo(puntosProyectados[0].x, puntosProyectados[0].y);
+                for (let i = 1; i < puntosProyectados.length; i++) {
+                    path.lineTo(puntosProyectados[i].x, puntosProyectados[i].y);
                 }
 
                 if (item.cerrado) {
                     path.closePath();
-                    if (item.relleno) dibujarTramaDiagonal(item, puntosPantalla, path);
+                    if (item.relleno) dibujarTramaDiagonal(ctx, item, puntosProyectados, path, escala);
                 }
 
-                drawCtx.strokeStyle = item.color;
-                drawCtx.lineWidth = item.grosor * vista.scale;
-                drawCtx.stroke(path);
+                ctx.strokeStyle = item.color;
+                ctx.lineWidth = item.grosor * escala;
+                ctx.stroke(path);
             });
-
-            dibujarResaltadoSeleccion();
-            if (elementoSeleccionado && panelSeleccion.classList.contains('abierto')) {
-                posicionarPanelSeleccion();
-            }
         }
 
-        function dibujarTramaDiagonal(item, puntosPantalla, path) {
-            const xs = puntosPantalla.map(p => p.x);
-            const ys = puntosPantalla.map(p => p.y);
+        function dibujarTramaDiagonal(ctx, item, puntosProyectados, path, escala) {
+            const xs = puntosProyectados.map(p => p.x);
+            const ys = puntosProyectados.map(p => p.y);
             const minX = Math.min(...xs), maxX = Math.max(...xs);
             const minY = Math.min(...ys), maxY = Math.max(...ys);
             const centroX = (minX + maxX) / 2;
             const centroY = (minY + maxY) / 2;
             const diagonal = Math.hypot(maxX - minX, maxY - minY) || 1;
-            const espaciado = Math.max(1.5, ESPACIO_TRAMA * vista.scale);
+            const espaciado = Math.max(1.5, ESPACIO_TRAMA * escala);
 
-            drawCtx.save();
-            drawCtx.clip(path);
-            drawCtx.translate(centroX, centroY);
-            drawCtx.rotate(Math.PI / 4);
-            drawCtx.strokeStyle = item.color;
-            drawCtx.lineWidth = Math.max(0.5, item.grosor * vista.scale * 0.5);
-            drawCtx.globalAlpha = 0.75;
-            drawCtx.beginPath();
+            ctx.save();
+            ctx.clip(path);
+            ctx.translate(centroX, centroY);
+            ctx.rotate(Math.PI / 4);
+            ctx.strokeStyle = item.color;
+            ctx.lineWidth = Math.max(0.5, item.grosor * escala * 0.5);
+            ctx.globalAlpha = 0.75;
+            ctx.beginPath();
             for (let x = -diagonal; x <= diagonal; x += espaciado) {
-                drawCtx.moveTo(x, -diagonal);
-                drawCtx.lineTo(x, diagonal);
+                ctx.moveTo(x, -diagonal);
+                ctx.lineTo(x, diagonal);
             }
-            drawCtx.stroke();
-            drawCtx.restore();
+            ctx.stroke();
+            ctx.restore();
         }
+
+        /* ─── Exportación a PDF/PNG: renderiza la página completa del PDF
+             a resolución fija (independiente del pan/zoom actual) y le
+             superpone todas las anotaciones con el mismo motor de dibujo
+             de arriba, proyectando "mundo * factor" (sin desplazamiento). ─ */
+        const FACTOR_EXPORTACION_DESEADO = 3;
+
+        function calcularFactorExportacion() {
+            return Math.min(FACTOR_EXPORTACION_DESEADO, 6000 / anchoBase, 6000 / altoBase);
+        }
+
+        async function generarCanvasExportacion() {
+            const factor = calcularFactorExportacion();
+            const pagina = await pdfDoc.getPage(1);
+            const viewport = pagina.getViewport({ scale: factor, rotation: rotacionPlano });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(viewport.width);
+            canvas.height = Math.round(viewport.height);
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            await pagina.render({ canvasContext: ctx, viewport }).promise;
+            dibujarItems(ctx, (x, y) => ({ x: x * factor, y: y * factor }), factor);
+
+            return canvas;
+        }
+
+        function nombreArchivoDescarga(extension) {
+            const base = nombrePlanoBase.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'plano';
+            return `${base}.${extension}`;
+        }
+
+        function descargarBlob(blob, nombreArchivo) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nombreArchivo;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        async function descargarComoPNG() {
+            const canvas = await generarCanvasExportacion();
+            await new Promise(resolve => {
+                canvas.toBlob(blob => {
+                    if (blob) descargarBlob(blob, nombreArchivoDescarga('png'));
+                    resolve();
+                }, 'image/png');
+            });
+        }
+
+        function hexARgb(hex) {
+            const limpio = (hex || '#000000').replace('#', '');
+            const normalizado = limpio.length === 3
+                ? limpio.split('').map(c => c + c).join('')
+                : limpio.padStart(6, '0');
+            const bigint = parseInt(normalizado, 16) || 0;
+            return PDFLib.rgb(((bigint >> 16) & 255) / 255, ((bigint >> 8) & 255) / 255, (bigint & 255) / 255);
+        }
+
+        /* Versión clara (mezclada con blanco) de un color, para el
+           relleno de las formas "con relleno": pdf-lib no expone un
+           operador simple de opacidad a este nivel bajo (requeriría
+           armar un ExtGState a mano), así que en vez de una trama/alpha
+           real se usa un tono pastel del mismo color a opacidad plena. */
+        function colorClaro(hex) {
+            const limpio = (hex || '#000000').replace('#', '');
+            const normalizado = limpio.length === 3
+                ? limpio.split('').map(c => c + c).join('')
+                : limpio.padStart(6, '0');
+            const bigint = parseInt(normalizado, 16) || 0;
+            const mezclar = canal => (canal + (255 - canal) * 0.8) / 255;
+            return PDFLib.rgb(
+                mezclar((bigint >> 16) & 255),
+                mezclar((bigint >> 8) & 255),
+                mezclar(bigint & 255)
+            );
+        }
+
+        /* ─── Íconos como vectores reales en el PDF (no como imagen) ───
+             Los SVG de daños-ícono/ensayos/foto se normalizaron a mano
+             (ver conversación) para quedar "planos": sin <g>, sin
+             transform, sin clipPath — cada <path>/<circle> ya tiene sus
+             coordenadas finales dentro del propio viewBox. Gracias a eso,
+           acá alcanza con una lectura por regex (no hace falta un parser
+             de XML/transforms completo). El resultado se cachea a nivel
+             de módulo (no depende del PDFDocument de turno), así que se
+             fetchea una sola vez por sesión aunque se exporte varias veces. */
+        const ICONOS_SVG_URL = {};
+        [...DANOS_ICONO, ...ENSAYOS_Y_FOTO].forEach(({ tool, url }) => { ICONOS_SVG_URL[tool] = url; });
+
+        function extraerViewBox(svgTexto) {
+            const m = svgTexto.match(/viewBox="\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*"/);
+            if (!m) return null;
+            return { minX: parseFloat(m[1]), minY: parseFloat(m[2]), w: parseFloat(m[3]), h: parseFloat(m[4]) };
+        }
+
+        function extraerValorAtributo(tag, nombre) {
+            const mAtributo = tag.match(new RegExp(nombre + '="([^"]*)"'));
+            if (mAtributo) return mAtributo[1];
+            const mStyle = tag.match(/style="([^"]*)"/);
+            if (mStyle) {
+                const mPropiedad = mStyle[1].match(new RegExp('(?:^|;)\\s*' + nombre + '\\s*:\\s*([^;]+)'));
+                if (mPropiedad) return mPropiedad[1].trim();
+            }
+            return null;
+        }
+
+        /* Convierte un "d" de <path> (soporta M/L/H/V/C/Z — los únicos
+           comandos que aparecen en estos SVG ya normalizados) en
+           subtrazados de puntos rectos, aproximando cada curva Bézier
+           cúbica por segmentos.
+           Por qué: AutoCAD importa perfecto un relleno de PDF cuyo
+           contorno son líneas rectas (HATCH normal), pero rompe el
+           relleno cuando el contorno tiene curvas — por eso los íconos
+           con "C" en su path (carbonatación, ultrasonido, resistividad,
+           potencial, cloruros) se veían mal al importar y esclerometría/
+           testigos (sin curvas) no. Aplanando acá, todos los íconos
+           terminan dibujándose como el mismo tipo de polígono recto que
+           ya se sabe que importa bien. */
+        /* Ángulo con signo entre dos vectores (para el arco elíptico). */
+        function anguloEntreVectores(ux, uy, vx, vy) {
+            const punto = ux * vx + uy * vy;
+            const largo = Math.sqrt((ux * ux + uy * uy) * (vx * vx + vy * vy));
+            let angulo = Math.acos(Math.min(1, Math.max(-1, punto / largo)));
+            if (ux * vy - uy * vx < 0) angulo = -angulo;
+            return angulo;
+        }
+
+        /* Convierte un arco elíptico SVG (comando A/a, parametrización por
+           extremos) en puntos, siguiendo el algoritmo estándar de la
+           especificación SVG 1.1 (apéndice F.6: de extremos a centro).
+           Verificado a mano contra los 4 arcos reales de foto.svg (cada
+           uno termina exacto en el punto de destino esperado). */
+        function arcoAPuntos(x1, y1, rxIn, ryIn, phiDeg, arcoGrande, sentidoHorario, x2, y2, segmentos = 16) {
+            if (!rxIn || !ryIn || (x1 === x2 && y1 === y2)) return [{ x: x2, y: y2 }];
+            let rx = Math.abs(rxIn), ry = Math.abs(ryIn);
+            const phi = phiDeg * Math.PI / 180;
+            const cosPhi = Math.cos(phi), sinPhi = Math.sin(phi);
+
+            const dx2 = (x1 - x2) / 2, dy2 = (y1 - y2) / 2;
+            const x1p = cosPhi * dx2 + sinPhi * dy2;
+            const y1p = -sinPhi * dx2 + cosPhi * dy2;
+
+            const lambda = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+            if (lambda > 1) { const raiz = Math.sqrt(lambda); rx *= raiz; ry *= raiz; }
+
+            const signo = arcoGrande !== sentidoHorario ? 1 : -1;
+            const num = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p;
+            const den = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
+            const co = signo * Math.sqrt(Math.max(0, num) / (den || 1e-9));
+            const cxp = co * (rx * y1p / ry);
+            const cyp = co * (-ry * x1p / rx);
+
+            const cx = cosPhi * cxp - sinPhi * cyp + (x1 + x2) / 2;
+            const cy = sinPhi * cxp + cosPhi * cyp + (y1 + y2) / 2;
+
+            const theta1 = anguloEntreVectores(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry);
+            let dtheta = anguloEntreVectores((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
+            if (!sentidoHorario && dtheta > 0) dtheta -= 2 * Math.PI;
+            if (sentidoHorario && dtheta < 0) dtheta += 2 * Math.PI;
+
+            const puntos = [];
+            for (let s = 1; s <= segmentos; s++) {
+                const theta = theta1 + (s / segmentos) * dtheta;
+                puntos.push({
+                    x: cx + rx * cosPhi * Math.cos(theta) - ry * sinPhi * Math.sin(theta),
+                    y: cy + rx * sinPhi * Math.cos(theta) + ry * cosPhi * Math.sin(theta),
+                });
+            }
+            return puntos;
+        }
+
+        function parsearPathAPuntos(d, segmentosPorCurva = 16) {
+            const tokens = d.match(/[MLHVCAZmlhvcaz]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) || [];
+            let i = 0;
+            let cx = 0, cy = 0;
+            let inicioSubpath = { x: 0, y: 0 };
+            let actual = null;
+            const subpaths = [];
+            const esComando = () => i < tokens.length && /^[A-Za-z]$/.test(tokens[i]);
+            const leerNum = () => parseFloat(tokens[i++]);
+
+            while (i < tokens.length) {
+                const cmd = tokens[i++];
+                if (cmd === 'M' || cmd === 'm') {
+                    const relativo = cmd === 'm';
+                    const x = leerNum(), y = leerNum();
+                    cx = relativo ? cx + x : x;
+                    cy = relativo ? cy + y : y;
+                    inicioSubpath = { x: cx, y: cy };
+                    actual = [{ x: cx, y: cy }];
+                    subpaths.push(actual);
+                    while (i < tokens.length && !esComando()) {
+                        const x2 = leerNum(), y2 = leerNum();
+                        cx = relativo ? cx + x2 : x2;
+                        cy = relativo ? cy + y2 : y2;
+                        actual.push({ x: cx, y: cy });
+                    }
+                } else if (cmd === 'L' || cmd === 'l') {
+                    const relativo = cmd === 'l';
+                    while (i < tokens.length && !esComando()) {
+                        const x = leerNum(), y = leerNum();
+                        cx = relativo ? cx + x : x;
+                        cy = relativo ? cy + y : y;
+                        if (actual) actual.push({ x: cx, y: cy });
+                    }
+                } else if (cmd === 'H' || cmd === 'h') {
+                    const relativo = cmd === 'h';
+                    while (i < tokens.length && !esComando()) {
+                        const x = leerNum();
+                        cx = relativo ? cx + x : x;
+                        if (actual) actual.push({ x: cx, y: cy });
+                    }
+                } else if (cmd === 'V' || cmd === 'v') {
+                    const relativo = cmd === 'v';
+                    while (i < tokens.length && !esComando()) {
+                        const y = leerNum();
+                        cy = relativo ? cy + y : y;
+                        if (actual) actual.push({ x: cx, y: cy });
+                    }
+                } else if (cmd === 'C' || cmd === 'c') {
+                    const relativo = cmd === 'c';
+                    while (i < tokens.length && !esComando()) {
+                        const x1r = leerNum(), y1r = leerNum();
+                        const x2r = leerNum(), y2r = leerNum();
+                        const xr = leerNum(), yr = leerNum();
+                        const x1 = relativo ? cx + x1r : x1r;
+                        const y1 = relativo ? cy + y1r : y1r;
+                        const x2 = relativo ? cx + x2r : x2r;
+                        const y2 = relativo ? cy + y2r : y2r;
+                        const x = relativo ? cx + xr : xr;
+                        const y = relativo ? cy + yr : yr;
+                        for (let s = 1; s <= segmentosPorCurva; s++) {
+                            const t = s / segmentosPorCurva, mt = 1 - t;
+                            const px = mt * mt * mt * cx + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x;
+                            const py = mt * mt * mt * cy + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y;
+                            if (actual) actual.push({ x: px, y: py });
+                        }
+                        cx = x; cy = y;
+                    }
+                } else if (cmd === 'A' || cmd === 'a') {
+                    const relativo = cmd === 'a';
+                    while (i < tokens.length && !esComando()) {
+                        const rx = leerNum(), ry = leerNum();
+                        const rot = leerNum();
+                        const arcoGrande = leerNum() !== 0;
+                        const sentidoHorario = leerNum() !== 0;
+                        const xr = leerNum(), yr = leerNum();
+                        const x = relativo ? cx + xr : xr;
+                        const y = relativo ? cy + yr : yr;
+                        const puntosArco = arcoAPuntos(cx, cy, rx, ry, rot, arcoGrande, sentidoHorario, x, y, segmentosPorCurva);
+                        if (actual) puntosArco.forEach(p => actual.push(p));
+                        cx = x; cy = y;
+                    }
+                } else if (cmd === 'Z' || cmd === 'z') {
+                    if (actual) actual.push({ x: inicioSubpath.x, y: inicioSubpath.y });
+                    cx = inicioSubpath.x; cy = inicioSubpath.y;
+                }
+                /* Cualquier otro comando (S/Q/T) se ignora: no aparece
+                   en estos archivos ya normalizados. */
+            }
+            return subpaths;
+        }
+
+        /* Bajar de 32 a 16 lados no cambió nada (mismo problema exacto),
+           así que no es la CANTIDAD de vértices lo que dispara el
+           "reconocimiento de círculo" de AutoCAD (que lo convierte a un
+           objeto ARCO tomando parte de los puntos y deja el resto como
+           geometría suelta desalineada — el efecto "se ve como una C con
+           el resto al lado", sin relleno, porque un ARCO no lleva
+           relleno) — sino que todos los vértices están a la MISMA
+           distancia exacta del centro. Acá se alterna el radio ±1.5% en
+           vértices consecutivos: sigue viéndose redondo a este tamaño,
+           pero ya no matchea el patrón "equidistante" que dispara esa
+           detección. */
+        function circuloAPuntos(cx, cy, r, segmentos = 16) {
+            const puntos = [];
+            for (let i = 0; i < segmentos; i++) {
+                const angulo = (i / segmentos) * Math.PI * 2;
+                const radio = r * (i % 2 === 0 ? 1.015 : 0.985);
+                puntos.push({ x: cx + radio * Math.cos(angulo), y: cy + radio * Math.sin(angulo) });
+            }
+            return [puntos];
+        }
+
+        function parsearFormasSvg(svgTexto) {
+            const formas = [];
+            const tagRe = /<(path|circle)\b([^>]*)>/g;
+            let m;
+            while ((m = tagRe.exec(svgTexto))) {
+                const [, tipo, tag] = m;
+                const fillRaw = extraerValorAtributo(tag, 'fill');
+                const strokeRaw = extraerValorAtributo(tag, 'stroke');
+                const fill = fillRaw && fillRaw !== 'none' ? fillRaw : null;
+                const stroke = strokeRaw && strokeRaw !== 'none' ? strokeRaw : null;
+                const strokeWidth = parseFloat(extraerValorAtributo(tag, 'stroke-width') || '1') || 1;
+
+                if (tipo === 'path') {
+                    const dMatch = tag.match(/\bd="([^"]*)"/);
+                    if (dMatch) formas.push({ subpaths: parsearPathAPuntos(dMatch[1]), fill, stroke, strokeWidth });
+                } else {
+                    const cx = parseFloat(extraerValorAtributo(tag, 'cx') || '0');
+                    const cy = parseFloat(extraerValorAtributo(tag, 'cy') || '0');
+                    const r = parseFloat(extraerValorAtributo(tag, 'r') || '0');
+                    formas.push({ subpaths: circuloAPuntos(cx, cy, r), fill, stroke, strokeWidth });
+                }
+            }
+            return formas;
+        }
+
+        const cacheIconoVectorial = {};
+        async function obtenerIconoVectorial(tool) {
+            if (tool in cacheIconoVectorial) return cacheIconoVectorial[tool];
+            const url = ICONOS_SVG_URL[tool];
+            if (!url) { cacheIconoVectorial[tool] = null; return null; }
+            try {
+                const texto = await fetch(url).then(r => r.text());
+                const viewBox = extraerViewBox(texto);
+                if (!viewBox || !viewBox.w || !viewBox.h) { cacheIconoVectorial[tool] = null; return null; }
+                const icono = { minX: viewBox.minX, minY: viewBox.minY, w: viewBox.w, h: viewBox.h, formas: parsearFormasSvg(texto) };
+                cacheIconoVectorial[tool] = icono;
+                return icono;
+            } catch (e) {
+                console.warn('No se pudo cargar el ícono vectorial de "' + tool + '"', e);
+                cacheIconoVectorial[tool] = null;
+                return null;
+            }
+        }
+
+        /* Exportación a PDF VECTORIAL: carga el PDF original tal cual
+           (sin re-renderizarlo ni rasterizarlo) y dibuja las anotaciones
+           directamente sobre esa misma página, como objetos PDF reales
+           (líneas/texto/imágenes) — el archivo original nunca se
+           modifica, esto arma una copia nueva en memoria para descargar.
+
+           El punto delicado es la rotación del plano (rotacionPlano):
+           las coordenadas "mundo" (item.x/y) están pensadas para el
+           viewport YA ROTADO que ve el usuario (ver anchoBase/altoBase
+           en renderPagina), pero page.drawX() de pdf-lib dibuja en el
+           espacio NATIVO de la página (sin rotar). Para convertir un
+           punto se usa viewport.convertToPdfPoint(x, y) —lo hace PDF.js,
+           no hay que reinventar la matriz de rotación—. Para que un
+           ícono o un texto se vea "derecho" en pantalla (igual que en
+           la vista en vivo, donde nunca giran) hay que además rotar su
+           forma local en sentido contrario al que después va a aplicar
+           cualquier lector de PDF al respetar /Rotate: por eso se le
+           suma "rotate: degrees(rotObjetivo)" y se rota a mano el offset
+           del punto de anclaje con rotarOffset (mismo ángulo, sentido
+           antihorario = convención nativa de PDF/pdf-lib). */
+        async function generarPdfVectorial() {
+            const { PDFDocument, StandardFonts, degrees, PDFName, PDFString, PDFOperator, PDFContentStream } = PDFLib;
+
+            const bytesOriginal = await pdfDoc.getData();
+            const pdfOut = await PDFDocument.load(bytesOriginal);
+            const page = pdfOut.getPage(0);
+            const { context } = pdfOut;
+
+            const rotObjetivo = ((rotacionPlano % 360) + 360) % 360;
+            page.setRotation(degrees(rotObjetivo));
+
+            /* ─── Capas (Optional Content Groups) ───────────────
+                 Una capa por herramienta usada en el plano + una para
+                 el plano de fondo original, para que AutoCAD las
+                 importe como capas nativas separadas (PDFIMPORT
+                 convierte los OCG de un PDF en capas de AutoCAD, y
+                 viceversa al exportar). pdf-lib no tiene soporte de
+                 alto nivel para esto: se arma a mano con su API de
+                 bajo nivel (context.obj/register + operadores BDC/EMC
+                 de "marked content"). Verificado con pdf.js —un parser
+                 independiente de pdf-lib— que el resultado es válido y
+                 que los nombres de capa se leen correctamente antes de
+                 integrarlo acá. */
+            function crearOCG(nombre) {
+                const dict = context.obj({ Type: 'OCG', Name: PDFString.of(nombre) });
+                return context.register(dict);
+            }
+
+            const capaFondo = crearOCG('Plano original');
+
+            /* Solo se crea una capa por herramienta que realmente tenga
+               algo dibujado y visible (mismo criterio que ya usa el
+               resto de la función para decidir qué exportar), para no
+               llenar AutoCAD de capas vacías. */
+            const toolsUsados = [...new Set(
+                estadoPlano.trazos
+                    .filter(item => capasVisibles[item.tool] !== false)
+                    .map(item => item.tool)
+            )];
+            const ocgPorTool = {};
+            toolsUsados.forEach(tool => {
+                ocgPorTool[tool] = crearOCG(metaCapas[tool]?.nombre || tool);
+            });
+
+            const todasLasCapas = [capaFondo, ...toolsUsados.map(t => ocgPorTool[t])];
+            pdfOut.catalog.set(PDFName.of('OCProperties'), context.obj({
+                OCGs: todasLasCapas,
+                D: { ON: todasLasCapas, Order: todasLasCapas },
+            }));
+
+            /* page.node.Resources() puede devolver undefined si la
+               página no tiene ese diccionario propio ni heredado (raro,
+               pero posible en un PDF armado a mano). normalizedEntries()
+               fuerza a pdf-lib a crearlo y adjuntarlo si falta —además
+               de convertir /Contents a array, lo mismo que hacíamos a
+               mano abajo, así que ya no hace falta ese chequeo manual. */
+            const { Resources } = page.node.normalizedEntries();
+
+            const nombreCortoPorTool = {};
+            const propiedades = { OCFondo: capaFondo };
+            toolsUsados.forEach((tool, i) => {
+                nombreCortoPorTool[tool] = 'OCTool' + i;
+                propiedades['OCTool' + i] = ocgPorTool[tool];
+            });
+            Resources.set(PDFName.of('Properties'), context.obj(propiedades));
+
+            /* Envuelve el contenido YA EXISTENTE del PDF original (el
+               plano de fondo, que no generamos nosotros) en la capa
+               "Plano original" — tiene que hacerse ANTES de agregar
+               contenido nuevo, mientras /Contents todavía solo tiene
+               el stream original. */
+            function crearStreamMarcador(operador) {
+                return context.register(PDFContentStream.of(context.obj({}), [operador]));
+            }
+            page.node.wrapContentStreams(
+                crearStreamMarcador(PDFOperator.of('BDC', [PDFName.of('OC'), PDFName.of('OCFondo')])),
+                crearStreamMarcador(PDFOperator.of('EMC', []))
+            );
+
+            function iniciarCapa(tool) {
+                page.pushOperators(PDFOperator.of('BDC', [PDFName.of('OC'), PDFName.of(nombreCortoPorTool[tool])]));
+            }
+            function cerrarCapa() {
+                page.pushOperators(PDFOperator.of('EMC', []));
+            }
+
+            const pagina = await pdfDoc.getPage(1);
+            const viewportBase = pagina.getViewport({ scale: 1, rotation: rotacionPlano });
+            const proyectarNativo = (x, y) => {
+                const [nx, ny] = viewportBase.convertToPdfPoint(x, y);
+                return { x: nx, y: ny };
+            };
+
+            const anguloRad = rotObjetivo * Math.PI / 180;
+            const cosR = Math.cos(anguloRad);
+            const sinR = Math.sin(anguloRad);
+            const rotarOffset = (u, v) => ({ x: u * cosR - v * sinR, y: u * sinR + v * cosR });
+
+            const fuente = await pdfOut.embedFont(StandardFonts.HelveticaBold);
+
+            for (const item of estadoPlano.trazos) {
+                if (capasVisibles[item.tool] === false) continue;
+                iniciarCapa(item.tool);
+
+                if (item.tipo === 'icono') {
+                    const factorEscala = estadoPlano.escalas[GRUPO_ESCALA[item.tool]] ?? 1;
+                    const base = item.tamano * factorEscala;
+                    const icono = await obtenerIconoVectorial(item.tool);
+                    if (!icono) { cerrarCapa(); continue; }
+
+                    /* s: factor uniforme que lleva el viewBox del ícono
+                       (p. ej. 1588x1122.6667) al tamaño "base" deseado en
+                       el plano — misma lógica que antes usaba ratio de
+                       imagen, pero sin distinguir ancho/alto porque acá
+                       se escala el viewBox entero por igual. */
+                    const s = base / Math.max(icono.w, icono.h);
+                    const ancho = s * icono.w;
+                    const centro = proyectarNativo(item.x, item.y);
+                    /* anclaX/Y: dónde cae el punto local (0,0) —el origen
+                       del sistema de coordenadas del propio path/d, NO
+                       necesariamente el borde del viewBox— en espacio PDF
+                       nativo, para que el CENTRO REAL del viewBox
+                       (minX+w/2, minY+h/2; varios íconos como Potencial,
+                       Cloruros o Resistividad tienen viewBox con origen
+                       negativo, no en 0,0) termine exactamente en "centro"
+                       una vez aplicados escala+rotación (ver drawSvgPath:
+                       hace translate(x,y) → rotate → scale(s,-s) → dibuja
+                       el path con sus coordenadas tal cual). Los círculos
+                       (foto.svg, fisura direccional) no pasan por
+                       drawSvgPath, así que se posicionan a mano con la
+                       misma fórmula (ancla + rotarOffset del punto local). */
+                    const centroViewBoxLocal = { x: icono.minX + icono.w / 2, y: icono.minY + icono.h / 2 };
+                    const anclaLocal = rotarOffset(s * centroViewBoxLocal.x, -s * centroViewBoxLocal.y);
+                    const anclaX = centro.x - anclaLocal.x;
+                    const anclaY = centro.y - anclaLocal.y;
+
+                    /* Cada forma se dibuja con los mismos operadores de
+                       bajo nivel que los trazos hechos a mano (moveTo/
+                       lineTo/closePath/fill) en vez de drawSvgPath/
+                       drawCircle: son polígonos rectos (las curvas ya se
+                       aplanaron en parsearPathAPuntos), el mismo tipo de
+                       contorno que AutoCAD importa bien como HATCH. Si
+                       una forma tiene varios subtrazados (p. ej. un
+                       "anillo": contorno exterior + interior) se agrupan
+                       en un solo fill para que la regla non-zero cree el
+                       hueco, en vez de rellenar cada subtrazado aparte. */
+                    icono.formas.forEach(forma => {
+                        if (!forma.subpaths.length) return;
+                        const color = forma.fill ? hexARgb(forma.fill) : null;
+                        let colorTrazo = forma.stroke ? hexARgb(forma.stroke) : null;
+                        let anchoTrazo = forma.strokeWidth * s;
+                        /* AutoCAD no siempre convierte bien a HATCH un
+                           relleno de PDF que no tiene un trazo (stroke)
+                           acompañándolo (visto con las fisuras
+                           direccionales y con foto.svg, que solo tienen
+                           fill, sin stroke): salían en blanco/incompletos
+                           al importar aunque el PDF se viera bien. Se le
+                           agrega un trazo sintético del mismo color que
+                           el relleno (imperceptible, mismo tono) solo
+                           para darle a AutoCAD geometría de borde.
+                           El ancho de ESTE trazo sintético se fija en un
+                           valor chico absoluto, sin depender de "s": los
+                           íconos con viewBox chico (24x24, fisuras) tienen
+                           una "s" mucho más grande que los de viewBox
+                           enorme (esclerometria, ~1588), así que heredar
+                           forma.strokeWidth*s les daba un trazo ~25 veces
+                           más grueso en proporción a su tamaño — posible
+                           causa de que AutoCAD interprete mal el borde. */
+                        if (color && !colorTrazo) { colorTrazo = color; anchoTrazo = 0.05; }
+                        if (!color && !colorTrazo) return;
+
+                        const operadores = [PDFLib.pushGraphicsState()];
+                        if (colorTrazo) {
+                            operadores.push(PDFLib.setLineWidth(anchoTrazo), PDFLib.setStrokingColor(colorTrazo));
+                        }
+                        if (color) operadores.push(PDFLib.setFillingColor(color));
+
+                        forma.subpaths.forEach(puntosLocales => {
+                            if (puntosLocales.length < 2) return;
+                            const puntos = puntosLocales.map(p => {
+                                const o = rotarOffset(s * p.x, -s * p.y);
+                                return { x: anclaX + o.x, y: anclaY + o.y };
+                            });
+                            operadores.push(PDFLib.moveTo(puntos[0].x, puntos[0].y));
+                            for (let i = 1; i < puntos.length; i++) operadores.push(PDFLib.lineTo(puntos[i].x, puntos[i].y));
+                            operadores.push(PDFLib.closePath());
+                        });
+
+                        if (color && colorTrazo) operadores.push(PDFLib.fillAndStroke());
+                        else if (color) operadores.push(PDFLib.fill());
+                        else operadores.push(PDFLib.stroke());
+                        operadores.push(PDFLib.popGraphicsState());
+                        page.pushOperators(...operadores);
+                    });
+
+                    if (item.etiqueta) {
+                        const tamanoFuente = base * 0.32;
+                        const offsetTexto = rotarOffset(ancho / 2 - base * 0.14, -tamanoFuente * 0.32);
+                        page.drawText(item.etiqueta, {
+                            x: centro.x + offsetTexto.x,
+                            y: centro.y + offsetTexto.y,
+                            size: tamanoFuente,
+                            font: fuente,
+                            color: hexARgb(item.colorEtiqueta || '#000000'),
+                            rotate: degrees(rotObjetivo),
+                        });
+                    }
+                    cerrarCapa();
+                    continue;
+                }
+
+                if (item.tipo === 'texto') {
+                    const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
+                    const tamanoFuente = item.tamano * (estadoPlano.escalas[grupoEscala] ?? 1);
+                    const centro = proyectarNativo(item.x, item.y);
+                    const offsetTexto = rotarOffset(0, -tamanoFuente * 0.32);
+                    page.drawText(item.texto, {
+                        x: centro.x + offsetTexto.x,
+                        y: centro.y + offsetTexto.y,
+                        size: tamanoFuente,
+                        font: fuente,
+                        color: hexARgb(item.color),
+                        rotate: degrees(rotObjetivo),
+                    });
+                    cerrarCapa();
+                    continue;
+                }
+
+                if (!item.puntos || item.puntos.length < 2) { cerrarCapa(); continue; }
+                const puntos = item.puntos.map(p => proyectarNativo(p.x, p.y));
+                const color = hexARgb(item.color);
+                const relleno = item.cerrado && item.relleno;
+
+                const operadores = [
+                    PDFLib.pushGraphicsState(),
+                    PDFLib.setLineWidth(item.grosor),
+                    PDFLib.setStrokingColor(color),
+                    PDFLib.moveTo(puntos[0].x, puntos[0].y),
+                ];
+                for (let i = 1; i < puntos.length; i++) {
+                    operadores.push(PDFLib.lineTo(puntos[i].x, puntos[i].y));
+                }
+                if (item.cerrado) operadores.push(PDFLib.closePath());
+                if (relleno) {
+                    operadores.push(PDFLib.setFillingColor(colorClaro(item.color)));
+                    operadores.push(PDFLib.fillAndStroke());
+                } else {
+                    operadores.push(PDFLib.stroke());
+                }
+                operadores.push(PDFLib.popGraphicsState());
+                page.pushOperators(...operadores);
+                cerrarCapa();
+            }
+
+            return pdfOut.save();
+        }
+
+        async function descargarComoPDF() {
+            const bytes = await generarPdfVectorial();
+            descargarBlob(new Blob([bytes], { type: 'application/pdf' }), nombreArchivoDescarga('pdf'));
+        }
+
+        const descargaWrap = document.getElementById('descarga-wrap');
+        const btnDescarga = document.getElementById('btn-descarga');
+        const overlayDescarga = document.getElementById('overlay-descarga');
+        const btnDescargaCancelar = document.getElementById('btn-descarga-cancelar');
+        const btnDescargaConfirmar = document.getElementById('btn-descarga-confirmar');
+        let formatoDescarga = 'pdf';
+
+        function abrirModalDescarga() {
+            overlayDescarga.classList.add('abierto');
+        }
+        function cerrarModalDescarga() {
+            overlayDescarga.classList.remove('abierto');
+        }
+
+        btnDescarga.addEventListener('click', e => {
+            e.stopPropagation();
+            abrirModalDescarga();
+        });
+        btnDescargaCancelar.addEventListener('click', cerrarModalDescarga);
+        overlayDescarga.addEventListener('click', e => {
+            if (e.target === overlayDescarga) cerrarModalDescarga();
+        });
+
+        document.querySelectorAll('.overlay-descarga-formato').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.overlay-descarga-formato').forEach(b => b.classList.remove('activo'));
+                btn.classList.add('activo');
+                formatoDescarga = btn.dataset.formato;
+            });
+        });
+
+        btnDescargaConfirmar.addEventListener('click', async () => {
+            if (!pdfDoc) return;
+            btnDescargaConfirmar.disabled = true;
+            btnDescargaConfirmar.textContent = 'Generando…';
+            try {
+                if (formatoDescarga === 'png') {
+                    await descargarComoPNG();
+                } else {
+                    await descargarComoPDF();
+                }
+                cerrarModalDescarga();
+            } catch (e) {
+                console.warn('No se pudo generar la descarga', e);
+                alert('No se pudo generar el archivo. Intentá de nuevo.');
+            } finally {
+                btnDescargaConfirmar.disabled = false;
+                btnDescargaConfirmar.textContent = 'Descargar';
+            }
+        });
 
         /* ─── Selección: bounding box en pantalla de cualquier elemento
              (ícono, texto o trazo), usado para el resaltado y para

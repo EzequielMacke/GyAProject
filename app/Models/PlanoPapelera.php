@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Plano extends Model
+class PlanoPapelera extends Model
 {
-    use HasFactory;
-    protected $table = 'planos';
+    public $timestamps = false;
+
+    protected $table = 'planos_papelera';
+
     protected $fillable = [
+        'plano_id_original',
         'descripcion',
         'obra_id',
         'grupo_id',
@@ -19,6 +21,15 @@ class Plano extends Model
         'usuario_id',
         'rotacion',
         'estado',
+        'actividades',
+        'creado_originalmente_at',
+        'eliminado_por',
+        'eliminado_at',
+    ];
+
+    protected $casts = [
+        'creado_originalmente_at' => 'datetime',
+        'eliminado_at' => 'datetime',
     ];
 
     public function obra()
@@ -38,17 +49,11 @@ class Plano extends Model
 
     public function usuario()
     {
-        return $this->belongsTo(Usuarios::class);
+        return $this->belongsTo(Usuarios::class, 'usuario_id');
     }
 
-    public function getTieneAnotacionesAttribute(): bool
+    public function eliminadoPor()
     {
-        if (! $this->estado) {
-            return false;
-        }
-
-        $estado = json_decode($this->estado, true);
-
-        return ! empty($estado['trazos']);
+        return $this->belongsTo(Usuarios::class, 'eliminado_por');
     }
 }

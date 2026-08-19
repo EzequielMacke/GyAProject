@@ -498,6 +498,18 @@ Route::middleware(['permiso:pla_tc,ver', 'permiso:ano_pla,editar'])->group(funct
 Route::middleware('permiso:pla_tc,agregar')->group(function () {
     Route::post('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'store'])->name('planos_tc.store');
 });
+Route::middleware('permiso:pla_tc,editar')->group(function () {
+    Route::patch('/trabajo-campo/{obraTc}/planos/grupos/{grupo}', [PlanoController::class, 'actualizarGrupo'])->name('planos_tc.grupos.update');
+    Route::patch('/trabajo-campo/{obraTc}/planos/subgrupos/{subgrupo}', [PlanoController::class, 'actualizarSubgrupo'])->name('planos_tc.subgrupos.update');
+    Route::patch('/trabajo-campo/{obraTc}/planos/{plano}/nombre', [PlanoController::class, 'actualizarPlano'])
+        ->where('plano', '[0-9]+')
+        ->name('planos_tc.plano.update');
+});
+Route::middleware('permiso:pla_tc,eliminar')->group(function () {
+    Route::delete('/trabajo-campo/{obraTc}/planos/{plano}', [PlanoController::class, 'eliminarPlano'])
+        ->where('plano', '[0-9]+')
+        ->name('planos_tc.plano.destroy');
+});
 Route::middleware(['permiso:pla_tc,editar', 'permiso:pla_tc,agregar'])->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos/aprobar', [PlanoController::class, 'aprobar'])->name('planos_tc.aprobar');
     Route::patch('/trabajo-campo/{obraTc}/planos/{plano}/aprobar', [PlanoController::class, 'aprobarStore'])->name('planos_tc.aprobarStore');

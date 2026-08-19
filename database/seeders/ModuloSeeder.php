@@ -42,9 +42,9 @@ class ModuloSeeder extends Seeder
             ['nombre' => 'con_gas', 'descripcion' => 'Control de Gastos',             'estado' => 1],
             ['nombre' => 'ret_tab', 'descripcion' => 'Retiro de Tablets',             'estado' => 1],
             ['nombre' => 'tra_cam', 'descripcion' => 'Trabajo de campo',              'estado' => 1],
-            ['nombre' => 'obr_tc',  'descripcion' => 'Obras - Trabajo de campo',       'estado' => 1],
-            ['nombre' => 'dir_tc',  'descripcion' => 'Directorio - Trabajo de campo',  'estado' => 1],
-            ['nombre' => 'pla_tc',  'descripcion' => 'Planos - Trabajo de campo',      'estado' => 1],
+            ['nombre' => 'obr_tc',  'descripcion' => 'Obras - Trabajo de campo',      'estado' => 1],
+            ['nombre' => 'dir_tc',  'descripcion' => 'Directorio - Trabajo de campo', 'estado' => 1],
+            ['nombre' => 'pla_tc',  'descripcion' => 'Planos - Trabajo de campo',     'estado' => 1],
             ['nombre' => 'ano_pla', 'descripcion' => 'Anotaciones - Planos',          'estado' => 1],
 
 
