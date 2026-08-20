@@ -68,6 +68,62 @@
             transition: all 0.14s; white-space: nowrap;
         }
         .btn:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #1f5bbf; border-color: #1f5bbf; color: #fff; }
+        .btn-danger { color: #c0392b; }
+        .btn-danger:hover { background: #fff0f0; border-color: #f5c2c2; color: #c0392b; }
+
+        /* ── ALERTS ── */
+        .alert { padding: 0.75rem 1rem; border-radius: 0.55rem; font-size: 0.83rem; font-weight: 500; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+        .alert-success { background: #e5f6f0; color: #1e9166; border: 1px solid #b6e8d6; }
+        .alert-danger  { background: #fff0f0; color: #c0392b; border: 1px solid #f5c2c2; }
+
+        /* ── MODAL ── */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-overlay.active { display: flex; }
+        .modal-caja {
+            background: #fff; border-radius: 1rem;
+            width: 100%; max-width: 440px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+            overflow: hidden;
+            animation: modalIn 0.2s ease both;
+        }
+        @keyframes modalIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+        .modal-head {
+            padding: 1.4rem 1.75rem 1.2rem;
+            border-bottom: 1.5px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-head-title { font-size: 1rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.5rem; }
+        .modal-head-title i { color: var(--accent); }
+        .modal-head-title.danger i { color: #c0392b; }
+        .modal-close { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; padding: 0.25rem; border-radius: 0.35rem; transition: color 0.14s; }
+        .modal-close:hover { color: var(--text); }
+        .modal-body { padding: 1.5rem 1.75rem; }
+        .modal-body p { font-size: 0.87rem; color: var(--text2); line-height: 1.5; }
+        .modal-body p strong { color: var(--text); }
+        .modal-foot { padding: 1rem 1.75rem 1.4rem; display: flex; justify-content: flex-end; gap: 0.5rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label { font-size: 0.78rem; font-weight: 700; color: var(--text2); margin-bottom: 0.4rem; display: block; text-transform: uppercase; letter-spacing: 0.04em; }
+        .form-label span { color: #c0392b; margin-left: 2px; }
+        .form-control {
+            width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.875rem;
+            background: var(--surface); border: 1.5px solid var(--border);
+            border-radius: 0.55rem; padding: 0.55rem 0.85rem; color: var(--text);
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
+        .form-control.error { border-color: #e74c3c; }
+        .btn-cancel { height: 36px; padding: 0 1rem; border-radius: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; border: 1.5px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.14s; }
+        .btn-cancel:hover { background: var(--surface2); }
+        .btn-confirmar-eliminar {
+            height: 36px; padding: 0 1.1rem; border-radius: 0.5rem;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600;
+            border: 1.5px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.14s;
+        }
+        .btn-confirmar-eliminar:hover { background: #a93226; border-color: #a93226; }
 
         /* ══════════════════════════════
            OPTIONS GRID
@@ -181,6 +237,16 @@
                         @endif
                     </div>
                     <div class="ph-right">
+                        @permiso('obr_tc', 'editar')
+                        <button type="button" class="btn" onclick="abrirModalEditarObra()">
+                            <i class="fas fa-pen"></i> Editar
+                        </button>
+                        @endpermiso
+                        @permiso('obr_tc', 'eliminar')
+                        <button type="button" class="btn btn-danger" onclick="abrirModalEliminarObra()">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                        @endpermiso
                         <a href="{{ route('trabajo_campo.index') }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
@@ -192,6 +258,24 @@
 
         <section class="content">
             <div class="container-fluid">
+
+                @if(session('success'))
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> {{ session('success') }}
+                </div>
+                @endif
+
+                @if(session('error'))
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                </div>
+                @endif
+
+                @if($errors->any())
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> {{ $errors->first() }}
+                </div>
+                @endif
 
                 <div class="options-grid">
 
@@ -227,5 +311,95 @@
 
     @include('partials.footer')
 </div>
+
+{{-- ══════════════════════════════════════════════════════
+     MODAL EDITAR OBRA
+══════════════════════════════════════════════════════ --}}
+<div class="modal-overlay" id="modal-editar-obra">
+    <div class="modal-caja">
+        <div class="modal-head">
+            <div class="modal-head-title"><i class="fas fa-pen"></i> Editar Obra</div>
+            <button class="modal-close" onclick="cerrarModalEditarObra()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <form id="form-editar-obra" method="POST" action="{{ route('obras_tc.update', $obraTc->id) }}">
+            @csrf
+            @method('PATCH')
+
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" for="input-editar-nombre-obra">Nombre <span>*</span></label>
+                    <input type="text" id="input-editar-nombre-obra" name="nombre" class="form-control" value="{{ $obraTc->descripcion }}" placeholder="Nombre de la obra" autocomplete="off" required>
+                </div>
+            </div>
+
+            <div class="modal-foot">
+                <button type="button" class="btn-cancel" onclick="cerrarModalEditarObra()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════
+     MODAL ELIMINAR OBRA
+══════════════════════════════════════════════════════ --}}
+<div class="modal-overlay" id="modal-eliminar-obra">
+    <div class="modal-caja">
+        <div class="modal-head">
+            <div class="modal-head-title danger"><i class="fas fa-triangle-exclamation"></i> Eliminar Obra</div>
+            <button class="modal-close" onclick="cerrarModalEliminarObra()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="modal-body">
+            <p>¿Seguro que querés eliminar la obra <strong>{{ $obraTc->descripcion }}</strong>? Vas a dejar de verla en el listado de Trabajo de Campo.</p>
+        </div>
+
+        <form id="form-eliminar-obra" method="POST" action="{{ route('obras_tc.destroy', $obraTc->id) }}">
+            @csrf
+            @method('DELETE')
+
+            <div class="modal-foot">
+                <button type="button" class="btn-cancel" onclick="cerrarModalEliminarObra()">Cancelar</button>
+                <button type="submit" class="btn-confirmar-eliminar">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalEditarObra() {
+        document.getElementById('modal-editar-obra').classList.add('active');
+        setTimeout(() => document.getElementById('input-editar-nombre-obra').focus(), 0);
+    }
+
+    function cerrarModalEditarObra() {
+        document.getElementById('modal-editar-obra').classList.remove('active');
+    }
+
+    document.getElementById('modal-editar-obra').addEventListener('click', function (e) {
+        if (e.target === this) cerrarModalEditarObra();
+    });
+
+    function abrirModalEliminarObra() {
+        document.getElementById('modal-eliminar-obra').classList.add('active');
+    }
+
+    function cerrarModalEliminarObra() {
+        document.getElementById('modal-eliminar-obra').classList.remove('active');
+    }
+
+    document.getElementById('modal-eliminar-obra').addEventListener('click', function (e) {
+        if (e.target === this) cerrarModalEliminarObra();
+    });
+
+    @if($errors->any())
+    abrirModalEditarObra();
+    @endif
+</script>
 </body>
 </html>

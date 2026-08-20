@@ -16,6 +16,7 @@ class ObraTcController extends Controller
         $obrasTc = ObraTc::whereHas('directorios', function ($query) use ($usuarioId) {
                 $query->where('usuario_id', $usuarioId);
             })
+            ->where('estado', '!=', 2)
             ->orderBy('descripcion')
             ->get();
 
@@ -34,6 +35,10 @@ class ObraTcController extends Controller
 
         if (! $enDirectorio) {
             return redirect()->route('home')->with('error', 'No tenés acceso a esta obra.');
+        }
+
+        if ($obraTc->estado == 2) {
+            return redirect()->route('trabajo_campo.index')->with('error', 'Esta obra fue eliminada.');
         }
 
         $pendientesPlanos = Plano::where('obra_id', $obraTc->id)
@@ -72,5 +77,23 @@ class ObraTcController extends Controller
         }
 
         return redirect()->route('trabajo_campo.index')->with('success', 'Obra creada correctamente.');
+    }
+
+    public function update(Request $request, ObraTc $obraTc)
+    {
+        $request->validate([
+            'nombre' => 'required|string|max:255',
+        ]);
+
+        $obraTc->update(['descripcion' => $request->nombre]);
+
+        return redirect()->route('obras_tc.index', $obraTc->id)->with('success', 'Obra actualizada correctamente.');
+    }
+
+    public function destroy(ObraTc $obraTc)
+    {
+        $obraTc->update(['estado' => 2]);
+
+        return redirect()->route('trabajo_campo.index')->with('success', 'Obra eliminada correctamente.');
     }
 }

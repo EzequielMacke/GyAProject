@@ -471,6 +471,12 @@ Route::middleware('permiso:tra_cam,ver')->group(function () {
 Route::middleware('permiso:obr_tc,agregar')->group(function () {
     Route::post('/trabajo-campo', [ObraTcController::class, 'store'])->name('trabajo_campo.store');
 });
+Route::middleware('permiso:obr_tc,editar')->group(function () {
+    Route::patch('/trabajo-campo/{obraTc}', [ObraTcController::class, 'update'])->name('obras_tc.update');
+});
+Route::middleware('permiso:obr_tc,eliminar')->group(function () {
+    Route::delete('/trabajo-campo/{obraTc}', [ObraTcController::class, 'destroy'])->name('obras_tc.destroy');
+});
 Route::middleware('permiso:dir_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/directorio', [DirectorioTcController::class, 'index'])->name('directorio_tc.index');
 });
