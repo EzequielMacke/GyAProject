@@ -1,3 +1,13 @@
+<link rel="manifest" href="{{ asset('manifest.json') }}">
+<meta name="theme-color" content="#2a6fdb">
+<link rel="apple-touch-icon" href="{{ asset('img/pwa/icon-192.png') }}">
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('{{ asset('sw.js') }}');
+        });
+    }
+</script>
 <link rel="stylesheet" href="{{ asset('vendor/adminlte/dist/css/adminlte.min.css') }}">
 <link rel="stylesheet" href="{{ asset('vendor/fontawesome-free/css/all.min.css') }}">
 <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
