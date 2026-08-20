@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DirectorioTc;
+use App\Models\FotoTc;
 use App\Models\ObraTc;
 use App\Models\Plano;
 use App\Models\PlanoActividad;
@@ -227,12 +228,24 @@ class PlanoController extends Controller
                 if ($trazos->has($item['id'])) continue; // ya estaba (reintento de un guardado anterior)
                 $trazos->put($item['id'], $item);
                 $registros[] = $this->filaActividad($plano->id, $usuarioId, 'agregar', $item, $ahora);
+
+                if (($item['tool'] ?? null) === 'foto') {
+                    foreach ($item['fotos'] ?? [] as $foto) {
+                        $this->registrarFotoTc($plano, $item, $foto, $usuarioId);
+                    }
+                }
             }
 
             foreach ($idsEliminados as $id) {
                 if (! $trazos->has($id)) continue; // ya lo había borrado otro guardado
                 $item = $trazos->pull($id);
                 $registros[] = $this->filaActividad($plano->id, $usuarioId, 'eliminar', $item, $ahora);
+
+                if (! empty($item['fotos'])) {
+                    FotoTc::where('plano_tc_id', $plano->id)
+                        ->whereIn('archivo', $item['fotos'])
+                        ->delete();
+                }
             }
 
             foreach ($movidos as $item) {
@@ -259,6 +272,15 @@ class PlanoController extends Controller
                 )));
                 $trazos->put($cambio['id'], $item);
 
+                foreach ($fotosAgregadas as $foto) {
+                    $this->registrarFotoTc($plano, $item, $foto, $usuarioId);
+                }
+                if (! empty($fotosEliminadas)) {
+                    FotoTc::where('plano_tc_id', $plano->id)
+                        ->whereIn('archivo', $fotosEliminadas)
+                        ->delete();
+                }
+
                 if (! empty($fotosAgregadas)) {
                     $registros[] = $this->filaActividad($plano->id, $usuarioId, 'agregar_foto', $item, $ahora);
                 }
@@ -282,6 +304,25 @@ class PlanoController extends Controller
         }
 
         return response()->json(['success' => true, 'estado' => $estadoFinal]);
+    }
+
+    /**
+     * Para el tool "foto" (pin de fotografía suelto) no hay una
+     * clasificación de daño asociada, así que se usa la etiqueta que le
+     * haya puesto el usuario. Para el resto de las herramientas (fisura,
+     * corrosión, etc.) la clasificación es el tool en sí.
+     */
+    private function registrarFotoTc(Plano $plano, array $item, string $foto, ?int $usuarioId): void
+    {
+        $tool = $item['tool'] ?? null;
+
+        FotoTc::create([
+            'obra_tc_id' => $plano->obra_id,
+            'plano_tc_id' => $plano->id,
+            'clasificacion' => $tool === 'foto' ? ($item['etiqueta'] ?? null) : $tool,
+            'archivo' => $foto,
+            'usuario_id' => $usuarioId,
+        ]);
     }
 
     private function filaActividad(int $planoId, ?int $usuarioId, string $accion, array $item, string $fecha): array

@@ -31,6 +31,7 @@ use App\Http\Controllers\BibliografiaController;
 use App\Http\Controllers\PlantillaController;
 use App\Http\Controllers\ObraTcController;
 use App\Http\Controllers\DirectorioTcController;
+use App\Http\Controllers\GaleriaTcController;
 use App\Http\Controllers\PlanoController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -478,6 +479,8 @@ Route::middleware('permiso:dir_tc,agregar')->group(function () {
 });
 Route::middleware('permiso:pla_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'index'])->name('planos_tc.index');
+    Route::get('/trabajo-campo/{obraTc}/galeria', [GaleriaTcController::class, 'index'])->name('galeria_tc.index');
+    Route::post('/trabajo-campo/{obraTc}/galeria/descargar', [GaleriaTcController::class, 'descargar'])->name('galeria_tc.descargar');
 });
 Route::middleware(['permiso:pla_tc,ver', 'permiso:ano_pla,ver'])->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos/{plano}', [PlanoController::class, 'show'])
