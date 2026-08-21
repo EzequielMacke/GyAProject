@@ -114,6 +114,46 @@
         .btn-cancel { height: 36px; padding: 0 1rem; border-radius: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; border: 1.5px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.14s; }
         .btn-cancel:hover { background: var(--surface2); }
 
+        /* ── MODAL SELECCIÓN DE USUARIOS ── */
+        .modal-automatico {
+            display: flex; flex-direction: column;
+            height: 560px; max-height: 85vh;
+        }
+        #form-automatico { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+        .modal-automatico .modal-body { overflow-y: auto; flex: 1; min-height: 0; }
+        .modal-automatico .modal-foot { flex-shrink: 0; border-top: 1.5px solid var(--border); }
+        .modal-search { position: relative; margin-bottom: 1rem; }
+        .modal-search i { position: absolute; left: 0.78rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.72rem; pointer-events: none; }
+        .modal-search input {
+            width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem;
+            background: var(--surface); border: 1.5px solid var(--border);
+            border-radius: 0.55rem; padding: 0.55rem 0.85rem 0.55rem 2.1rem; color: var(--text);
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .modal-search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
+        .user-check-list { display: flex; flex-direction: column; gap: 0.35rem; }
+        .user-check {
+            display: flex; align-items: center; gap: 0.65rem;
+            padding: 0.55rem 0.7rem;
+            border: 1.5px solid var(--border);
+            border-radius: 0.55rem;
+            cursor: pointer;
+            transition: border-color 0.14s, background 0.14s;
+        }
+        .user-check:hover { background: var(--surface2); }
+        .user-check.checked { border-color: var(--accent); background: var(--accent-s); }
+        .user-check input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+        .user-check .user-avatar {
+            width: 28px; height: 28px; border-radius: 0.4rem;
+            background: var(--accent-s); color: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.65rem; font-weight: 700; flex-shrink: 0;
+        }
+        .user-check .user-name { font-size: 0.84rem; font-weight: 600; color: var(--text); }
+        .user-check.hidden { display: none; }
+        .modal-empty { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: 0.83rem; }
+        .modal-empty i { display: block; font-size: 1.4rem; margin-bottom: 0.5rem; opacity: 0.3; }
+
         /* ── LIST ── */
         .list-wrap { background: var(--surface); border: 1.5px solid var(--border); border-radius: 0.85rem; overflow: hidden; }
         .list-header {
@@ -194,6 +234,11 @@
                             <i class="fas fa-search"></i>
                             <input type="text" class="search-bar" id="buscador" placeholder="Buscar obra..." autocomplete="off">
                         </div>
+                        @permiso('tra_cam', 'eliminar')
+                        <button type="button" class="btn" onclick="abrirModalAutomatico()">
+                            <i class="fas fa-user-clock"></i> Usuarios automáticos
+                        </button>
+                        @endpermiso
                         @permiso('obr_tc', 'agregar')
                         <button type="button" class="btn btn-primary" onclick="abrirModalNuevaObra()">
                             <i class="fas fa-plus"></i> Nueva Obra
@@ -295,6 +340,63 @@
     </div>
 </div>
 
+@permiso('tra_cam', 'eliminar')
+{{-- ══════════════════════════════════════════════════════
+     MODAL USUARIOS AUTOMÁTICOS
+══════════════════════════════════════════════════════ --}}
+<div class="modal-overlay" id="modal-automatico">
+    <div class="modal-nuevo modal-automatico">
+        <div class="modal-head">
+            <div class="modal-head-title"><i class="fas fa-user-clock"></i> Usuarios automáticos</div>
+            <button class="modal-close" onclick="cerrarModalAutomatico()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <form id="form-automatico" method="POST" action="{{ route('trabajo_campo.directorioAutomatico.store') }}">
+            @csrf
+            @method('PATCH')
+
+            <div class="modal-body">
+                <p class="ph-sub" style="margin-bottom:1rem;">Estos usuarios se agregan solos al directorio de cada obra nueva que se crea.</p>
+                <div class="modal-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="automatico-search-input" placeholder="Buscar usuario…" autocomplete="off">
+                </div>
+
+                <div class="user-check-list" id="automatico-check-list">
+                    @forelse($usuariosDisponibles as $usuario)
+                    @php
+                        $nombreDisponible = $usuario->nombre_completo ?: $usuario->nombre;
+                        $marcado = $usuariosAutomaticos->contains($usuario->id);
+                    @endphp
+                    <label class="user-check {{ $marcado ? 'checked' : '' }}" data-search="{{ strtolower($nombreDisponible) }}">
+                        <input type="checkbox" name="usuarios[]" value="{{ $usuario->id }}" {{ $marcado ? 'checked' : '' }} onchange="this.closest('.user-check').classList.toggle('checked', this.checked);">
+                        <div class="user-avatar">{{ mb_strtoupper(mb_substr($nombreDisponible, 0, 2)) }}</div>
+                        <span class="user-name">{{ $nombreDisponible }}</span>
+                    </label>
+                    @empty
+                    <div class="modal-empty">
+                        <i class="fas fa-users"></i>
+                        No hay usuarios disponibles.
+                    </div>
+                    @endforelse
+                    <div class="modal-empty" id="automatico-sin-resultados" style="display:none;">
+                        <i class="fas fa-search"></i>
+                        Sin resultados para tu búsqueda.
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-foot">
+                <button type="button" class="btn-cancel" onclick="cerrarModalAutomatico()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endpermiso
+
 <script>
     function abrirModalNuevaObra() {
         document.getElementById('modal-nuevo').classList.add('active');
@@ -339,6 +441,32 @@
         });
         const sinResultados = document.getElementById('sin-resultados');
         if (sinResultados) sinResultados.style.display = visibles === 0 ? '' : 'none';
+    });
+
+    function abrirModalAutomatico() {
+        document.getElementById('modal-automatico').classList.add('active');
+        document.getElementById('automatico-search-input').focus();
+    }
+
+    function cerrarModalAutomatico() {
+        document.getElementById('modal-automatico').classList.remove('active');
+    }
+
+    document.getElementById('automatico-search-input')?.addEventListener('input', function () {
+        const q = this.value.toLowerCase().trim();
+        const opciones = document.querySelectorAll('#automatico-check-list .user-check');
+        let vis = 0;
+        opciones.forEach(op => {
+            const show = op.dataset.search.includes(q);
+            op.classList.toggle('hidden', !show);
+            if (show) vis++;
+        });
+        const sinResultados = document.getElementById('automatico-sin-resultados');
+        if (sinResultados) sinResultados.style.display = (!vis && opciones.length) ? '' : 'none';
+    });
+
+    document.getElementById('modal-automatico')?.addEventListener('click', function (e) {
+        if (e.target === this) cerrarModalAutomatico();
     });
 </script>
 </body>

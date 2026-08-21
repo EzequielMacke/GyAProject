@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\DirectorioTc;
+use App\Models\DirectorioTcAutomatico;
 use App\Models\ObraTc;
 use App\Models\Plano;
+use App\Models\Usuarios;
+use App\Services\PermisoService;
 use Illuminate\Http\Request;
 
 class ObraTcController extends Controller
@@ -20,7 +23,20 @@ class ObraTcController extends Controller
             ->orderBy('descripcion')
             ->get();
 
-        return view('trabajo_campo.index', compact('obrasTc'));
+        $puedeGestionarAutomatico = app(PermisoService::class)->puede('tra_cam', 'eliminar');
+        $usuariosDisponibles = collect();
+        $usuariosAutomaticos = collect();
+
+        if ($puedeGestionarAutomatico) {
+            $usuariosDisponibles = Usuarios::where('estado', 1)
+                ->where('id', '!=', 1)
+                ->orderBy('nombre')
+                ->get();
+
+            $usuariosAutomaticos = DirectorioTcAutomatico::pluck('usuario_id');
+        }
+
+        return view('trabajo_campo.index', compact('obrasTc', 'usuariosDisponibles', 'usuariosAutomaticos'));
     }
 
     public function show($id)
@@ -73,6 +89,16 @@ class ObraTcController extends Controller
             DirectorioTc::create([
                 'obra_tc_id' => $obraTc->id,
                 'usuario_id' => 1,
+            ]);
+        }
+
+        $automaticos = DirectorioTcAutomatico::pluck('usuario_id');
+        foreach ($automaticos as $autoUsuarioId) {
+            if (in_array($autoUsuarioId, [$usuarioId, 1])) continue;
+
+            DirectorioTc::create([
+                'obra_tc_id' => $obraTc->id,
+                'usuario_id' => $autoUsuarioId,
             ]);
         }
 

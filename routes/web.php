@@ -31,6 +31,7 @@ use App\Http\Controllers\BibliografiaController;
 use App\Http\Controllers\PlantillaController;
 use App\Http\Controllers\ObraTcController;
 use App\Http\Controllers\DirectorioTcController;
+use App\Http\Controllers\DirectorioTcAutomaticoController;
 use App\Http\Controllers\GaleriaTcController;
 use App\Http\Controllers\PlanoController;
 use Illuminate\Support\Facades\Artisan;
@@ -468,6 +469,9 @@ Route::middleware('permiso:tra_cam,ver')->group(function () {
     Route::get('/trabajo-campo', [ObraTcController::class, 'index'])->name('trabajo_campo.index');
     Route::get('/trabajo-campo/{id}', [ObraTcController::class, 'show'])->name('obras_tc.index');
 });
+Route::middleware('permiso:tra_cam,eliminar')->group(function () {
+    Route::patch('/trabajo-campo/directorio-automatico', [DirectorioTcAutomaticoController::class, 'store'])->name('trabajo_campo.directorioAutomatico.store');
+});
 Route::middleware('permiso:obr_tc,agregar')->group(function () {
     Route::post('/trabajo-campo', [ObraTcController::class, 'store'])->name('trabajo_campo.store');
 });
@@ -482,6 +486,9 @@ Route::middleware('permiso:dir_tc,ver')->group(function () {
 });
 Route::middleware('permiso:dir_tc,agregar')->group(function () {
     Route::post('/trabajo-campo/{obraTc}/directorio', [DirectorioTcController::class, 'store'])->name('directorio_tc.store');
+});
+Route::middleware('permiso:dir_tc,eliminar')->group(function () {
+    Route::delete('/trabajo-campo/{obraTc}/directorio/{directorio}', [DirectorioTcController::class, 'destroy'])->name('directorio_tc.destroy');
 });
 Route::middleware('permiso:pla_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'index'])->name('planos_tc.index');
@@ -513,6 +520,9 @@ Route::middleware('permiso:pla_tc,editar')->group(function () {
     Route::patch('/trabajo-campo/{obraTc}/planos/{plano}/nombre', [PlanoController::class, 'actualizarPlano'])
         ->where('plano', '[0-9]+')
         ->name('planos_tc.plano.update');
+    Route::patch('/trabajo-campo/{obraTc}/planos/{plano}/mover', [PlanoController::class, 'moverPlano'])
+        ->where('plano', '[0-9]+')
+        ->name('planos_tc.plano.mover');
 });
 Route::middleware('permiso:pla_tc,eliminar')->group(function () {
     Route::delete('/trabajo-campo/{obraTc}/planos/{plano}', [PlanoController::class, 'eliminarPlano'])

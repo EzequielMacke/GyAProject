@@ -239,6 +239,15 @@
 
         .date-cell i { font-size: 0.62rem; }
 
+        .row-actions { width: 48px; text-align: right; }
+        .row-delete-btn {
+            background: none; border: none; cursor: pointer;
+            color: var(--muted); font-size: 0.8rem;
+            padding: 0.4rem; border-radius: 0.4rem;
+            transition: color 0.14s, background 0.14s;
+        }
+        .row-delete-btn:hover { color: #c0392b; background: #fff0f0; }
+
         /* empty row */
         .empty-row td {
             text-align: center;
@@ -432,6 +441,10 @@
 
                 <div class="dir-layout">
 
+                    @php
+                        $puedeEliminarDirectorio = app(\App\Services\PermisoService::class)->puede('dir_tc', 'eliminar');
+                    @endphp
+
                     <div class="dir-table-wrap">
                         <table class="dir-table" id="directorio-table">
                             <thead>
@@ -439,6 +452,9 @@
                                     <th class="row-num">#</th>
                                     <th>Usuario</th>
                                     <th>Fecha</th>
+                                    @if($puedeEliminarDirectorio)
+                                    <th></th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -461,10 +477,17 @@
                                             {{ $directorio->created_at->format('d/m/Y') }}
                                         </div>
                                     </td>
+                                    @if($puedeEliminarDirectorio)
+                                    <td class="row-actions">
+                                        <button type="button" class="row-delete-btn" title="Eliminar del directorio" onclick="abrirModalEliminarDirectorio({{ $directorio->id }}, @js($nombreUsuario))">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                    @endif
                                 </tr>
                                 @empty
                                 <tr class="empty-row">
-                                    <td colspan="3">
+                                    <td colspan="{{ $puedeEliminarDirectorio ? 4 : 3 }}">
                                         <i class="fas fa-users"></i>
                                         No hay usuarios en el directorio.
                                     </td>
@@ -472,7 +495,7 @@
                                 @endforelse
 
                                 <tr class="no-results-row" id="no-results">
-                                    <td colspan="3">
+                                    <td colspan="{{ $puedeEliminarDirectorio ? 4 : 3 }}">
                                         <i class="fas fa-search"></i>
                                         Sin resultados para tu búsqueda.
                                     </td>
@@ -572,6 +595,37 @@
     </div>
 </div>
 
+@if($puedeEliminarDirectorio)
+{{-- ══════════════════════════════════════════════════════
+     MODAL CONFIRMAR ELIMINACIÓN
+══════════════════════════════════════════════════════ --}}
+<div class="modal-overlay" id="modal-eliminar-directorio">
+    <div class="modal-nuevo" style="max-width:400px; height:auto;">
+        <div class="modal-head">
+            <div class="modal-head-title"><i class="fas fa-trash" style="color:#c0392b;"></i> Eliminar del directorio</div>
+            <button class="modal-close" onclick="cerrarModalEliminarDirectorio()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="modal-body">
+            <p style="font-size:0.875rem; color:var(--text2); line-height:1.5;">
+                ¿Eliminar a <strong id="eliminar-directorio-nombre" style="color:var(--text);"></strong> del directorio de esta obra? Va a perder el acceso.
+            </p>
+        </div>
+
+        <form id="form-eliminar-directorio" method="POST" action="">
+            @csrf
+            @method('DELETE')
+            <div class="modal-foot">
+                <button type="button" class="btn-cancel" onclick="cerrarModalEliminarDirectorio()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="background:#c0392b; border-color:#c0392b;">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const input = document.getElementById('search');
@@ -623,6 +677,24 @@ document.getElementById('modal-agregar').addEventListener('click', function (e) 
 
 @if($errors->any())
 abrirModalAgregar();
+@endif
+
+@if($puedeEliminarDirectorio)
+const rutaEliminarDirectorioBase = "{{ route('directorio_tc.destroy', [$obraTc->id, '__ID__']) }}";
+
+function abrirModalEliminarDirectorio(id, nombreUsuario) {
+    document.getElementById('form-eliminar-directorio').action = rutaEliminarDirectorioBase.replace('__ID__', id);
+    document.getElementById('eliminar-directorio-nombre').textContent = nombreUsuario;
+    document.getElementById('modal-eliminar-directorio').classList.add('active');
+}
+
+function cerrarModalEliminarDirectorio() {
+    document.getElementById('modal-eliminar-directorio').classList.remove('active');
+}
+
+document.getElementById('modal-eliminar-directorio').addEventListener('click', function (e) {
+    if (e.target === this) cerrarModalEliminarDirectorio();
+});
 @endif
 </script>
 </body>

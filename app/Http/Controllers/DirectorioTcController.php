@@ -52,4 +52,15 @@ class DirectorioTcController extends Controller
 
         return redirect()->route('directorio_tc.index', $obraTc->id)->with('success', 'Usuarios agregados al directorio exitosamente.');
     }
+
+    public function destroy(ObraTc $obraTc, DirectorioTc $directorio)
+    {
+        if ($directorio->obra_tc_id !== $obraTc->id) {
+            abort(404);
+        }
+
+        $directorio->delete();
+
+        return redirect()->route('directorio_tc.index', $obraTc->id)->with('success', 'Usuario eliminado del directorio correctamente.');
+    }
 }

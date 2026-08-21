@@ -72,6 +72,7 @@
         .alert { padding: 0.75rem 1rem; border-radius: 0.55rem; font-size: 0.83rem; font-weight: 500; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
         .alert-success { background: #e5f6f0; color: #1e9166; border: 1px solid #b6e8d6; }
         .alert-danger  { background: #fff0f0; color: #c0392b; border: 1px solid #f5c2c2; }
+        .alert-offline { background: var(--accent-s); color: var(--accent-b); border: 1px solid #b9d3f5; }
 
         /* ── BUSCADOR ── */
         .search-wrap {
@@ -346,6 +347,11 @@
                         @endif
                         @endpermiso
                         @endpermiso
+                        @if(!$planos->isEmpty())
+                        <button type="button" class="btn" id="btn-descargar-offline" onclick="descargarPlanosOffline()">
+                            <i class="fas fa-cloud-download-alt"></i> Descargar para trabajar sin conexión
+                        </button>
+                        @endif
                         @permiso('pla_tc', 'agregar')
                         <button type="button" class="btn btn-primary" onclick="abrirModalNuevoPlano()">
                             <i class="fas fa-plus"></i> Agregar planos
@@ -373,6 +379,11 @@
                     <i class="fas fa-exclamation-circle"></i> {{ $errors->first() }}
                 </div>
                 @endif
+
+                <div class="alert alert-offline" id="alert-descarga-offline" style="display:none">
+                    <i class="fas fa-cloud-download-alt"></i>
+                    <span id="texto-descarga-offline"></span>
+                </div>
 
                 <div class="content-layout">
                 <div class="content-main">
@@ -431,6 +442,9 @@
                                     @endif
                                     <div class="pl-actions">
                                         @permiso('pla_tc', 'editar')
+                                        <button type="button" class="grupo-edit-btn" title="Mover a otro grupo/subgrupo" onclick="event.preventDefault(); event.stopPropagation(); abrirModalMoverPlano({{ $plano->id }}, @js($plano->grupo->descripcion ?? ''), @js($plano->subgrupo->descripcion ?? ''))">
+                                            <i class="fas fa-arrows-alt"></i>
+                                        </button>
                                         <button type="button" class="grupo-edit-btn" title="Editar plano" onclick="event.preventDefault(); event.stopPropagation(); abrirModalEditarPlano({{ $plano->id }}, @js($plano->descripcion ?? ''))">
                                             <i class="fas fa-pen"></i>
                                         </button>
@@ -451,6 +465,9 @@
                                     @endif
                                     <div class="pl-actions">
                                         @permiso('pla_tc', 'editar')
+                                        <button type="button" class="grupo-edit-btn" title="Mover a otro grupo/subgrupo" onclick="event.preventDefault(); event.stopPropagation(); abrirModalMoverPlano({{ $plano->id }}, @js($plano->grupo->descripcion ?? ''), @js($plano->subgrupo->descripcion ?? ''))">
+                                            <i class="fas fa-arrows-alt"></i>
+                                        </button>
                                         <button type="button" class="grupo-edit-btn" title="Editar plano" onclick="event.preventDefault(); event.stopPropagation(); abrirModalEditarPlano({{ $plano->id }}, @js($plano->descripcion ?? ''))">
                                             <i class="fas fa-pen"></i>
                                         </button>
@@ -487,7 +504,7 @@
                         @forelse($actividad as $item)
                         <div class="activity-item">
                             <div class="activity-icon">
-                                <i class="fas {{ match($item['accion']) { 'subida' => 'fa-upload', 'eliminacion' => 'fa-trash', default => 'fa-pen' } }}"></i>
+                                <i class="fas {{ match($item['accion']) { 'subida' => 'fa-upload', 'eliminacion' => 'fa-trash', 'mover_plano' => 'fa-arrows-alt', default => 'fa-pen' } }}"></i>
                             </div>
                             <div>
                                 <div class="activity-text">
@@ -504,6 +521,9 @@
                                             @break
                                         @case('plano')
                                             editó el plano {{ $item['detalle'] }}
+                                            @break
+                                        @case('mover_plano')
+                                            movió el plano {{ $item['detalle'] }}
                                             @break
                                         @case('eliminacion')
                                             eliminó el plano <strong>{{ $item['detalle'] }}</strong>
@@ -633,6 +653,52 @@
                 <button type="button" class="btn-cancel" onclick="cerrarModalEditarSubgrupo()">Cancelar</button>
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════
+     MODAL MOVER PLANO (cambiar grupo/subgrupo)
+══════════════════════════════════════════════════════ --}}
+<div class="modal-overlay" id="modal-mover-plano">
+    <div class="modal-nuevo" style="height:auto;">
+        <div class="modal-head">
+            <div class="modal-head-title"><i class="fas fa-arrows-alt"></i> Mover plano</div>
+            <button class="modal-close" onclick="cerrarModalMoverPlano()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <form id="form-mover-plano" method="POST" action="">
+            @csrf
+            @method('PATCH')
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="input-mover-grupo">Grupo <span>*</span></label>
+                    <div class="grupo-autocomplete" id="mover-grupo-autocomplete">
+                        <input type="text" id="input-mover-grupo" name="nombre_grupo" class="form-control" placeholder="Ej: Planta baja" autocomplete="off" required>
+                        <div class="grupo-sugerencias" id="mover-grupo-sugerencias">
+                            @foreach($gruposExistentes as $grupoExistente)
+                            <div class="grupo-sugerencia" data-valor="{{ $grupoExistente }}">{{ $grupoExistente }}</div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" for="input-mover-subgrupo">Subgrupo <span>*</span></label>
+                    <div class="grupo-autocomplete" id="mover-subgrupo-autocomplete">
+                        <input type="text" id="input-mover-subgrupo" name="nombre_subgrupo" class="form-control" placeholder="Ej: Columnas" autocomplete="off" required>
+                        <div class="grupo-sugerencias" id="mover-subgrupo-sugerencias"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-foot">
+                <button type="button" class="btn-cancel" onclick="cerrarModalMoverPlano()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-arrows-alt"></i> Mover
                 </button>
             </div>
         </form>
@@ -938,6 +1004,84 @@
         if (e.target === this) cerrarModalEditarPlano();
     });
 
+    /* ─── Mover plano (cambiar grupo/subgrupo) ─────────────── */
+    const SUBGRUPOS_DATA = @json($subgruposExistentes);
+    const rutaMoverPlanoBase = "{{ route('planos_tc.plano.mover', [$obraTc->id, '__ID__']) }}";
+
+    function abrirModalMoverPlano(id, grupoActual, subgrupoActual) {
+        document.getElementById('form-mover-plano').action = rutaMoverPlanoBase.replace('__ID__', id);
+        document.getElementById('input-mover-grupo').value = grupoActual || '';
+        document.getElementById('input-mover-subgrupo').value = subgrupoActual || '';
+        document.getElementById('modal-mover-plano').classList.add('active');
+        setTimeout(() => document.getElementById('input-mover-grupo').focus(), 0);
+    }
+
+    function cerrarModalMoverPlano() {
+        document.getElementById('modal-mover-plano').classList.remove('active');
+        document.getElementById('mover-grupo-autocomplete').classList.remove('open');
+        document.getElementById('mover-subgrupo-autocomplete').classList.remove('open');
+    }
+
+    document.getElementById('modal-mover-plano').addEventListener('click', function (e) {
+        if (e.target === this) cerrarModalMoverPlano();
+    });
+
+    function inicializarAutocompleteMover(inputEl, wrapEl, sugerenciasWrapEl, obtenerOpciones) {
+        function render() {
+            const q = inputEl.value.trim().toLowerCase();
+            const opciones = obtenerOpciones();
+            const coincidencias = opciones.filter(op => q.length === 0 || op.toLowerCase().includes(q));
+
+            sugerenciasWrapEl.innerHTML = coincidencias.map(op =>
+                `<div class="grupo-sugerencia" data-valor="${op.replace(/"/g, '&quot;')}">${op}</div>`
+            ).join('');
+
+            sugerenciasWrapEl.querySelectorAll('.grupo-sugerencia').forEach(el => {
+                el.addEventListener('click', () => {
+                    inputEl.value = el.dataset.valor;
+                    wrapEl.classList.remove('open');
+                    inputEl.dispatchEvent(new Event('input'));
+                });
+            });
+
+            wrapEl.classList.toggle('open', coincidencias.length > 0);
+        }
+
+        inputEl.addEventListener('input', render);
+        inputEl.addEventListener('focus', render);
+    }
+
+    const inputMoverGrupo = document.getElementById('input-mover-grupo');
+    const inputMoverSubgrupo = document.getElementById('input-mover-subgrupo');
+
+    inicializarAutocompleteMover(
+        inputMoverGrupo,
+        document.getElementById('mover-grupo-autocomplete'),
+        document.getElementById('mover-grupo-sugerencias'),
+        () => @json($gruposExistentes)
+    );
+
+    inicializarAutocompleteMover(
+        inputMoverSubgrupo,
+        document.getElementById('mover-subgrupo-autocomplete'),
+        document.getElementById('mover-subgrupo-sugerencias'),
+        () => {
+            const grupoActual = inputMoverGrupo.value.trim().toLowerCase();
+            const delGrupo = SUBGRUPOS_DATA.filter(s => s.grupo.toLowerCase() === grupoActual).map(s => s.subgrupo);
+            const base = delGrupo.length > 0 ? delGrupo : SUBGRUPOS_DATA.map(s => s.subgrupo);
+            return [...new Set(base)];
+        }
+    );
+
+    document.addEventListener('click', function (e) {
+        if (!document.getElementById('mover-grupo-autocomplete').contains(e.target)) {
+            document.getElementById('mover-grupo-autocomplete').classList.remove('open');
+        }
+        if (!document.getElementById('mover-subgrupo-autocomplete').contains(e.target)) {
+            document.getElementById('mover-subgrupo-autocomplete').classList.remove('open');
+        }
+    });
+
     /* ─── Eliminar plano ───────────────────────────────────── */
     const rutaEliminarPlanoBase = "{{ route('planos_tc.plano.destroy', [$obraTc->id, '__ID__']) }}";
 
@@ -947,6 +1091,59 @@
         const form = document.getElementById('form-eliminar-plano');
         form.action = rutaEliminarPlanoBase.replace('__ID__', id);
         form.submit();
+    }
+
+    /* ─── Descargar planos para trabajar sin conexión ──────────
+       Precachea la página de cada plano y su PDF, para no depender de
+       entrar uno por uno con señal antes de ir a una zona sin cobertura.
+       Los nombres de cache tienen que coincidir con los de public/sw.js
+       (CACHE_VERSION) — si se cambia uno, hay que cambiar el otro. */
+    const PLANOS_PARA_OFFLINE = @json($planosParaOffline ?? []);
+    const CACHE_PAGINAS_OFFLINE = 'gya-paginas-v1';
+    const CACHE_ESTATICO_OFFLINE = 'gya-estatico-v1';
+
+    async function guardarEnCache(nombreCache, url) {
+        const respuesta = await fetch(url, { credentials: 'same-origin' });
+        if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+        const cache = await caches.open(nombreCache);
+        await cache.put(url, respuesta);
+    }
+
+    async function descargarPlanosOffline() {
+        if (!('caches' in window)) {
+            alert('Este navegador no permite guardar páginas para uso sin conexión.');
+            return;
+        }
+        if (!PLANOS_PARA_OFFLINE.length) return;
+
+        const boton = document.getElementById('btn-descargar-offline');
+        const alerta = document.getElementById('alert-descarga-offline');
+        const texto = document.getElementById('texto-descarga-offline');
+
+        boton.disabled = true;
+        alerta.style.display = 'flex';
+
+        let listos = 0;
+        let fallidos = 0;
+        const total = PLANOS_PARA_OFFLINE.length;
+
+        for (const plano of PLANOS_PARA_OFFLINE) {
+            texto.textContent = `Descargando "${plano.descripcion}"… (${listos + fallidos + 1} / ${total})`;
+            try {
+                await guardarEnCache(CACHE_PAGINAS_OFFLINE, plano.pagina);
+                await guardarEnCache(CACHE_ESTATICO_OFFLINE, plano.pdf);
+                listos++;
+            } catch (e) {
+                fallidos++;
+            }
+        }
+
+        boton.disabled = false;
+        texto.textContent = fallidos === 0
+            ? `Listo: ${listos} de ${total} planos guardados para trabajar sin conexión.`
+            : `${listos} de ${total} planos guardados; ${fallidos} no se pudieron descargar (probá de nuevo con mejor señal).`;
+
+        setTimeout(() => { alerta.style.display = 'none'; }, 6000);
     }
 </script>
 </body>

@@ -122,6 +122,26 @@ class PlanoController extends Controller
             ->pluck('descripcion')
             ->unique();
 
+        $subgruposExistentes = PlanoSubgrupo::where('obra_id', $obraTc->id)
+            ->with('grupo')
+            ->orderBy('descripcion')
+            ->get()
+            ->map(fn (PlanoSubgrupo $s) => [
+                'grupo' => $s->grupo->descripcion ?? '',
+                'subgrupo' => $s->descripcion,
+            ])
+            ->values();
+
+        /* Para el botón "Descargar para trabajar sin conexión": la URL de
+           la página de cada plano y la de su PDF, para que el frontend
+           las pida una por una y el Service Worker las deje cacheadas
+           antes de perder señal (ver planos_tc/index.blade.php). */
+        $planosParaOffline = $planos->map(fn (Plano $p) => [
+            'descripcion' => $p->descripcion,
+            'pagina' => route('planos_tc.plano', [$obraTc->id, $p->id]),
+            'pdf' => Storage::url('planos/' . $p->archivo),
+        ])->values();
+
         $actividadSubidas = $planos->map(function (Plano $plano) {
             $usuarioActividad = $plano->usuario;
 
@@ -154,7 +174,7 @@ class PlanoController extends Controller
             ->take(40)
             ->values();
 
-        return view('planos_tc.index', compact('obraTc', 'planos', 'arbol', 'pendientesCount', 'gruposExistentes', 'actividad'));
+        return view('planos_tc.index', compact('obraTc', 'planos', 'arbol', 'pendientesCount', 'gruposExistentes', 'subgruposExistentes', 'actividad', 'planosParaOffline'));
     }
 
     public function show(ObraTc $obraTc, Plano $plano)
@@ -359,10 +379,18 @@ class PlanoController extends Controller
         return response()->json($actividades);
     }
 
+    /**
+     * El cliente manda opcionalmente un "id" propio (el mismo id local que
+     * usa para la foto pendiente en IndexedDB): si una subida se corta a
+     * mitad de camino por falta de señal y el cliente reintenta con el
+     * mismo id, el archivo se pisa en vez de duplicarse. Sin id (llamadas
+     * viejas) se sigue generando un nombre aleatorio como antes.
+     */
     public function subirFoto(Request $request, ObraTc $obraTc, Plano $plano)
     {
         $request->validate([
             'foto' => 'required|image|max:10240',
+            'id' => 'nullable|string|regex:/^[a-zA-Z0-9_-]{1,64}$/',
         ]);
 
         $carpeta = "fotos_planos/{$plano->id}";
@@ -370,7 +398,13 @@ class PlanoController extends Controller
             Storage::disk('public')->makeDirectory($carpeta);
         }
 
-        $ruta = $request->file('foto')->store($carpeta, 'public');
+        if ($request->filled('id')) {
+            $extension = $request->file('foto')->getClientOriginalExtension() ?: 'jpg';
+            $nombreArchivo = $request->input('id') . '.' . $extension;
+            $ruta = $request->file('foto')->storeAs($carpeta, $nombreArchivo, 'public');
+        } else {
+            $ruta = $request->file('foto')->store($carpeta, 'public');
+        }
 
         return response()->json(['url' => Storage::url($ruta)]);
     }
@@ -514,6 +548,46 @@ class PlanoController extends Controller
         }
 
         return redirect()->route('planos_tc.index', $obraTc->id)->with('success', 'Plano actualizado correctamente.');
+    }
+
+    public function moverPlano(Request $request, ObraTc $obraTc, Plano $plano)
+    {
+        if ($plano->obra_id !== $obraTc->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'nombre_grupo' => 'required|string|max:255',
+            'nombre_subgrupo' => 'required|string|max:255',
+        ]);
+
+        $usuarioId = session('usuario_id');
+        $grupoAnterior = $plano->grupo->descripcion ?? '-';
+        $subgrupoAnterior = $plano->subgrupo->descripcion ?? '-';
+
+        $grupo = PlanoGrupo::firstOrCreate(
+            ['obra_id' => $obraTc->id, 'descripcion' => $request->nombre_grupo],
+            ['usuario_id' => $usuarioId]
+        );
+
+        $subgrupo = PlanoSubgrupo::firstOrCreate(
+            ['obra_id' => $obraTc->id, 'grupo_id' => $grupo->id, 'descripcion' => $request->nombre_subgrupo],
+            ['usuario_id' => $usuarioId]
+        );
+
+        if ($grupoAnterior !== $grupo->descripcion || $subgrupoAnterior !== $subgrupo->descripcion) {
+            $plano->update(['grupo_id' => $grupo->id, 'subgrupo_id' => $subgrupo->id]);
+
+            PlanoTcActividad::create([
+                'obra_id' => $obraTc->id,
+                'usuario_id' => $usuarioId,
+                'accion' => 'mover_plano',
+                'detalle' => "{$plano->descripcion}: '{$grupoAnterior} / {$subgrupoAnterior}' → '{$grupo->descripcion} / {$subgrupo->descripcion}'",
+                'created_at' => now(),
+            ]);
+        }
+
+        return redirect()->route('planos_tc.index', $obraTc->id)->with('success', 'Plano movido correctamente.');
     }
 
     /**

@@ -129,6 +129,8 @@
         .estado-guardado.guardando .estado-guardado-punto { background: #2a6fdb; }
         .estado-guardado.error .estado-guardado-punto { background: #c0392b; }
         .estado-guardado.error { color: #e07a6f; }
+        .estado-guardado.local .estado-guardado-punto { background: #d9a441; }
+        .estado-guardado.local { color: #d9a441; }
 
         .capas-wrap, .escala-wrap, .preferencias-wrap, .actividad-wrap { position: relative; }
 
@@ -749,6 +751,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="{{ asset('js/plano-offline.js') }}"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -765,6 +768,7 @@
         /* Guardado en la base de datos: el estado ya guardado (si lo hay),
            las URLs de los endpoints y el token CSRF para poder mandar los
            fetch() de guardado/subida de fotos. */
+        const PLANO_ID = {{ (int) $plano->id }};
         const estadoGuardado = @json($estadoGuardado);
         const urlGuardarEstado = @json(route('planos_tc.guardarEstado', [$obraTc->id, $plano->id]));
         const urlSubirFoto = @json(route('planos_tc.subirFoto', [$obraTc->id, $plano->id]));
@@ -1319,12 +1323,29 @@
 
         /* Devuelve una copia serializable de estadoPlano (sin referencias a
            objetos Image, que no se pueden guardar como JSON) lista para
-           enviarse al backend. */
-        function serializarEstadoPlano() {
+           enviarse al backend.
+
+           `incluirPendientesLocales`: las fotos recién tomadas offline
+           viven primero como blobs en IndexedDB y se referencian en
+           item.fotos con el prefijo 'local:' hasta que se suben de
+           verdad (ver PlanoOffline / manejarArchivosFoto). Esas
+           referencias son solo para persistencia LOCAL (para sobrevivir
+           un cierre de la app antes de reconectar) y nunca deben viajar
+           al servidor: si se colara una 'local:<id>' en el payload de
+           guardarEstado, quedaría escrita tal cual en la base de datos.
+           Por eso el valor por defecto (usado por todo lo que va a la
+           red: guardado y estadoBase) las filtra; solo el guardado local
+           en IndexedDB pide incluirlas, para no perder el pin al recargar. */
+        function serializarEstadoPlano(incluirPendientesLocales = false) {
             return {
                 escalas: { ...estadoPlano.escalas },
                 trazos: estadoPlano.trazos.map(item => {
                     if (item.tipo === 'icono') {
+                        let fotos = item.fotos ? [...item.fotos] : null;
+                        if (!incluirPendientesLocales && fotos) {
+                            fotos = fotos.filter(f => !f.startsWith('local:'));
+                            if (fotos.length === 0) fotos = null;
+                        }
                         return {
                             id: item.id,
                             tipo: 'icono',
@@ -1343,7 +1364,7 @@
                                compararía el array contra sí mismo — nunca
                                detectaría el cambio y la edición de fotos no
                                se guardaría. */
-                            fotos: item.fotos ? [...item.fotos] : null,
+                            fotos,
                         };
                     }
                     if (item.tipo === 'texto') {
@@ -1530,6 +1551,35 @@
             aplicarEstadoRecibido(estadoGuardado || { escalas: {}, trazos: [] });
         }
 
+        /* Reinyecta lo que haya quedado guardado en IndexedDB (agregado
+           mientras no había conexión, o justo antes de que se cerrara la
+           app) y que el servidor todavía no conoce. Se llama después de
+           cargarEstadoGuardado(), así que estadoPlano.trazos ya tiene lo
+           que sí está confirmado; acá solo se agrega lo que falta, con el
+           mismo criterio de "no tocar lo que el servidor no conoce" que
+           usa aplicarEstadoRecibido. Lo agregado vuelve a quedar
+           pendiente de guardado (programarGuardado), así que el ciclo de
+           guardado normal se encarga de reintentarlo apenas haya red. */
+        async function fusionarEstadoLocalPendiente() {
+            const estadoLocal = await PlanoOffline?.leerEstadoLocal(PLANO_ID);
+            if (!estadoLocal?.trazos?.length) return;
+
+            const idsActuales = new Set(estadoPlano.trazos.map(t => t.id));
+            let huboCambios = false;
+
+            estadoLocal.trazos.forEach(item => {
+                if (idsActuales.has(item.id)) return;
+                estadoPlano.trazos.push(crearItemDesdeGuardado(item));
+                huboCambios = true;
+            });
+
+            if (!huboCambios) return;
+
+            sincronizarPanelCapas();
+            redibujarTrazos();
+            programarGuardado();
+        }
+
         /* Compara estadoPlano contra estadoBase y arma la lista de
            operaciones puntuales a mandar al servidor. */
         function calcularOperacionesPendientes() {
@@ -1604,6 +1654,7 @@
             pendiente: 'Cambios sin guardar',
             guardando: 'Guardando…',
             error: 'Error al guardar',
+            local: 'Guardado en el dispositivo — se sincronizará al recuperar conexión',
         };
         function fijarEstadoGuardado(estado) {
             if (!elEstadoGuardado) return;
@@ -1611,9 +1662,19 @@
             elEstadoGuardadoTexto.textContent = TEXTOS_ESTADO_GUARDADO[estado];
         }
 
+        /* Si el guardado en el servidor falla estando sin conexión, no
+           tiene sentido mostrar "Error al guardar" (suena a que se perdió
+           el trabajo): ya quedó a salvo en IndexedDB vía el guardado
+           local de más abajo, así que se muestra un estado distinto que
+           deja en claro que solo falta sincronizar. */
+        function fijarEstadoGuardadoSegunConexion() {
+            fijarEstadoGuardado(navigator.onLine ? 'error' : 'local');
+        }
+
         function programarGuardado() {
             if (!PUEDE_EDITAR && !PUEDE_ELIMINAR) return;
             fijarEstadoGuardado('pendiente');
+            PlanoOffline?.guardarEstadoLocal(PLANO_ID, serializarEstadoPlano(true)).catch(() => {});
             clearTimeout(temporizadorGuardado);
             temporizadorGuardado = setTimeout(guardarEstadoPlano, DEMORA_GUARDADO_MS);
         }
@@ -1656,17 +1717,21 @@
                 });
                 if (!respuesta.ok) {
                     console.warn('No se pudo guardar el plano (HTTP ' + respuesta.status + ')');
-                    fijarEstadoGuardado('error');
+                    fijarEstadoGuardadoSegunConexion();
                     return;
                 }
                 const datos = await respuesta.json();
                 aplicarEstadoRecibido(datos.estado);
                 fijarEstadoGuardado('guardado');
             } catch (e) {
-                /* Si falla, el próximo cambio vuelve a programar un
-                   guardado; no hay reintento explícito todavía. */
+                /* Si falla por falta de conexión, ya quedó a salvo en
+                   IndexedDB (programarGuardado lo persiste localmente
+                   antes de programar este guardado); el reintento
+                   periódico de PlanoOffline.iniciarReintentos() y el
+                   evento 'online' se encargan de reintentar sin que el
+                   usuario tenga que hacer nada. */
                 console.warn('No se pudo guardar el plano', e);
-                fijarEstadoGuardado('error');
+                fijarEstadoGuardadoSegunConexion();
             } finally {
                 guardadoEnCurso = false;
             }
@@ -2658,6 +2723,7 @@
             estadoPlano.trazos = [];
             deseleccionarElemento();
             cargarEstadoGuardado();
+            await fusionarEstadoLocalPendiente();
             centrarVista();
         }
 
@@ -2765,6 +2831,11 @@
         let contextoFotoPendiente = null;
         let fotoAbiertaItem = null;
         let fotoAbiertaIndice = 0;
+        /* Object URL del blob que se está mostrando en el visor grande
+           cuando la foto todavía no se subió (referencia 'local:<id>').
+           Se revoca al cambiar de foto o cerrar el visor para no
+           acumular memoria en una sesión larga. */
+        let overlayObjectUrlActual = null;
 
         /* ─── Formas de arrastre (círculo/rectángulo): se recalculan
              en cada movimiento a partir del punto inicial y el actual. ─ */
@@ -2823,52 +2894,46 @@
             contextoFotoPendiente = null;
         });
 
-        /* Las fotos se suben al servidor como archivo (igual que los PDF
-           de los planos) y en estadoPlano solo se guarda la URL resultante,
-           en vez de la imagen codificada en base64. */
-        function subirFotoAlServidor(archivo) {
-            const formData = new FormData();
-            formData.append('foto', archivo);
-            return fetch(urlSubirFoto, {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' },
-                body: formData,
-            }).then(r => {
-                if (!r.ok) throw new Error('No se pudo subir la foto');
-                return r.json();
-            }).then(data => data.url);
-        }
-
-        function manejarArchivosFoto(input) {
+        /* Las fotos se guardan primero en el dispositivo (IndexedDB) y el
+           pin se crea al instante, sin esperar a que se suban: así,
+           sacar una foto en el campo nunca se bloquea ni se pierde por
+           falta de señal. En estadoPlano.fotos queda una referencia
+           'local:<id>' hasta que dispararSubidaFotosPendientes() logre
+           subirla y la reemplace por la URL real del servidor. */
+        async function manejarArchivosFoto(input) {
             const archivos = Array.from(input.files || []);
             const contexto = contextoFotoPendiente;
             contextoFotoPendiente = null;
             if (!archivos.length || !contexto) return;
 
-            Promise.all(archivos.map(subirFotoAlServidor)).then(urls => {
-                if (contexto.modo === 'nuevo') {
-                    registrarUsoCapa('foto');
-                    estadoPlano.trazos.push({
-                        id: generarIdElemento(),
-                        tipo: 'icono',
-                        tool: 'foto',
-                        imagen: HERRAMIENTAS.foto.imagen,
-                        x: contexto.mundo.x,
-                        y: contexto.mundo.y,
-                        tamano: HERRAMIENTAS.foto.tamano,
-                        etiqueta: null,
-                        fotos: urls,
-                    });
-                    redibujarTrazos();
-                } else {
-                    contexto.item.fotos.push(...urls);
-                    fotoAbiertaIndice = contexto.item.fotos.length - urls.length;
-                    actualizarOverlayFoto();
-                }
-                programarGuardado();
-            }).catch(() => {
-                alert('No se pudo subir la foto. Probá de nuevo.');
-            });
+            const refs = [];
+            for (const archivo of archivos) {
+                const id = generarIdElemento();
+                await PlanoOffline?.guardarFotoPendiente(id, PLANO_ID, archivo, archivo.type);
+                refs.push('local:' + id);
+            }
+
+            if (contexto.modo === 'nuevo') {
+                registrarUsoCapa('foto');
+                estadoPlano.trazos.push({
+                    id: generarIdElemento(),
+                    tipo: 'icono',
+                    tool: 'foto',
+                    imagen: HERRAMIENTAS.foto.imagen,
+                    x: contexto.mundo.x,
+                    y: contexto.mundo.y,
+                    tamano: HERRAMIENTAS.foto.tamano,
+                    etiqueta: null,
+                    fotos: refs,
+                });
+                redibujarTrazos();
+            } else {
+                contexto.item.fotos.push(...refs);
+                fotoAbiertaIndice = contexto.item.fotos.length - refs.length;
+                actualizarOverlayFoto();
+            }
+            programarGuardado();
+            dispararSubidaFotosPendientes();
         }
 
         inputFoto.addEventListener('change', () => manejarArchivosFoto(inputFoto));
@@ -2876,12 +2941,51 @@
         inputFoto.addEventListener('cancel', () => { contextoFotoPendiente = null; });
         inputFotoGaleria.addEventListener('cancel', () => { contextoFotoPendiente = null; });
 
-        function actualizarOverlayFoto() {
+        /* Sube en segundo plano las fotos que quedaron pendientes (sin
+           conexión al sacarlas, o la subida falló). Se llama apenas se
+           agrega una foto, al reconectar y periódicamente como respaldo
+           (ver PlanoOffline.iniciarReintentos más abajo). */
+        function dispararSubidaFotosPendientes() {
+            PlanoOffline?.subirFotosPendientes(PLANO_ID, {
+                urlSubirFoto,
+                csrfToken: CSRF_TOKEN,
+                resolverItemPorFotoId: (id) => estadoPlano.trazos.find(
+                    t => Array.isArray(t.fotos) && t.fotos.includes('local:' + id)
+                ) || null,
+            }).then(subioAlguna => {
+                if (!subioAlguna) return;
+                if (fotoAbiertaItem) actualizarOverlayFoto();
+                programarGuardado();
+            });
+        }
+
+        async function actualizarOverlayFoto() {
             if (!fotoAbiertaItem) return;
             const fotos = fotoAbiertaItem.fotos;
             if (!fotos.length) { cerrarFotoGrande(); return; }
             fotoAbiertaIndice = clamp(fotoAbiertaIndice, 0, fotos.length - 1);
-            overlayFotoImg.src = fotos[fotoAbiertaIndice];
+            const item = fotoAbiertaItem; // por si cambia mientras se resuelve el blob
+            const indice = fotoAbiertaIndice;
+            const foto = fotos[indice];
+
+            if (overlayObjectUrlActual) {
+                URL.revokeObjectURL(overlayObjectUrlActual);
+                overlayObjectUrlActual = null;
+            }
+
+            if (foto.startsWith('local:')) {
+                const blob = await PlanoOffline?.obtenerBlobFotoPendiente(foto.slice('local:'.length));
+                if (item !== fotoAbiertaItem || indice !== fotoAbiertaIndice) return; // el usuario ya navegó a otra
+                if (blob) {
+                    overlayObjectUrlActual = URL.createObjectURL(blob);
+                    overlayFotoImg.src = overlayObjectUrlActual;
+                } else {
+                    overlayFotoImg.src = '';
+                }
+            } else {
+                overlayFotoImg.src = foto;
+            }
+
             const multiples = fotos.length > 1;
             overlayFotoContador.textContent = multiples ? `${fotoAbiertaIndice + 1} / ${fotos.length}` : '';
             overlayFotoPrev.style.display = multiples ? 'flex' : 'none';
@@ -2899,6 +3003,10 @@
             overlayFoto.classList.remove('abierto');
             overlayFotoImg.src = '';
             fotoAbiertaItem = null;
+            if (overlayObjectUrlActual) {
+                URL.revokeObjectURL(overlayObjectUrlActual);
+                overlayObjectUrlActual = null;
+            }
         }
 
         overlayFotoCerrar.addEventListener('click', cerrarFotoGrande);
@@ -2927,7 +3035,10 @@
         overlayFotoEliminar.addEventListener('click', () => {
             if (!PUEDE_ELIMINAR) return;
             if (!fotoAbiertaItem) return;
-            fotoAbiertaItem.fotos.splice(fotoAbiertaIndice, 1);
+            const [fotoQuitada] = fotoAbiertaItem.fotos.splice(fotoAbiertaIndice, 1);
+            if (fotoQuitada?.startsWith('local:')) {
+                PlanoOffline?.eliminarFotoPendiente(fotoQuitada.slice('local:'.length));
+            }
             if (!fotoAbiertaItem.fotos.length) {
                 const idx = estadoPlano.trazos.indexOf(fotoAbiertaItem);
                 if (idx !== -1) estadoPlano.trazos.splice(idx, 1);
@@ -3332,6 +3443,13 @@
         ['pointerup', 'pointercancel', 'pointerleave'].forEach(evt =>
             lienzoWrap.addEventListener(evt, finalizarPuntero)
         );
+
+        /* Reintento de guardado/subida: al reconectar (evento 'online') y
+           cada ~25s como respaldo, para el caso de conexión "técnicamente
+           online" pero inestable donde ese evento no siempre avisa. */
+        PlanoOffline?.iniciarReintentos({
+            onIntentar: () => { guardarEstadoPlano(); dispararSubidaFotosPendientes(); },
+        });
 
         cargarPdf();
     </script>
