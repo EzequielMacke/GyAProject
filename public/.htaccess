@@ -1,3 +1,15 @@
+# El Service Worker (y el manifest) nunca deben quedar cacheados por el
+# servidor: si el hosting (o algún proxy/CDN delante) los sirve viejos,
+# las actualizaciones nunca le llegan a nadie, aunque el archivo en
+# disco ya esté al día.
+<IfModule mod_headers.c>
+    <FilesMatch "^(sw\.js|manifest\.json)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
