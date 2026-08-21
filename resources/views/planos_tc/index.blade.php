@@ -1096,25 +1096,25 @@
     /* ─── Descargar planos para trabajar sin conexión ──────────
        Precachea la página de cada plano y su PDF, para no depender de
        entrar uno por uno con señal antes de ir a una zona sin cobertura.
-       Los nombres de cache tienen que coincidir con los de public/sw.js
-       (CACHE_VERSION) — si se cambia uno, hay que cambiar el otro. */
+       El nombre de los caches vive solo en public/sw.js — esta página no
+       lo necesita: le manda las URLs al Service Worker por mensaje y es
+       él quien las descarga y las guarda en sus propios caches, ya
+       registrados y versionados ahí. */
     const PLANOS_PARA_OFFLINE = @json($planosParaOffline ?? []);
-    const CACHE_PAGINAS_OFFLINE = 'gya-paginas-v1';
-    const CACHE_ESTATICO_OFFLINE = 'gya-estatico-v1';
-
-    async function guardarEnCache(nombreCache, url) {
-        const respuesta = await fetch(url, { credentials: 'same-origin' });
-        if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
-        const cache = await caches.open(nombreCache);
-        await cache.put(url, respuesta);
-    }
 
     async function descargarPlanosOffline() {
-        if (!('caches' in window)) {
+        if (!('serviceWorker' in navigator)) {
             alert('Este navegador no permite guardar páginas para uso sin conexión.');
             return;
         }
         if (!PLANOS_PARA_OFFLINE.length) return;
+
+        const registro = await navigator.serviceWorker.ready;
+        const controlador = registro.active;
+        if (!controlador) {
+            alert('Todavía no está listo el guardado offline. Recargá la página e intentá de nuevo en un momento.');
+            return;
+        }
 
         const boton = document.getElementById('btn-descargar-offline');
         const alerta = document.getElementById('alert-descarga-offline');
@@ -1122,28 +1122,30 @@
 
         boton.disabled = true;
         alerta.style.display = 'flex';
+        texto.textContent = `Descargando planos… (0 / ${PLANOS_PARA_OFFLINE.length * 2})`;
 
-        let listos = 0;
-        let fallidos = 0;
-        const total = PLANOS_PARA_OFFLINE.length;
+        const canal = new MessageChannel();
+        canal.port1.onmessage = (event) => {
+            const { listos, fallidos, total, terminado } = event.data;
 
-        for (const plano of PLANOS_PARA_OFFLINE) {
-            texto.textContent = `Descargando "${plano.descripcion}"… (${listos + fallidos + 1} / ${total})`;
-            try {
-                await guardarEnCache(CACHE_PAGINAS_OFFLINE, plano.pagina);
-                await guardarEnCache(CACHE_ESTATICO_OFFLINE, plano.pdf);
-                listos++;
-            } catch (e) {
-                fallidos++;
+            if (!terminado) {
+                texto.textContent = `Descargando planos… (${listos + fallidos} / ${total})`;
+                return;
             }
-        }
 
-        boton.disabled = false;
-        texto.textContent = fallidos === 0
-            ? `Listo: ${listos} de ${total} planos guardados para trabajar sin conexión.`
-            : `${listos} de ${total} planos guardados; ${fallidos} no se pudieron descargar (probá de nuevo con mejor señal).`;
+            boton.disabled = false;
+            texto.textContent = fallidos === 0
+                ? `Listo: los ${PLANOS_PARA_OFFLINE.length} planos quedaron guardados para trabajar sin conexión.`
+                : `Se guardaron ${listos} de ${total} archivos; ${fallidos} fallaron (probá de nuevo con mejor señal).`;
 
-        setTimeout(() => { alerta.style.display = 'none'; }, 6000);
+            setTimeout(() => { alerta.style.display = 'none'; }, 6000);
+        };
+
+        controlador.postMessage({
+            tipo: 'precachear',
+            paginas: PLANOS_PARA_OFFLINE.map(p => p.pagina),
+            recursos: PLANOS_PARA_OFFLINE.map(p => p.pdf),
+        }, [canal.port2]);
     }
 </script>
 </body>

@@ -125,3 +125,40 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(staleWhileRevalidate(request, CACHE_ESTATICO));
     }
 });
+
+/* Botón "Descargar para trabajar sin conexión" (planos_tc/index.blade.php):
+   la página no conoce el nombre del cache (adrede, para no tener que
+   mantenerlo sincronizado a mano en dos archivos — eso fue justo lo que
+   se rompió la vez pasada al subir CACHE_VERSION acá y no allá), así que
+   le pide a este Service Worker que descargue las URLs por ella. */
+self.addEventListener('message', (event) => {
+    if (event.data?.tipo !== 'precachear') return;
+
+    const { paginas = [], recursos = [] } = event.data;
+    const puerto = event.ports[0];
+
+    (async () => {
+        const cachePaginas = await caches.open(CACHE_PAGINAS);
+        const cacheEstatico = await caches.open(CACHE_ESTATICO);
+        const total = paginas.length + recursos.length;
+        let listos = 0;
+        let fallidos = 0;
+
+        async function guardar(cache, url) {
+            try {
+                const respuesta = await fetch(url, { credentials: 'same-origin' });
+                if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+                await cache.put(url, respuesta);
+                listos++;
+            } catch (e) {
+                fallidos++;
+            }
+            puerto?.postMessage({ listos, fallidos, total, terminado: false });
+        }
+
+        for (const url of paginas) await guardar(cachePaginas, url);
+        for (const url of recursos) await guardar(cacheEstatico, url);
+
+        puerto?.postMessage({ listos, fallidos, total, terminado: true });
+    })();
+});
