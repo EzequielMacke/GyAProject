@@ -676,6 +676,33 @@
     </div>
 
     <input type="file" accept="image/*" capture="environment" multiple id="input-foto" style="display:none">
+    <input type="file" accept="image/*" multiple id="input-foto-galeria" style="display:none">
+
+    <div class="overlay-descarga" id="overlay-origen-foto">
+        <div class="overlay-descarga-contenido">
+            <span class="overlay-descarga-titulo">Agregar fotografía</span>
+            <div class="overlay-descarga-opciones">
+                <button type="button" class="overlay-descarga-formato" id="btn-origen-camara">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    Cámara
+                </button>
+                <button type="button" class="overlay-descarga-formato" id="btn-origen-galeria">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    Galería
+                </button>
+            </div>
+            <div class="overlay-descarga-acciones">
+                <button type="button" class="overlay-foto-accion" id="btn-origen-cancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
     <div class="overlay-foto" id="overlay-foto">
         <div class="overlay-foto-contenido">
@@ -2718,6 +2745,11 @@
 
         /* ─── Fotografía: pin + cámara + vista previa ─────── */
         const inputFoto = document.getElementById('input-foto');
+        const inputFotoGaleria = document.getElementById('input-foto-galeria');
+        const overlayOrigenFoto = document.getElementById('overlay-origen-foto');
+        const btnOrigenCamara = document.getElementById('btn-origen-camara');
+        const btnOrigenGaleria = document.getElementById('btn-origen-galeria');
+        const btnOrigenCancelar = document.getElementById('btn-origen-cancelar');
         const overlayFoto = document.getElementById('overlay-foto');
         const overlayFotoImg = document.getElementById('overlay-foto-img');
         const overlayFotoCerrar = document.getElementById('overlay-foto-cerrar');
@@ -2768,15 +2800,28 @@
 
         function solicitarFoto(mundo) {
             contextoFotoPendiente = { modo: 'nuevo', mundo };
-            inputFoto.value = '';
-            inputFoto.click();
+            overlayOrigenFoto.classList.add('abierto');
         }
 
         function solicitarAgregarFotos(item) {
             contextoFotoPendiente = { modo: 'agregar', item };
+            overlayOrigenFoto.classList.add('abierto');
+        }
+
+        btnOrigenCamara.addEventListener('click', () => {
+            overlayOrigenFoto.classList.remove('abierto');
             inputFoto.value = '';
             inputFoto.click();
-        }
+        });
+        btnOrigenGaleria.addEventListener('click', () => {
+            overlayOrigenFoto.classList.remove('abierto');
+            inputFotoGaleria.value = '';
+            inputFotoGaleria.click();
+        });
+        btnOrigenCancelar.addEventListener('click', () => {
+            overlayOrigenFoto.classList.remove('abierto');
+            contextoFotoPendiente = null;
+        });
 
         /* Las fotos se suben al servidor como archivo (igual que los PDF
            de los planos) y en estadoPlano solo se guarda la URL resultante,
@@ -2794,8 +2839,8 @@
             }).then(data => data.url);
         }
 
-        inputFoto.addEventListener('change', () => {
-            const archivos = Array.from(inputFoto.files || []);
+        function manejarArchivosFoto(input) {
+            const archivos = Array.from(input.files || []);
             const contexto = contextoFotoPendiente;
             contextoFotoPendiente = null;
             if (!archivos.length || !contexto) return;
@@ -2824,8 +2869,12 @@
             }).catch(() => {
                 alert('No se pudo subir la foto. Probá de nuevo.');
             });
-        });
+        }
+
+        inputFoto.addEventListener('change', () => manejarArchivosFoto(inputFoto));
+        inputFotoGaleria.addEventListener('change', () => manejarArchivosFoto(inputFotoGaleria));
         inputFoto.addEventListener('cancel', () => { contextoFotoPendiente = null; });
+        inputFotoGaleria.addEventListener('cancel', () => { contextoFotoPendiente = null; });
 
         function actualizarOverlayFoto() {
             if (!fotoAbiertaItem) return;
