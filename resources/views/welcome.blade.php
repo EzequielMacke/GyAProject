@@ -212,6 +212,33 @@
             font-size: 0.72rem;
             color: var(--muted);
         }
+
+        /* Install PWA button */
+        .btn-install {
+            display: none;
+            width: 100%;
+            height: 40px;
+            background: var(--surface);
+            border: 1.5px solid var(--border2);
+            border-radius: 0.55rem;
+            color: var(--text2);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            transition: border-color 0.14s, color 0.14s;
+        }
+
+        .btn-install.is-visible { display: flex; }
+
+        .btn-install:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
     </style>
 </head>
 <body>
@@ -288,6 +315,10 @@
                 <i class="fas fa-sign-in-alt"></i> Iniciar sesión
             </button>
 
+            <button type="button" id="btnInstallApp" class="btn-install">
+                <i class="fas fa-download"></i> Instalar aplicación
+            </button>
+
         </form>
     </div>
 
@@ -298,5 +329,28 @@
 </div>
 
 <script src="{{ asset('vendor/adminlte/dist/js/adminlte.min.js') }}"></script>
+<script>
+    let deferredInstallPrompt = null;
+    const btnInstallApp = document.getElementById('btnInstallApp');
+
+    window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        btnInstallApp.classList.add('is-visible');
+    });
+
+    btnInstallApp.addEventListener('click', async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        btnInstallApp.classList.remove('is-visible');
+    });
+
+    window.addEventListener('appinstalled', () => {
+        btnInstallApp.classList.remove('is-visible');
+        deferredInstallPrompt = null;
+    });
+</script>
 </body>
 </html>
