@@ -769,6 +769,16 @@
            las URLs de los endpoints y el token CSRF para poder mandar los
            fetch() de guardado/subida de fotos. */
         const PLANO_ID = {{ (int) $plano->id }};
+        /* Si public/js/plano-offline.js no llegó a cargar (por ejemplo,
+           un dispositivo que se queda sin señal justo antes de que ese
+           script se cachee por primera vez), la app tiene que poder
+           seguir funcionando en modo "solo online" en vez de romperse
+           entera. Referenciar PlanoOffline directo tira ReferenceError
+           si el script no cargó (el optional chaining "?." no protege
+           contra un identificador que no existe, solo contra que valga
+           null/undefined); por eso todo el resto del código usa esta
+           referencia local, que sí es segura. */
+        const OfflineAPI = window.PlanoOffline || null;
         const estadoGuardado = @json($estadoGuardado);
         const urlGuardarEstado = @json(route('planos_tc.guardarEstado', [$obraTc->id, $plano->id]));
         const urlSubirFoto = @json(route('planos_tc.subirFoto', [$obraTc->id, $plano->id]));
@@ -1551,27 +1561,60 @@
             aplicarEstadoRecibido(estadoGuardado || { escalas: {}, trazos: [] });
         }
 
-        /* Reinyecta lo que haya quedado guardado en IndexedDB (agregado
-           mientras no había conexión, o justo antes de que se cerrara la
-           app) y que el servidor todavía no conoce. Se llama después de
-           cargarEstadoGuardado(), así que estadoPlano.trazos ya tiene lo
-           que sí está confirmado; acá solo se agrega lo que falta, con el
-           mismo criterio de "no tocar lo que el servidor no conoce" que
-           usa aplicarEstadoRecibido. Lo agregado vuelve a quedar
-           pendiente de guardado (programarGuardado), así que el ciclo de
-           guardado normal se encarga de reintentarlo apenas haya red. */
-        async function fusionarEstadoLocalPendiente() {
-            const estadoLocal = await PlanoOffline?.leerEstadoLocal(PLANO_ID);
-            if (!estadoLocal?.trazos?.length) return;
+        /* Reaplica sobre el estado recién cargado del servidor lo que
+           haya quedado pendiente de sincronizar en IndexedDB (por falta
+           de conexión, o porque se cerró la app antes de que terminara
+           de guardar). Se llama después de cargarEstadoGuardado(), así
+           que estadoPlano ya tiene la versión más reciente confirmada.
 
-            const idsActuales = new Set(estadoPlano.trazos.map(t => t.id));
+           A propósito reaplica el diff completo (agregados/movidos/
+           eliminados/fotos), no solo "agregar lo que falte": lo pendiente
+           acá es SOLO lo que nunca se confirmó (ver persistirLocalmenteLoPendiente
+           y el comentario de estado_local en plano-offline.js), así que
+           si algo ya se había sincronizado antes y después se borró desde
+           otro dispositivo, no hay riesgo de "revivirlo" — simplemente no
+           va a estar en este diff, porque se limpió/actualizó apenas se
+           confirmó el guardado la primera vez. */
+        async function fusionarEstadoLocalPendiente() {
+            const operaciones = await OfflineAPI?.leerOperacionesLocal(PLANO_ID);
+            if (!operaciones) return;
+
             let huboCambios = false;
 
-            estadoLocal.trazos.forEach(item => {
-                if (idsActuales.has(item.id)) return;
+            (operaciones.agregados || []).forEach(item => {
+                if (estadoPlano.trazos.some(t => t.id === item.id)) return; // se sincronizó justo antes de cerrar
                 estadoPlano.trazos.push(crearItemDesdeGuardado(item));
                 huboCambios = true;
             });
+
+            (operaciones.movidos || []).forEach(nuevo => {
+                const item = estadoPlano.trazos.find(t => t.id === nuevo.id);
+                if (!item) return; // ya no existe (lo borraron desde otro dispositivo)
+                aplicarCamposRecibidos(item, nuevo);
+                huboCambios = true;
+            });
+
+            (operaciones.eliminados || []).forEach(id => {
+                const idx = estadoPlano.trazos.findIndex(t => t.id === id);
+                if (idx === -1) return;
+                estadoPlano.trazos.splice(idx, 1);
+                huboCambios = true;
+            });
+
+            (operaciones.fotosCambiadas || []).forEach(cambio => {
+                const item = estadoPlano.trazos.find(t => t.id === cambio.id);
+                if (!item) return;
+                const fotosEliminadas = cambio.fotosEliminadas || [];
+                const base = (item.fotos || []).filter(f => !fotosEliminadas.includes(f));
+                item.fotos = [...new Set([...base, ...(cambio.fotosAgregadas || [])])];
+                huboCambios = true;
+            });
+
+            if (operaciones.escalas) {
+                Object.assign(estadoPlano.escalas, operaciones.escalas);
+                actualizarSlidersEscala();
+                huboCambios = true;
+            }
 
             if (!huboCambios) return;
 
@@ -1582,8 +1625,8 @@
 
         /* Compara estadoPlano contra estadoBase y arma la lista de
            operaciones puntuales a mandar al servidor. */
-        function calcularOperacionesPendientes() {
-            const actual = serializarEstadoPlano();
+        function calcularOperacionesPendientes(incluirPendientesLocales = false) {
+            const actual = serializarEstadoPlano(incluirPendientesLocales);
             const actualesPorId = new Map(actual.trazos.map(t => [t.id, t]));
             const basePorId = new Map((estadoBase.trazos || []).map(t => [t.id, t]));
 
@@ -1662,19 +1705,23 @@
             elEstadoGuardadoTexto.textContent = TEXTOS_ESTADO_GUARDADO[estado];
         }
 
-        /* Si el guardado en el servidor falla estando sin conexión, no
-           tiene sentido mostrar "Error al guardar" (suena a que se perdió
-           el trabajo): ya quedó a salvo en IndexedDB vía el guardado
-           local de más abajo, así que se muestra un estado distinto que
-           deja en claro que solo falta sincronizar. */
-        function fijarEstadoGuardadoSegunConexion() {
-            fijarEstadoGuardado(navigator.onLine ? 'error' : 'local');
+        /* Deja en IndexedDB una copia de lo que TODAVÍA no está confirmado
+           por el servidor (no una copia del estado completo — ver el
+           comentario de estado_local en plano-offline.js). Se llama tanto
+           al programar un guardado como después de uno exitoso: en ese
+           segundo caso puede parecer redundante, pero no lo es, porque
+           justo después de guardar puede seguir habiendo algo pendiente
+           de verdad (una foto que todavía se está subiendo en segundo
+           plano) — así la copia local siempre refleja lo que realmente
+           falta, ni más ni menos. */
+        function persistirLocalmenteLoPendiente() {
+            OfflineAPI?.guardarOperacionesLocal(PLANO_ID, calcularOperacionesPendientes(true)).catch(() => {});
         }
 
         function programarGuardado() {
             if (!PUEDE_EDITAR && !PUEDE_ELIMINAR) return;
             fijarEstadoGuardado('pendiente');
-            PlanoOffline?.guardarEstadoLocal(PLANO_ID, serializarEstadoPlano(true)).catch(() => {});
+            persistirLocalmenteLoPendiente();
             clearTimeout(temporizadorGuardado);
             temporizadorGuardado = setTimeout(guardarEstadoPlano, DEMORA_GUARDADO_MS);
         }
@@ -1716,22 +1763,32 @@
                     body: JSON.stringify(operaciones),
                 });
                 if (!respuesta.ok) {
+                    /* Hubo respuesta del servidor (llegó y volvió), así que
+                       la conexión anda: esto es un error real (sesión
+                       vencida, permisos, etc.), no un tema de señal. */
                     console.warn('No se pudo guardar el plano (HTTP ' + respuesta.status + ')');
-                    fijarEstadoGuardadoSegunConexion();
+                    fijarEstadoGuardado('error');
                     return;
                 }
                 const datos = await respuesta.json();
                 aplicarEstadoRecibido(datos.estado);
                 fijarEstadoGuardado('guardado');
+                persistirLocalmenteLoPendiente();
             } catch (e) {
-                /* Si falla por falta de conexión, ya quedó a salvo en
-                   IndexedDB (programarGuardado lo persiste localmente
-                   antes de programar este guardado); el reintento
-                   periódico de PlanoOffline.iniciarReintentos() y el
-                   evento 'online' se encargan de reintentar sin que el
-                   usuario tenga que hacer nada. */
+                /* El fetch ni siquiera llegó a completarse: es un problema
+                   de conexión real, sin importar lo que diga
+                   navigator.onLine (ese valor no es confiable — solo
+                   refleja si el dispositivo está asociado a alguna red,
+                   no si esa red tiene salida a internet de verdad; una
+                   tablet con wifi débil puede seguir "online" para el
+                   navegador aunque ningún pedido llegue a destino). Ya
+                   quedó a salvo en IndexedDB (programarGuardado lo
+                   persiste localmente antes de programar este guardado);
+                   el reintento periódico de OfflineAPI.iniciarReintentos()
+                   y el evento 'online' se encargan de reintentar sin que
+                   el usuario tenga que hacer nada. */
                 console.warn('No se pudo guardar el plano', e);
-                fijarEstadoGuardadoSegunConexion();
+                fijarEstadoGuardado('local');
             } finally {
                 guardadoEnCurso = false;
             }
@@ -2909,7 +2966,7 @@
             const refs = [];
             for (const archivo of archivos) {
                 const id = generarIdElemento();
-                await PlanoOffline?.guardarFotoPendiente(id, PLANO_ID, archivo, archivo.type);
+                await OfflineAPI?.guardarFotoPendiente(id, PLANO_ID, archivo, archivo.type);
                 refs.push('local:' + id);
             }
 
@@ -2946,7 +3003,7 @@
            agrega una foto, al reconectar y periódicamente como respaldo
            (ver PlanoOffline.iniciarReintentos más abajo). */
         function dispararSubidaFotosPendientes() {
-            PlanoOffline?.subirFotosPendientes(PLANO_ID, {
+            OfflineAPI?.subirFotosPendientes(PLANO_ID, {
                 urlSubirFoto,
                 csrfToken: CSRF_TOKEN,
                 resolverItemPorFotoId: (id) => estadoPlano.trazos.find(
@@ -2974,7 +3031,7 @@
             }
 
             if (foto.startsWith('local:')) {
-                const blob = await PlanoOffline?.obtenerBlobFotoPendiente(foto.slice('local:'.length));
+                const blob = await OfflineAPI?.obtenerBlobFotoPendiente(foto.slice('local:'.length));
                 if (item !== fotoAbiertaItem || indice !== fotoAbiertaIndice) return; // el usuario ya navegó a otra
                 if (blob) {
                     overlayObjectUrlActual = URL.createObjectURL(blob);
@@ -3037,7 +3094,7 @@
             if (!fotoAbiertaItem) return;
             const [fotoQuitada] = fotoAbiertaItem.fotos.splice(fotoAbiertaIndice, 1);
             if (fotoQuitada?.startsWith('local:')) {
-                PlanoOffline?.eliminarFotoPendiente(fotoQuitada.slice('local:'.length));
+                OfflineAPI?.eliminarFotoPendiente(fotoQuitada.slice('local:'.length));
             }
             if (!fotoAbiertaItem.fotos.length) {
                 const idx = estadoPlano.trazos.indexOf(fotoAbiertaItem);
@@ -3447,7 +3504,7 @@
         /* Reintento de guardado/subida: al reconectar (evento 'online') y
            cada ~25s como respaldo, para el caso de conexión "técnicamente
            online" pero inestable donde ese evento no siempre avisa. */
-        PlanoOffline?.iniciarReintentos({
+        OfflineAPI?.iniciarReintentos({
             onIntentar: () => { guardarEstadoPlano(); dispararSubidaFotosPendientes(); },
         });
 

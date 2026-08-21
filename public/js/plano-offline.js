@@ -66,30 +66,39 @@
         });
     }
 
-    function pedir(request) {
-        return new Promise((resolve) => {
-            request.onsuccess = () => resolve(request.result ?? null);
-            request.onerror = () => resolve(null);
-        });
-    }
+    /* ─── estado_local: SOLO lo que todavía no se confirmó con el
+       servidor (el mismo diff que calcularOperacionesPendientes() arma
+       para mandar por red), no una copia del estado completo. Guardar el
+       estado completo hacía que, en otro dispositivo, algo que ya se
+       había sincronizado y después alguien borró desde otro lado
+       "reviviera" al reabrir — porque no había forma de distinguir "esto
+       es nuevo, todavía no lo subí" de "esto ya lo subí hace rato, quedó
+       viejo en la copia local". Guardando solo lo pendiente, y
+       borrándolo apenas se confirma el guardado (ver limpiarOperacionesLocal),
+       esa ambigüedad desaparece: si no hay nada pendiente, no hay nada
+       para reinyectar. ───────────────────────────────────────────── */
 
-    /* ─── estado_local: espejo de estadoPlano.trazos por plano ───── */
-
-    async function guardarEstadoLocal(planoId, estadoSerializado) {
+    async function guardarOperacionesLocal(planoId, operaciones) {
         return conStore(STORE_ESTADO, 'readwrite', (store) => {
-            store.put({ planoId, estado: estadoSerializado, guardadoEn: Date.now() });
+            store.put({ planoId, operaciones, guardadoEn: Date.now() });
         });
     }
 
-    async function leerEstadoLocal(planoId) {
+    async function leerOperacionesLocal(planoId) {
         const db = await abrirDb();
         if (!db) return null;
 
         return new Promise((resolve) => {
             const tx = db.transaction(STORE_ESTADO, 'readonly');
             const req = tx.objectStore(STORE_ESTADO).get(planoId);
-            req.onsuccess = () => resolve(req.result?.estado ?? null);
+            req.onsuccess = () => resolve(req.result?.operaciones ?? null);
             req.onerror = () => resolve(null);
+        });
+    }
+
+    async function limpiarOperacionesLocal(planoId) {
+        return conStore(STORE_ESTADO, 'readwrite', (store) => {
+            store.delete(planoId);
         });
     }
 
@@ -199,8 +208,9 @@
     }
 
     window.PlanoOffline = {
-        guardarEstadoLocal,
-        leerEstadoLocal,
+        guardarOperacionesLocal,
+        leerOperacionesLocal,
+        limpiarOperacionesLocal,
         guardarFotoPendiente,
         eliminarFotoPendiente,
         obtenerBlobFotoPendiente,
