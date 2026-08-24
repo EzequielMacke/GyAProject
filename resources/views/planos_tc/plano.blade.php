@@ -336,6 +336,11 @@
         .overlay-descarga-confirmar { background: #2a6fdb; color: #fff; }
         .overlay-descarga-confirmar:hover { background: #3a7fe8; }
         .overlay-descarga-confirmar:disabled { background: #2f4a73; cursor: default; }
+        .overlay-descarga-referencia {
+            display: flex; align-items: center; gap: 0.5rem;
+            color: #ccc; font-size: 0.82rem; font-weight: 500; cursor: pointer;
+        }
+        .overlay-descarga-referencia input { accent-color: #2a6fdb; width: 16px; height: 16px; cursor: pointer; }
 
         .lienzo {
             position: absolute;
@@ -742,6 +747,10 @@
                     PNG
                 </button>
             </div>
+            <label class="overlay-descarga-referencia">
+                <input type="checkbox" id="check-descarga-referencia">
+                Con referencia
+            </label>
             <div class="overlay-descarga-acciones">
                 <button type="button" class="overlay-foto-accion" id="btn-descarga-cancelar">Cancelar</button>
                 <button type="button" class="overlay-foto-accion overlay-descarga-confirmar" id="btn-descarga-confirmar">Descargar</button>
@@ -826,6 +835,46 @@
             { tool: 'fisura_inclinada', url: @json(asset('img/iconos/Fisura inclinada.svg')), nombre: 'Fisura inclinada' },
             { tool: 'fisura_semiinclinada', url: @json(asset('img/iconos/Fisura seminclinada.svg')), nombre: 'Fisura semi-inclinada' },
         ];
+
+        /* Datos para la tabla "Referencia" de la descarga (ver checkbox
+           "Con referencia"): nombre + ícono de cada daño/ensayo, en el
+           mismo orden en que aparecen en la barra de herramientas.
+           `vectorial: true` marca los íconos ya normalizados (sin <g>/
+           transform) que el exportador de PDF puede dibujar como
+           trazos vectoriales reales (igual que hace con los que van
+           sobre el plano); los de `vectorial: false` (los daños que se
+           dibujan como trazo, no como ícono estampado) traen <g>/
+           transform que ese parser liviano no soporta, así que en el
+           PDF se insertan rasterizados (ver rasterizarIconoAPng). En el
+           PNG de descarga no hace falta esta distinción: el canvas
+           dibuja cualquier SVG correctamente sea cual sea su estructura. */
+        const REFERENCIA_DANOS = [
+            ...DANOS.map(({ tool, nombre, url }) => ({ tool, nombre, url, vectorial: false })),
+            ...DANOS_ICONO.map(({ tool, nombre, url }) => ({ tool, nombre, url, vectorial: true })),
+        ];
+        const REFERENCIA_ENSAYOS = [
+            ...ENSAYOS.map(({ tool, nombre, prefijo, url }) => ({ tool, nombre, letra: prefijo, url, vectorial: true })),
+            { tool: 'computo_fisuras', nombre: 'Cómputo de fisuras', letra: 'F', url: null, vectorial: false },
+        ];
+
+        /* Solo entran a la referencia los tipos que: (a) tienen al menos
+           un elemento dibujado en el plano y (b) su capa está prendida
+           (capasVisibles) — así "referencia con lo que se ve", igual
+           que el criterio que ya usa dibujarItems() para decidir qué
+           pintar. */
+        function categoriasReferenciaActivas() {
+            const toolsUsados = new Set(estadoPlano.trazos.map(t => t.tool));
+            const activo = tool => toolsUsados.has(tool) && capasVisibles[tool] !== false;
+
+            const categorias = [];
+            const filasDanos = REFERENCIA_DANOS.filter(d => activo(d.tool));
+            if (filasDanos.length) categorias.push({ columnas: 2, filas: filasDanos });
+
+            const filasEnsayos = REFERENCIA_ENSAYOS.filter(e => activo(e.tool));
+            if (filasEnsayos.length) categorias.push({ columnas: 3, filas: filasEnsayos });
+
+            return categorias;
+        }
 
         /* Anotaciones libres: texto, dibujo a mano alzada y línea recta.
            Comparten un mismo color, elegido en vivo con el selector del
@@ -2054,6 +2103,141 @@
             return canvas;
         }
 
+        /* Cache de <img> ya cargadas para los íconos de la tabla de
+           referencia (se usa tanto para dibujarlos en el canvas del PNG
+           como, rasterizados, para incrustarlos en el PDF — ver
+           rasterizarIconoAPng). Se cachea por url para no repetir la
+           carga si el mismo ícono aparece en ambos formatos o se
+           descarga más de una vez en la misma sesión. */
+        const cacheImagenReferencia = {};
+        function cargarImagenIcono(url) {
+            if (!url) return Promise.resolve(null);
+            if (!cacheImagenReferencia[url]) {
+                cacheImagenReferencia[url] = new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = () => resolve(null);
+                    img.src = url;
+                });
+            }
+            return cacheImagenReferencia[url];
+        }
+
+        /* Dibuja la tabla "Referencia" de una categoría (daños o
+           ensayos) en el canvas de exportación PNG, empezando en (x, y).
+           Devuelve el "y" donde terminó, para poder apilar la próxima
+           tabla debajo. */
+        async function dibujarTablaReferenciaCanvas(ctx, categoria, y, anchoCanvas) {
+            const CABECERA_ALTO = 60;
+            const FILA_ALTO = 80;
+            const ANCHO_ICONO = 110;
+            const ANCHO_LETRA = categoria.columnas === 3 ? 80 : 0;
+            const PADDING_NOMBRE = 64;
+            const FUENTE_NOMBRE = '600 22px sans-serif';
+
+            /* La columna de nombre se ajusta al texto más largo de esta
+               categoría (con un padding), en vez de un ancho fijo — con
+               un ancho fijo se veía una columna enorme con el texto
+               perdido y chico adentro cuando los nombres eran cortos. */
+            ctx.font = FUENTE_NOMBRE;
+            const anchoNombreDeseado = Math.max(...categoria.filas.map(f => ctx.measureText(f.nombre).width)) + PADDING_NOMBRE;
+            const anchoNombreMax = anchoCanvas - 2 * 50 - ANCHO_ICONO - ANCHO_LETRA;
+            const anchoNombre = Math.min(anchoNombreDeseado, anchoNombreMax);
+            const ancho = ANCHO_LETRA + anchoNombre + ANCHO_ICONO;
+            const x = (anchoCanvas - ancho) / 2;
+
+            ctx.save();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1.5;
+
+            ctx.strokeRect(x, y, ancho, CABECERA_ALTO);
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 28px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Referencia', x + ancho / 2, y + CABECERA_ALTO / 2);
+            y += CABECERA_ALTO;
+
+            for (const fila of categoria.filas) {
+                let cx = x;
+                if (categoria.columnas === 3) {
+                    ctx.strokeRect(cx, y, ANCHO_LETRA, FILA_ALTO);
+                    ctx.font = 'bold 24px sans-serif';
+                    ctx.fillText(fila.letra || '', cx + ANCHO_LETRA / 2, y + FILA_ALTO / 2);
+                    cx += ANCHO_LETRA;
+                }
+
+                ctx.strokeRect(cx, y, anchoNombre, FILA_ALTO);
+                ctx.font = FUENTE_NOMBRE;
+                ctx.textAlign = 'left';
+                ctx.fillText(fila.nombre, cx + 16, y + FILA_ALTO / 2);
+                ctx.textAlign = 'center';
+                cx += anchoNombre;
+
+                ctx.strokeRect(cx, y, ANCHO_ICONO, FILA_ALTO);
+                if (fila.url) {
+                    const img = await cargarImagenIcono(fila.url);
+                    if (img) {
+                        const ratio = img.naturalWidth / img.naturalHeight || 1;
+                        const tam = FILA_ALTO * 0.7;
+                        const w = ratio >= 1 ? tam : tam * ratio;
+                        const h = ratio >= 1 ? tam / ratio : tam;
+                        ctx.drawImage(img, cx + (ANCHO_ICONO - w) / 2, y + (FILA_ALTO - h) / 2, w, h);
+                    }
+                } else if (fila.letra) {
+                    const cxCirculo = cx + ANCHO_ICONO / 2, cyCirculo = y + FILA_ALTO / 2, radio = FILA_ALTO * 0.3;
+                    ctx.beginPath();
+                    ctx.arc(cxCirculo, cyCirculo, radio, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.fill();
+                    ctx.strokeStyle = '#999';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.fillStyle = '#ff0000';
+                    ctx.font = 'bold 26px sans-serif';
+                    ctx.fillText(fila.letra, cxCirculo, cyCirculo);
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1.5;
+                }
+
+                y += FILA_ALTO;
+            }
+
+            ctx.restore();
+            return y;
+        }
+
+        /* Arma un canvas más alto que junta el plano exportado arriba y,
+           debajo, una tabla "Referencia" por cada categoría (daños/
+           ensayos) que tenga al menos una capa prendida — ver
+           categoriasReferenciaActivas(). Si no hay ninguna categoría
+           activa, devuelve el canvas del plano sin modificar. */
+        async function agregarReferenciaACanvas(canvasPlano) {
+            const categorias = categoriasReferenciaActivas();
+            if (!categorias.length) return canvasPlano;
+
+            const PAD = 50;
+            const FILA_ALTO = 80, CABECERA_ALTO = 60;
+            let altoTablas = PAD;
+            categorias.forEach(cat => { altoTablas += CABECERA_ALTO + cat.filas.length * FILA_ALTO + PAD; });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasPlano.width;
+            canvas.height = canvasPlano.height + altoTablas;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(canvasPlano, 0, 0);
+
+            let y = canvasPlano.height + PAD;
+            for (const cat of categorias) {
+                y = await dibujarTablaReferenciaCanvas(ctx, cat, y, canvas.width);
+                y += PAD;
+            }
+
+            return canvas;
+        }
+
         function nombreArchivoDescarga(extension) {
             const base = nombrePlanoBase.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'plano';
             return `${base}.${extension}`;
@@ -2070,8 +2254,9 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
-        async function descargarComoPNG() {
-            const canvas = await generarCanvasExportacion();
+        async function descargarComoPNG(conReferencia) {
+            let canvas = await generarCanvasExportacion();
+            if (conReferencia) canvas = await agregarReferenciaACanvas(canvas);
             await new Promise(resolve => {
                 canvas.toBlob(blob => {
                     if (blob) descargarBlob(blob, nombreArchivoDescarga('png'));
@@ -2379,7 +2564,7 @@
            suma "rotate: degrees(rotObjetivo)" y se rota a mano el offset
            del punto de anclaje con rotarOffset (mismo ángulo, sentido
            antihorario = convención nativa de PDF/pdf-lib). */
-        async function generarPdfVectorial() {
+        async function generarPdfVectorial(conReferencia) {
             const { PDFDocument, StandardFonts, degrees, PDFName, PDFString, PDFOperator, PDFContentStream } = PDFLib;
 
             const bytesOriginal = await pdfDoc.getData();
@@ -2633,11 +2818,168 @@
                 cerrarCapa();
             }
 
+            if (conReferencia) await agregarPaginasReferenciaPdf(pdfOut, fuente);
+
             return pdfOut.save();
         }
 
-        async function descargarComoPDF() {
-            const bytes = await generarPdfVectorial();
+        /* Rasteriza un ícono SVG a PNG (data URL) dibujándolo en un
+           canvas offscreen — se usa para los daños que se dibujan como
+           trazo (Fisura, Corrosión, etc.), cuyo SVG del ícono trae <g>/
+           transform que el parser vectorial liviano (obtenerIconoVectorial)
+           no soporta. El navegador sí sabe renderizar ese SVG completo
+           como <img>, así que en vez de reimplementar un parser de XML
+           completo, se aprovecha eso y se incrusta el resultado como
+           imagen — no hace falta que sea vectorial de verdad: es un
+           ícono de referencia/leyenda, no un objeto real del plano. */
+        async function rasterizarIconoAPng(url, tamanoPx = 200) {
+            const img = await cargarImagenIcono(url);
+            if (!img) return null;
+            const ratio = img.naturalWidth / img.naturalHeight || 1;
+            const w = ratio >= 1 ? tamanoPx : Math.round(tamanoPx * ratio);
+            const h = ratio >= 1 ? Math.round(tamanoPx / ratio) : tamanoPx;
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            return canvas.toDataURL('image/png');
+        }
+
+        /* Versión sin rotación de la misma matemática que usa
+           generarPdfVectorial() para plantar un ícono vectorial en un
+           punto del PDF (ver el comentario largo ahí sobre por qué hay
+           que centrar en base al viewBox real, no al origen del path).
+           Las páginas de referencia no rotan, así que no hace falta la
+           parte de rotarOffset. */
+        function dibujarIconoVectorialEnPuntoPdf(page, icono, cx, cy, tamano) {
+            const s = tamano / Math.max(icono.w, icono.h);
+            const centroViewBoxLocal = { x: icono.minX + icono.w / 2, y: icono.minY + icono.h / 2 };
+            const anclaX = cx - s * centroViewBoxLocal.x;
+            const anclaY = cy + s * centroViewBoxLocal.y;
+
+            icono.formas.forEach(forma => {
+                if (!forma.subpaths.length) return;
+                const color = forma.fill ? hexARgb(forma.fill) : null;
+                let colorTrazo = forma.stroke ? hexARgb(forma.stroke) : null;
+                let anchoTrazo = forma.strokeWidth * s;
+                if (color && !colorTrazo) { colorTrazo = color; anchoTrazo = 0.05; }
+                if (!color && !colorTrazo) return;
+
+                const operadores = [PDFLib.pushGraphicsState()];
+                if (colorTrazo) operadores.push(PDFLib.setLineWidth(anchoTrazo), PDFLib.setStrokingColor(colorTrazo));
+                if (color) operadores.push(PDFLib.setFillingColor(color));
+
+                forma.subpaths.forEach(puntosLocales => {
+                    if (puntosLocales.length < 2) return;
+                    const puntos = puntosLocales.map(p => ({ x: anclaX + s * p.x, y: anclaY - s * p.y }));
+                    operadores.push(PDFLib.moveTo(puntos[0].x, puntos[0].y));
+                    for (let i = 1; i < puntos.length; i++) operadores.push(PDFLib.lineTo(puntos[i].x, puntos[i].y));
+                    operadores.push(PDFLib.closePath());
+                });
+
+                if (color && colorTrazo) operadores.push(PDFLib.fillAndStroke());
+                else if (color) operadores.push(PDFLib.fill());
+                else operadores.push(PDFLib.stroke());
+                operadores.push(PDFLib.popGraphicsState());
+                page.pushOperators(...operadores);
+            });
+        }
+
+        /* Agrega, al final del PDF, una página A4 por cada categoría de
+           referencia activa (ver categoriasReferenciaActivas) con la
+           tabla "Referencia" pedida: cabecera fusionada + una fila por
+           daño/ensayo con su nombre y su ícono (y, en ensayos, la letra
+           de su prefijo de numeración). Si una tabla no entra entera en
+           una página, sigue en una nueva. */
+        async function agregarPaginasReferenciaPdf(pdfOut, fuente) {
+            const categorias = categoriasReferenciaActivas();
+            if (!categorias.length) return;
+
+            const ANCHO = 595.28, ALTO = 841.89; // A4 en puntos
+            const MARGEN = 50;
+            const CABECERA_ALTO = 36;
+            const FILA_ALTO = 42;
+            const ANCHO_ICONO = 65;
+            const ANCHO_LETRA = 40;
+
+            let page = pdfOut.addPage([ANCHO, ALTO]);
+            let y = ALTO - MARGEN;
+
+            function nuevaPaginaSiHaceFalta(alturaNecesaria) {
+                if (y - alturaNecesaria < MARGEN) {
+                    page = pdfOut.addPage([ANCHO, ALTO]);
+                    y = ALTO - MARGEN;
+                }
+            }
+
+            const TAMANO_NOMBRE = 12;
+            const PADDING_NOMBRE = 20;
+
+            for (const cat of categorias) {
+                nuevaPaginaSiHaceFalta(CABECERA_ALTO + FILA_ALTO);
+
+                const anchoLetraCol = cat.columnas === 3 ? ANCHO_LETRA : 0;
+                /* La columna de nombre se ajusta al texto más largo de
+                   esta categoría (con un padding), no a un ancho fijo —
+                   con un ancho fijo la columna quedaba enorme y el
+                   texto se veía perdido/chico adentro cuando los
+                   nombres eran cortos. */
+                const anchoNombreDeseado = Math.max(...cat.filas.map(f => fuente.widthOfTextAtSize(f.nombre, TAMANO_NOMBRE))) + PADDING_NOMBRE * 2;
+                const anchoNombreMax = ANCHO - MARGEN * 2 - anchoLetraCol - ANCHO_ICONO;
+                const anchoNombreCol = Math.min(anchoNombreDeseado, anchoNombreMax);
+                const anchoTabla = anchoLetraCol + anchoNombreCol + ANCHO_ICONO;
+                const xTabla = MARGEN + (ANCHO - MARGEN * 2 - anchoTabla) / 2;
+
+                page.drawRectangle({ x: xTabla, y: y - CABECERA_ALTO, width: anchoTabla, height: CABECERA_ALTO, borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 1 });
+                const tituloAncho = fuente.widthOfTextAtSize('Referencia', 16);
+                page.drawText('Referencia', { x: xTabla + (anchoTabla - tituloAncho) / 2, y: y - CABECERA_ALTO / 2 - 6, size: 16, font: fuente });
+                y -= CABECERA_ALTO;
+
+                for (const fila of cat.filas) {
+                    nuevaPaginaSiHaceFalta(FILA_ALTO);
+                    let cx = xTabla;
+
+                    if (cat.columnas === 3) {
+                        page.drawRectangle({ x: cx, y: y - FILA_ALTO, width: anchoLetraCol, height: FILA_ALTO, borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 1 });
+                        const letraAncho = fuente.widthOfTextAtSize(fila.letra || '', 14);
+                        page.drawText(fila.letra || '', { x: cx + (anchoLetraCol - letraAncho) / 2, y: y - FILA_ALTO / 2 - 5, size: 14, font: fuente });
+                        cx += anchoLetraCol;
+                    }
+
+                    page.drawRectangle({ x: cx, y: y - FILA_ALTO, width: anchoNombreCol, height: FILA_ALTO, borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 1 });
+                    page.drawText(fila.nombre, { x: cx + PADDING_NOMBRE, y: y - FILA_ALTO / 2 - 5, size: TAMANO_NOMBRE, font: fuente });
+                    cx += anchoNombreCol;
+
+                    page.drawRectangle({ x: cx, y: y - FILA_ALTO, width: ANCHO_ICONO, height: FILA_ALTO, borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 1 });
+                    const centro = { x: cx + ANCHO_ICONO / 2, y: y - FILA_ALTO / 2 };
+
+                    if (fila.url && fila.vectorial) {
+                        const icono = await obtenerIconoVectorial(fila.tool);
+                        if (icono) dibujarIconoVectorialEnPuntoPdf(page, icono, centro.x, centro.y, FILA_ALTO * 0.65);
+                    } else if (fila.url) {
+                        const dataUrl = await rasterizarIconoAPng(fila.url);
+                        if (dataUrl) {
+                            const png = await pdfOut.embedPng(dataUrl);
+                            const tam = FILA_ALTO * 0.65;
+                            const escalaImg = Math.min(tam / png.width, tam / png.height);
+                            const w = png.width * escalaImg, h = png.height * escalaImg;
+                            page.drawImage(png, { x: centro.x - w / 2, y: centro.y - h / 2, width: w, height: h });
+                        }
+                    } else if (fila.letra) {
+                        page.drawCircle({ x: centro.x, y: centro.y, size: FILA_ALTO * 0.3, color: PDFLib.rgb(1, 1, 1), borderColor: PDFLib.rgb(0.6, 0.6, 0.6), borderWidth: 1 });
+                        const glyphAncho = fuente.widthOfTextAtSize(fila.letra, 14);
+                        page.drawText(fila.letra, { x: centro.x - glyphAncho / 2, y: centro.y - 5, size: 14, font: fuente, color: PDFLib.rgb(1, 0, 0) });
+                    }
+
+                    y -= FILA_ALTO;
+                }
+
+                y -= 24;
+            }
+        }
+
+        async function descargarComoPDF(conReferencia) {
+            const bytes = await generarPdfVectorial(conReferencia);
             descargarBlob(new Blob([bytes], { type: 'application/pdf' }), nombreArchivoDescarga('pdf'));
         }
 
@@ -2646,6 +2988,7 @@
         const overlayDescarga = document.getElementById('overlay-descarga');
         const btnDescargaCancelar = document.getElementById('btn-descarga-cancelar');
         const btnDescargaConfirmar = document.getElementById('btn-descarga-confirmar');
+        const checkDescargaReferencia = document.getElementById('check-descarga-referencia');
         let formatoDescarga = 'pdf';
 
         function abrirModalDescarga() {
@@ -2677,10 +3020,11 @@
             btnDescargaConfirmar.disabled = true;
             btnDescargaConfirmar.textContent = 'Generando…';
             try {
+                const conReferencia = checkDescargaReferencia?.checked || false;
                 if (formatoDescarga === 'png') {
-                    await descargarComoPNG();
+                    await descargarComoPNG(conReferencia);
                 } else {
-                    await descargarComoPDF();
+                    await descargarComoPDF(conReferencia);
                 }
                 cerrarModalDescarga();
             } catch (e) {
