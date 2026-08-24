@@ -440,28 +440,28 @@
                         <span>Daños</span>
                         <span class="escala-item-valor" id="escala-danos-valor">100%</span>
                     </div> 
-                    <input type="range" id="escala-danos" min="50" max="200" step="5" value="100">
+                    <input type="range" id="escala-danos" min="10" max="400" step="5" value="100">
                 </div>
                 <div class="escala-item">
                     <div class="escala-item-cabecera">
                         <span>Ensayos</span>
                         <span class="escala-item-valor" id="escala-ensayos-valor">100%</span>
                     </div>
-                    <input type="range" id="escala-ensayos" min="50" max="200" step="5" value="100">
+                    <input type="range" id="escala-ensayos" min="10" max="400" step="5" value="100">
                 </div>
                 <div class="escala-item">
                     <div class="escala-item-cabecera">
                         <span>Fotos</span>
                         <span class="escala-item-valor" id="escala-fotos-valor">100%</span>
                     </div>
-                    <input type="range" id="escala-fotos" min="50" max="200" step="5" value="100">
+                    <input type="range" id="escala-fotos" min="10" max="400" step="5" value="100">
                 </div>
                 <div class="escala-item">
                     <div class="escala-item-cabecera">
                         <span>Texto</span>
                         <span class="escala-item-valor" id="escala-texto-valor">100%</span>
                     </div>
-                    <input type="range" id="escala-texto" min="50" max="200" step="5" value="100">
+                    <input type="range" id="escala-texto" min="10" max="400" step="5" value="100">
                 </div>
             </div>
         </div>
@@ -1455,7 +1455,8 @@
                     etiqueta: item.etiqueta ?? null,
                     colorEtiqueta: item.colorEtiqueta ?? null,
                 };
-                if (item.fotos) nuevoItem.fotos = item.fotos;
+                if (item.tool === 'foto') nuevoItem.fotos = item.fotos || [];
+                else if (item.fotos) nuevoItem.fotos = item.fotos;
                 return nuevoItem;
             }
             return { ...item, id: item.id ?? generarIdElemento() };
@@ -1468,7 +1469,20 @@
                 item.tamano = nuevo.tamano;
                 item.etiqueta = nuevo.etiqueta ?? null;
                 item.colorEtiqueta = nuevo.colorEtiqueta ?? null;
-                if (nuevo.fotos) item.fotos = nuevo.fotos;
+                if (nuevo.fotos) {
+                    /* No pisar sin más: si hay fotos 'local:<id>' todavía
+                       subiéndose en segundo plano (ver dispararSubidaFotosPendientes),
+                       el estado que acaba de confirmar el servidor todavía
+                       no las conoce (subirFoto y guardarEstado son dos
+                       pedidos separados). Perder esa referencia acá hace
+                       que, cuando la subida termine, no encuentre dónde
+                       poner la URL real — el archivo queda subido pero
+                       huérfano, sin vincular a ningún ícono. */
+                    const pendientesLocales = (item.fotos || []).filter(f => f.startsWith('local:'));
+                    item.fotos = pendientesLocales.length ? [...nuevo.fotos, ...pendientesLocales] : nuevo.fotos;
+                } else if (item.tool === 'foto' && !item.fotos) {
+                    item.fotos = [];
+                }
             } else if (item.tipo === 'texto') {
                 item.x = nuevo.x;
                 item.y = nuevo.y;
@@ -2781,6 +2795,7 @@
             deseleccionarElemento();
             cargarEstadoGuardado();
             await fusionarEstadoLocalPendiente();
+            dispararSubidaFotosPendientes();
             centrarVista();
         }
 
@@ -3018,7 +3033,7 @@
 
         async function actualizarOverlayFoto() {
             if (!fotoAbiertaItem) return;
-            const fotos = fotoAbiertaItem.fotos;
+            const fotos = fotoAbiertaItem.fotos || [];
             if (!fotos.length) { cerrarFotoGrande(); return; }
             fotoAbiertaIndice = clamp(fotoAbiertaIndice, 0, fotos.length - 1);
             const item = fotoAbiertaItem; // por si cambia mientras se resuelve el blob

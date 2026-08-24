@@ -185,7 +185,16 @@
                 const datos = await respuesta.json();
                 const refLocal = 'local:' + foto.id;
                 const idx = item.fotos.indexOf(refLocal);
-                if (idx !== -1) item.fotos[idx] = datos.url;
+                if (idx !== -1) {
+                    item.fotos[idx] = datos.url;
+                } else if (!item.fotos.includes(datos.url)) {
+                    /* La referencia 'local:<id>' ya no está (por ejemplo,
+                       se pisó item.fotos con la respuesta de un guardado
+                       de estado que llegó mientras esta subida estaba en
+                       curso). El archivo ya se subió con éxito: en vez de
+                       perderlo, se agrega igual para no dejarlo huérfano. */
+                    item.fotos.push(datos.url);
+                }
 
                 await eliminarFotoPendiente(foto.id);
                 subioAlguna = true;
@@ -197,11 +206,19 @@
         return subioAlguna;
     }
 
-    /* Dispara `onIntentar` al reconectar y cada `intervaloMs` como
-       respaldo, para el caso de conexión "técnicamente online" pero
-       inestable donde el evento 'online' del navegador no siempre avisa. */
+    /* Dispara `onIntentar` al reconectar, cada `intervaloMs` como
+       respaldo (para el caso de conexión "técnicamente online" pero
+       inestable donde el evento 'online' del navegador no siempre avisa),
+       y al volver a primer plano: en el celular, una pestaña/PWA en
+       segundo plano frena o espacia mucho el setInterval, así que sin
+       esto alguien que saca fotos offline y recién reabre la app ya con
+       señal puede quedarse esperando ese intervalo mucho más de lo que
+       tarda en la práctica. */
     function iniciarReintentos({ onIntentar, intervaloMs = 25000 }) {
         window.addEventListener('online', onIntentar);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && navigator.onLine) onIntentar();
+        });
         setInterval(() => {
             if (navigator.onLine) onIntentar();
         }, intervaloMs);
