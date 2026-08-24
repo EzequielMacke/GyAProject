@@ -177,10 +177,21 @@
                         body: formData,
                     });
                 } catch (e) {
-                    break; // sin conexión: se reintenta en la próxima pasada
+                    break; // sin conexión: no tiene sentido seguir probando el resto de la cola ahora
                 }
 
-                if (!respuesta.ok) break;
+                if (!respuesta.ok) {
+                    /* Esta foto en particular falló (por ejemplo, supera
+                       el límite de tamaño del servidor) pero SÍ hay
+                       conexión — no cortar acá: eso dejaba a cualquier
+                       otra foto pendiente detrás de esta en la cola
+                       trabada para siempre, aunque no tuviera ningún
+                       problema propio. Se la salta y se sigue con el
+                       resto; esta queda pendiente y se reintenta en la
+                       próxima pasada. */
+                    console.warn('No se pudo subir una foto pendiente (HTTP ' + respuesta.status + ')', foto.id);
+                    continue;
+                }
 
                 const datos = await respuesta.json();
                 const refLocal = 'local:' + foto.id;

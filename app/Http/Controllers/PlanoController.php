@@ -389,7 +389,7 @@ class PlanoController extends Controller
     public function subirFoto(Request $request, ObraTc $obraTc, Plano $plano)
     {
         $request->validate([
-            'foto' => 'required|image|max:10240',
+            'foto' => 'required|image|max:51200',
             'id' => 'nullable|string|regex:/^[a-zA-Z0-9_-]{1,64}$/',
         ]);
 

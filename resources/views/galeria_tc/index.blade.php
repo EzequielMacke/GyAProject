@@ -741,9 +741,19 @@
     async function descargarFotos(ids, boton) {
         if (!ids.length) return;
 
-        const textoOriginal = boton.innerHTML;
+        /* Se guardan los nodos originales (no un string de innerHTML):
+           reemplazar el contenido con un string y después reasignarlo
+           destruye y recrea el <span id="texto-descargar-seleccion">
+           que actualizarBotonesDescarga() actualiza por referencia — esa
+           referencia se cachea una sola vez al cargar la página, así que
+           quedaba apuntando a un nodo fantasma y el contador ya no se
+           actualizaba en pantalla aunque la selección se hubiera limpiado. */
+        const nodosOriginales = Array.from(boton.childNodes);
         boton.disabled = true;
-        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Descargando…';
+        boton.replaceChildren();
+        const spinner = document.createElement('i');
+        spinner.className = 'fas fa-spinner fa-spin';
+        boton.append(spinner, ' Descargando…');
 
         try {
             const respuesta = await fetch(urlDescargarFotos, {
@@ -772,11 +782,11 @@
             enlace.remove();
             window.URL.revokeObjectURL(url);
 
-            boton.innerHTML = textoOriginal;
+            boton.replaceChildren(...nodosOriginales);
             desactivarSeleccion();
         } catch (err) {
             boton.disabled = false;
-            boton.innerHTML = textoOriginal;
+            boton.replaceChildren(...nodosOriginales);
             alert('No se pudo descargar las fotos. Probá de nuevo.');
         }
     }
