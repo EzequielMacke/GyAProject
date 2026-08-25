@@ -11,6 +11,7 @@ class ObraTc extends Model
     protected $table = 'obras_tc';
     protected $fillable = [
         'descripcion',
+        'mensaje',
         'estado',
         'usuario_id',
     ];

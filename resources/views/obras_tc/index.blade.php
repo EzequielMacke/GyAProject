@@ -115,6 +115,21 @@
         }
         .form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
         .form-control.error { border-color: #e74c3c; }
+        textarea.form-control { resize: vertical; min-height: 90px; line-height: 1.5; }
+
+        /* ── MENSAJE OBRA ── */
+        .obra-mensaje {
+            display: flex; gap: 0.7rem;
+            background: var(--accent-s);
+            border: 1.5px solid #cfe0f8;
+            border-radius: 0.75rem;
+            padding: 0.9rem 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+        .obra-mensaje i { color: var(--accent); font-size: 0.95rem; margin-top: 0.15rem; }
+        .obra-mensaje-texto { font-size: 0.85rem; color: var(--text2); line-height: 1.55; white-space: pre-line; word-break: break-word; }
+        .obra-mensaje-texto a { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+        .obra-mensaje-texto a:hover { color: #1f5bbf; }
         .btn-cancel { height: 36px; padding: 0 1rem; border-radius: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; border: 1.5px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.14s; }
         .btn-cancel:hover { background: var(--surface2); }
         .btn-confirmar-eliminar {
@@ -277,6 +292,20 @@
                 </div>
                 @endif
 
+                @if($obraTc->mensaje)
+                @php
+                    $mensajeHtml = preg_replace(
+                        '/(https?:\/\/[^\s<]+[^\s<.,;:!?\)\]])/i',
+                        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+                        e($obraTc->mensaje)
+                    );
+                @endphp
+                <div class="obra-mensaje">
+                    <i class="fas fa-message"></i>
+                    <div class="obra-mensaje-texto">{!! $mensajeHtml !!}</div>
+                </div>
+                @endif
+
                 <div class="options-grid">
 
                     @permiso('dir_tc', 'ver')
@@ -327,9 +356,13 @@
             @method('PATCH')
 
             <div class="modal-body">
-                <div class="form-group" style="margin-bottom:0">
+                <div class="form-group">
                     <label class="form-label" for="input-editar-nombre-obra">Nombre <span>*</span></label>
                     <input type="text" id="input-editar-nombre-obra" name="nombre" class="form-control" value="{{ $obraTc->descripcion }}" placeholder="Nombre de la obra" autocomplete="off" required>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" for="input-editar-mensaje-obra">Mensaje</label>
+                    <textarea id="input-editar-mensaje-obra" name="mensaje" class="form-control" placeholder="Mensaje o aclaración para la obra" rows="4">{{ $obraTc->mensaje }}</textarea>
                 </div>
             </div>
 

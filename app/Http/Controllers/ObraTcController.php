@@ -108,10 +108,14 @@ class ObraTcController extends Controller
     public function update(Request $request, ObraTc $obraTc)
     {
         $request->validate([
-            'nombre' => 'required|string|max:255',
+            'nombre'  => 'required|string|max:255',
+            'mensaje' => 'nullable|string',
         ]);
 
-        $obraTc->update(['descripcion' => $request->nombre]);
+        $obraTc->update([
+            'descripcion' => $request->nombre,
+            'mensaje'     => $request->mensaje,
+        ]);
 
         return redirect()->route('obras_tc.index', $obraTc->id)->with('success', 'Obra actualizada correctamente.');
     }
