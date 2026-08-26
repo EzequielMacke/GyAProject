@@ -189,7 +189,8 @@
                        problema propio. Se la salta y se sigue con el
                        resto; esta queda pendiente y se reintenta en la
                        próxima pasada. */
-                    console.warn('No se pudo subir una foto pendiente (HTTP ' + respuesta.status + ')', foto.id);
+                    const detalle = await respuesta.json().catch(() => null);
+                    console.warn('No se pudo subir una foto pendiente (HTTP ' + respuesta.status + ')', foto.id, detalle);
                     continue;
                 }
 
