@@ -23,5 +23,12 @@
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+@if(request()->boolean('debug'))
+{{-- Consola de depuración en pantalla, para diagnosticar en el propio celular
+     (sin necesitar una Mac + Inspector Web de Safari). Se activa solo con
+     ?debug=1 en la URL: nunca carga para el resto de los usuarios. --}}
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
+@endif
 
 
