@@ -14,6 +14,14 @@
             });
         }
     </script>
+    @if(request()->boolean('debug'))
+    {{-- Consola de depuración en pantalla (ver partials/head.blade.php). Esta
+         página no incluye ese partial (es un editor liviano sin jQuery/
+         Bootstrap), así que se repite acá para poder diagnosticar en el
+         propio celular la subida de fotos. Solo carga con ?debug=1. --}}
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    @endif
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { height: 100%; overscroll-behavior: none; }
