@@ -3310,6 +3310,44 @@
             contextoFotoPendiente = null;
         });
 
+        /* El servidor (regla "image" de Laravel) no acepta HEIC/HEIF, el
+           formato en que el iPhone guarda las fotos por defecto — una
+           foto elegida de la galería (no tomada en el momento) puede
+           venir en ese formato y la subida se rechaza en silencio (queda
+           "pendiente" para siempre, sin ningún aviso visible). Safari sí
+           puede decodificar HEIC de forma nativa, así que se aprovecha
+           eso para convertir a JPEG en el propio dispositivo antes de
+           guardar/subir nada — sin depender de ninguna librería. */
+        function esHeic(archivo) {
+            const tipo = (archivo.type || '').toLowerCase();
+            if (tipo === 'image/heic' || tipo === 'image/heif') return true;
+            if (tipo) return false;
+            const nombre = (archivo.name || '').toLowerCase();
+            return nombre.endsWith('.heic') || nombre.endsWith('.heif');
+        }
+
+        function convertirHeicAJpeg(archivo) {
+            return new Promise((resolve) => {
+                const url = URL.createObjectURL(archivo);
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    canvas.getContext('2d').drawImage(img, 0, 0);
+                    canvas.toBlob((blob) => {
+                        URL.revokeObjectURL(url);
+                        resolve(blob || archivo); // sin soporte para decodificar HEIC: se sigue con el original
+                    }, 'image/jpeg', 0.9);
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(archivo);
+                };
+                img.src = url;
+            });
+        }
+
         /* Las fotos se guardan primero en el dispositivo (IndexedDB) y el
            pin se crea al instante, sin esperar a que se suban: así,
            sacar una foto en el campo nunca se bloquea ni se pierde por
@@ -3323,7 +3361,8 @@
             if (!archivos.length || !contexto) return;
 
             const refs = [];
-            for (const archivo of archivos) {
+            for (const archivoOriginal of archivos) {
+                const archivo = esHeic(archivoOriginal) ? await convertirHeicAJpeg(archivoOriginal) : archivoOriginal;
                 const id = generarIdElemento();
                 await OfflineAPI?.guardarFotoPendiente(id, PLANO_ID, archivo, archivo.type);
                 refs.push('local:' + id);
