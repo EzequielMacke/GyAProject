@@ -165,13 +165,18 @@
                     continue;
                 }
 
-                console.log('[foto-offline] subiendo', foto.id, 'blob:', foto.blob, 'size:', foto.blob?.size, 'type:', foto.blob?.type);
+                /* Un Blob que salió de IndexedDB reporta bien su size/type
+                   como metadata, pero Safari/WebKit a veces no transmite su
+                   contenido real por fetch() (llega vacío al servidor
+                   aunque acá se vea con tamaño correcto). Reconstruirlo a
+                   partir de sus bytes justo antes de subir evita ese bug —
+                   inofensivo en cualquier otro navegador. */
+                const bytes = await foto.blob.arrayBuffer();
+                const blobFresco = new Blob([bytes], { type: foto.mime || foto.blob.type });
 
                 const formData = new FormData();
-                formData.append('foto', foto.blob, 'foto.' + (foto.mime === 'image/png' ? 'png' : 'jpg'));
+                formData.append('foto', blobFresco, 'foto.' + (foto.mime === 'image/png' ? 'png' : 'jpg'));
                 formData.append('id', foto.id);
-
-                console.log('[foto-offline] formData.foto:', formData.get('foto'));
 
                 let respuesta;
                 try {
