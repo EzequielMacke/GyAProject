@@ -165,9 +165,13 @@
                     continue;
                 }
 
+                console.log('[foto-offline] subiendo', foto.id, 'blob:', foto.blob, 'size:', foto.blob?.size, 'type:', foto.blob?.type);
+
                 const formData = new FormData();
                 formData.append('foto', foto.blob, 'foto.' + (foto.mime === 'image/png' ? 'png' : 'jpg'));
                 formData.append('id', foto.id);
+
+                console.log('[foto-offline] formData.foto:', formData.get('foto'));
 
                 let respuesta;
                 try {
