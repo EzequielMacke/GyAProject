@@ -140,6 +140,28 @@
         .estado-guardado.local .estado-guardado-punto { background: #d9a441; }
         .estado-guardado.local { color: #d9a441; }
 
+        /* En pantallas angostas (celular en vertical) la barra no entra
+           en una sola fila: se apila en columna, pegada a la esquina
+           superior derecha. */
+        @media (max-width: 700px) {
+            .barra-superior-derecha {
+                /* column-reverse para que el orden de arriba hacia abajo
+                   coincida con el de derecha a izquierda en horizontal
+                   (Volver arriba de todo, Guardado al final). */
+                flex-direction: column-reverse;
+                align-items: flex-end;
+                top: 8px; right: 8px;
+                gap: 0.35rem;
+            }
+            .btn-superior {
+                padding: 0.4rem 0.7rem;
+                font-size: 0.76rem;
+            }
+            .estado-guardado {
+                padding: 0.4rem 0.6rem;
+            }
+        }
+
         .capas-wrap, .escala-wrap, .preferencias-wrap, .actividad-wrap { position: relative; }
 
         .panel-actividad {
