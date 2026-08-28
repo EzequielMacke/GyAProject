@@ -1929,8 +1929,17 @@
 
         function necesitaReajusteNitidez() {
             const factorMaxSeguro = Math.min(6000 / anchoBase, 6000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
-            const faltaNitidez = vista.scale > factorActual * 0.9 && factorActual < factorMaxSeguro - 0.01;
-            const sobraNitidez = factorActual > SOBREMUESTREO * 1.05 && vista.scale < factorActual / 3;
+            /* factorActual es "px de canvas por punto de PDF"; para que se
+               vea nítido en pantalla tiene que cubrir tanto el zoom actual
+               como la densidad de píxeles del dispositivo (dpr) — si acá
+               solo se compara contra vista.scale, en una tablet con dpr 2-3
+               el re-render dispara con menos resolución de la que hace
+               falta y el plano queda más borroso después de zoomear que
+               antes (perdiendo el colchón de dpr que sí tenía el render
+               inicial, ver SOBREMUESTREO). */
+            const factorNecesario = vista.scale * dpr;
+            const faltaNitidez = factorNecesario > factorActual * 0.9 && factorActual < factorMaxSeguro - 0.01;
+            const sobraNitidez = factorActual > SOBREMUESTREO * 1.05 && factorNecesario < factorActual / 3;
             return faltaNitidez || sobraNitidez;
         }
 
@@ -1945,7 +1954,7 @@
             if (!necesitaReajusteNitidez()) return;
 
             const factorMaxSeguro = Math.min(6000 / anchoBase, 6000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
-            const nuevoFactor = clamp(vista.scale * 1.8, SOBREMUESTREO, factorMaxSeguro);
+            const nuevoFactor = clamp(vista.scale * dpr * 1.8, SOBREMUESTREO, factorMaxSeguro);
             if (Math.abs(nuevoFactor - factorActual) > 0.05) {
                 await reRenderNitidez(nuevoFactor);
             }
