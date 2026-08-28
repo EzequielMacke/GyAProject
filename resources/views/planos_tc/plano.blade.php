@@ -1927,8 +1927,26 @@
             temporizadorNitidez = setTimeout(evaluarRenderNitidez, 250);
         }
 
+        /* Tope de resolución del canvas del PDF (en "px por punto de PDF"),
+           para no pedirle al navegador un canvas gigante que haga crashear
+           una tablet (6000px es un límite conservador muy por debajo del
+           que imponen los navegadores). Tiene que ser el MISMO tope que
+           usa el render inicial (ver renderPagina): si el inicial pudiera
+           superarlo sin chequearlo, factorActual arrancaría ya por encima
+           de este límite y necesitaReajusteNitidez() jamás volvería a
+           disparar un re-render (su condición exige factorActual por
+           DEBAJO del tope) — el plano quedaría congelado en la nitidez
+           inicial para siempre, sin importar cuánto zoom se haga. Esto es
+           más probable cuanto más grande es la hoja del plano (anchoBase/
+           altoBase grandes achican el tope) y más alto el dpr del
+           dispositivo (agranda SOBREMUESTREO) — el combo típico de una
+           tablet con un plano tipo A1/A0. */
+        function calcularFactorMaxSeguro() {
+            return Math.min(6000 / anchoBase, 6000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
+        }
+
         function necesitaReajusteNitidez() {
-            const factorMaxSeguro = Math.min(6000 / anchoBase, 6000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
+            const factorMaxSeguro = calcularFactorMaxSeguro();
             /* factorActual es "px de canvas por punto de PDF"; para que se
                vea nítido en pantalla tiene que cubrir tanto el zoom actual
                como la densidad de píxeles del dispositivo (dpr) — si acá
@@ -1953,7 +1971,7 @@
 
             if (!necesitaReajusteNitidez()) return;
 
-            const factorMaxSeguro = Math.min(6000 / anchoBase, 6000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
+            const factorMaxSeguro = calcularFactorMaxSeguro();
             const nuevoFactor = clamp(vista.scale * dpr * 1.8, SOBREMUESTREO, factorMaxSeguro);
             if (Math.abs(nuevoFactor - factorActual) > 0.05) {
                 await reRenderNitidez(nuevoFactor);
@@ -3154,7 +3172,6 @@
             clearTimeout(temporizadorNitidez);
             const pagina = await pdfDoc.getPage(1);
             const viewportBase = pagina.getViewport({ scale: 1, rotation: rotacionPlano });
-            const viewportRender = pagina.getViewport({ scale: SOBREMUESTREO, rotation: rotacionPlano });
 
             /* anchoBase/altoBase (y por lo tanto la posición "mundo" de
                cada elemento dibujado) se miden en puntos del PDF, un
@@ -3166,6 +3183,15 @@
             anchoBase = viewportBase.width;
             altoBase = viewportBase.height;
 
+            /* Igual que en reRenderNitidez, el factor inicial no puede
+               superar calcularFactorMaxSeguro() — si lo hiciera (hojas
+               grandes tipo A1/A0 con dpr alto), factorActual arrancaría ya
+               por encima del tope y la nitidez quedaría congelada para
+               siempre al hacer zoom (ver el comentario en
+               calcularFactorMaxSeguro). */
+            const factorInicial = Math.min(SOBREMUESTREO, calcularFactorMaxSeguro());
+            const viewportRender = pagina.getViewport({ scale: factorInicial, rotation: rotacionPlano });
+
             pdfCanvas.width = viewportRender.width;
             pdfCanvas.height = viewportRender.height;
             pdfCanvas.style.width = anchoBase + 'px';
@@ -3173,7 +3199,7 @@
 
             await pagina.render({ canvasContext: pdfCtx, viewport: viewportRender }).promise;
 
-            factorActual = SOBREMUESTREO;
+            factorActual = factorInicial;
             estadoPlano.trazos = [];
             deseleccionarElemento();
             cargarEstadoGuardado();
