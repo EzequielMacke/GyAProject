@@ -829,6 +829,16 @@
         const ZOOM_MIN = 0.05;
         const ZOOM_MAX = 40;
         const ESPACIO_TRAMA = 4;
+        /* Ancho/alto máximo (en px) del canvas del PDF al hacer zoom (ver
+           calcularFactorMaxSeguro). 6000 quedaba corto para zooms
+           moderados en dispositivos con dpr > 1 (p. ej. un plano A3 a
+           dpr 1.5 y zoom 5x ya necesita ~9100px de ancho para verse
+           nítido) — se veía pixelado bastante antes de llegar al zoom
+           máximo. 9200 cubre ese caso; en un canvas RGBA el costo en
+           memoria crece con el cuadrado del lado (9200px de ancho en
+           este plano ronda los 240MB), así que no conviene subirlo
+           mucho más sin paginar/tilear el render. */
+        const RESOLUCION_MAXIMA_CANVAS_PX = 9200;
 
         /* ─── Herramientas de dibujo ───────────────────────── */
         const ENSAYOS = [
@@ -1929,8 +1939,7 @@
 
         /* Tope de resolución del canvas del PDF (en "px por punto de PDF"),
            para no pedirle al navegador un canvas gigante que haga crashear
-           una tablet (6000px es un límite conservador muy por debajo del
-           que imponen los navegadores). Tiene que ser el MISMO tope que
+           una tablet (ver RESOLUCION_MAXIMA_CANVAS_PX). Tiene que ser el MISMO tope que
            usa el render inicial (ver renderPagina): si el inicial pudiera
            superarlo sin chequearlo, factorActual arrancaría ya por encima
            de este límite y necesitaReajusteNitidez() jamás volvería a
@@ -1942,7 +1951,7 @@
            dispositivo (agranda SOBREMUESTREO) — el combo típico de una
            tablet con un plano tipo A1/A0. */
         function calcularFactorMaxSeguro() {
-            return Math.min(6000 / anchoBase, 6000 / altoBase, ZOOM_MAX * SOBREMUESTREO);
+            return Math.min(RESOLUCION_MAXIMA_CANVAS_PX / anchoBase, RESOLUCION_MAXIMA_CANVAS_PX / altoBase, ZOOM_MAX * SOBREMUESTREO);
         }
 
         function necesitaReajusteNitidez() {
