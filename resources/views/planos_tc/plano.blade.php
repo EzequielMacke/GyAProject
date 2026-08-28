@@ -830,15 +830,17 @@
         const ZOOM_MAX = 40;
         const ESPACIO_TRAMA = 4;
         /* Ancho/alto máximo (en px) del canvas del PDF al hacer zoom (ver
-           calcularFactorMaxSeguro). 6000 quedaba corto para zooms
-           moderados en dispositivos con dpr > 1 (p. ej. un plano A3 a
-           dpr 1.5 y zoom 5x ya necesita ~9100px de ancho para verse
-           nítido) — se veía pixelado bastante antes de llegar al zoom
-           máximo. 9200 cubre ese caso; en un canvas RGBA el costo en
-           memoria crece con el cuadrado del lado (9200px de ancho en
-           este plano ronda los 240MB), así que no conviene subirlo
-           mucho más sin paginar/tilear el render. */
-        const RESOLUCION_MAXIMA_CANVAS_PX = 9200;
+           calcularFactorMaxSeguro). En dispositivos con dpr > 1 este tope
+           se queda corto para zooms moderados (un plano A3 a dpr 1.5 y
+           zoom 5x ya necesita ~9100px de ancho para verse nítido) y se ve
+           pixelado antes de llegar al zoom máximo — PERO se probó subirlo
+           a 9200 y colgó una tablet real (canvas RGBA: el costo en
+           memoria crece con el cuadrado del lado, ~240MB solo para este
+           canvas a 9200px). 6000 es el máximo verificado como seguro en
+           el hardware real que usa esta app; el pixelado a partir de
+           cierto zoom en tablets de dpr alto es el costo aceptado de esa
+           seguridad, no subir sin volver a probar en el dispositivo real. */
+        const RESOLUCION_MAXIMA_CANVAS_PX = 6000;
 
         /* ─── Herramientas de dibujo ───────────────────────── */
         const ENSAYOS = [
