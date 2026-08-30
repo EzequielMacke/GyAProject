@@ -162,7 +162,33 @@
             }
         }
 
-        .capas-wrap, .escala-wrap, .preferencias-wrap, .actividad-wrap { position: relative; }
+        .capas-wrap, .escala-wrap, .preferencias-wrap, .actividad-wrap, .pendientes-wrap { position: relative; }
+
+        .badge-pendientes {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 16px; height: 16px; padding: 0 4px;
+            border-radius: 999px; background: #c0392b; color: #fff;
+            font-size: 0.66rem; font-weight: 700; line-height: 1;
+        }
+
+        .panel-pendientes {
+            position: absolute; top: calc(100% + 0.4rem); right: 0;
+            background: #222; border-radius: 0.55rem; padding: 0.6rem;
+            display: none; flex-direction: column; gap: 0.3rem;
+            min-width: 260px; max-height: 70vh; overflow-y: auto;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+        .panel-pendientes.abierto { display: flex; }
+        .pendiente-item {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.6rem;
+            padding: 0.4rem 0.4rem;
+            border-bottom: 1px solid #333;
+            font-size: 0.78rem; color: #ddd;
+        }
+        .pendiente-item:last-child { border-bottom: none; }
+        .pendiente-item-cantidad { color: #d9a441; font-weight: 700; flex-shrink: 0; }
+        .pendiente-vacio { color: #888; font-size: 0.78rem; padding: 0.4rem; }
 
         .panel-actividad {
             position: absolute; top: calc(100% + 0.4rem); right: 0;
@@ -430,6 +456,18 @@
         <div class="estado-guardado" id="estado-guardado" @if(!$puedeEditar && !$puedeEliminar) style="display:none" @endif>
             <span class="estado-guardado-punto"></span>
             <span class="estado-guardado-texto">Guardado</span>
+        </div>
+        <div class="pendientes-wrap" id="pendientes-wrap" @if(!$puedeEditar && !$puedeEliminar) style="display:none" @endif>
+            <button type="button" class="btn-superior" id="btn-pendientes">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                Pendientes
+                <span class="badge-pendientes" id="badge-pendientes" style="display:none">0</span>
+            </button>
+            <div class="panel-pendientes" id="panel-pendientes"></div>
         </div>
         <div class="capas-wrap" id="capas-wrap">
             <button type="button" class="btn-superior" id="btn-capas">
@@ -1308,6 +1346,90 @@
             }
         });
 
+        /* ─── Pendientes: todo lo que todavía no se confirmó contra el
+             servidor (ni se guardó localmente como "ya sincronizado"),
+             para que se pueda ver de un vistazo qué falta subir sin tener
+             que adivinarlo por el estado genérico "Cambios sin guardar".
+             Se apoya en calcularOperacionesPendientes(true) (mismo cálculo
+             que ya usa el autoguardado), incluyendo las fotos que solo
+             viven como blob local ('local:<id>') porque todavía no
+             terminaron de subirse. ─ */
+        const pendientesWrap = document.getElementById('pendientes-wrap');
+        const btnPendientes = document.getElementById('btn-pendientes');
+        const panelPendientes = document.getElementById('panel-pendientes');
+        const badgePendientes = document.getElementById('badge-pendientes');
+
+        function calcularResumenPendientes() {
+            const operaciones = calcularOperacionesPendientes(true);
+            const basePorId = new Map((estadoBase.trazos || []).map(t => [t.id, t]));
+            const conteos = new Map();
+            const sumar = (etiqueta, cantidad = 1) => conteos.set(etiqueta, (conteos.get(etiqueta) || 0) + cantidad);
+            const nombreDe = tool => metaCapas[tool]?.nombre || tool;
+
+            operaciones.agregados.forEach(item => sumar(`${nombreDe(item.tool)} pendiente`));
+            operaciones.movidos.forEach(item => sumar(`${nombreDe(item.tool)} modificada, pendiente`));
+            operaciones.eliminados.forEach(id => {
+                const base = basePorId.get(id);
+                sumar(`${base ? nombreDe(base.tool) : 'Elemento'} eliminada, pendiente`);
+            });
+
+            let fotosNuevas = 0, fotosBorradas = 0;
+            operaciones.fotosCambiadas.forEach(cambio => {
+                fotosNuevas += cambio.fotosAgregadas.length;
+                fotosBorradas += cambio.fotosEliminadas.length;
+            });
+            if (fotosNuevas) sumar('Foto pendiente', fotosNuevas);
+            if (fotosBorradas) sumar('Eliminación de foto pendiente', fotosBorradas);
+
+            if (operaciones.escalas) sumar('Cambio de escala pendiente');
+
+            const items = Array.from(conteos, ([etiqueta, cantidad]) => ({ etiqueta, cantidad }));
+            return { items, total: items.reduce((acc, i) => acc + i.cantidad, 0) };
+        }
+
+        function actualizarPendientes() {
+            const { items, total } = calcularResumenPendientes();
+
+            if (badgePendientes) {
+                badgePendientes.style.display = total ? '' : 'none';
+                badgePendientes.textContent = total > 99 ? '99+' : String(total);
+            }
+
+            panelPendientes.innerHTML = '';
+            if (!items.length) {
+                const vacio = document.createElement('span');
+                vacio.className = 'pendiente-vacio';
+                vacio.textContent = 'No hay cambios sin guardar.';
+                panelPendientes.appendChild(vacio);
+                return;
+            }
+            items.forEach(({ etiqueta, cantidad }) => {
+                const fila = document.createElement('div');
+                fila.className = 'pendiente-item';
+                const texto = document.createElement('span');
+                texto.textContent = etiqueta;
+                const num = document.createElement('span');
+                num.className = 'pendiente-item-cantidad';
+                num.textContent = '×' + cantidad;
+                fila.append(texto, num);
+                panelPendientes.appendChild(fila);
+            });
+        }
+
+        btnPendientes?.addEventListener('click', e => {
+            e.stopPropagation();
+            const abrira = !panelPendientes.classList.contains('abierto');
+            if (abrira) actualizarPendientes();
+            panelPendientes.classList.toggle('abierto', abrira);
+            btnPendientes.classList.toggle('activo', abrira);
+        });
+        document.addEventListener('click', e => {
+            if (pendientesWrap && !pendientesWrap.contains(e.target)) {
+                panelPendientes.classList.remove('abierto');
+                btnPendientes.classList.remove('activo');
+            }
+        });
+
         [
             ['danos', 'escala-danos', 'escala-danos-valor'],
             ['ensayos', 'escala-ensayos', 'escala-ensayos-valor'],
@@ -1827,6 +1949,7 @@
             if (!PUEDE_EDITAR && !PUEDE_ELIMINAR) return;
             fijarEstadoGuardado('pendiente');
             persistirLocalmenteLoPendiente();
+            actualizarPendientes();
             clearTimeout(temporizadorGuardado);
             temporizadorGuardado = setTimeout(guardarEstadoPlano, DEMORA_GUARDADO_MS);
         }
@@ -1852,6 +1975,7 @@
                 operaciones.movidos.length || operaciones.fotosCambiadas.length || operaciones.escalas;
             if (!hayCambios) {
                 fijarEstadoGuardado('guardado');
+                actualizarPendientes();
                 return;
             }
 
@@ -1896,6 +2020,7 @@
                 fijarEstadoGuardado('local');
             } finally {
                 guardadoEnCurso = false;
+                actualizarPendientes();
             }
         }
 
@@ -3216,6 +3341,7 @@
             cargarEstadoGuardado();
             await fusionarEstadoLocalPendiente();
             dispararSubidaFotosPendientes();
+            actualizarPendientes();
             centrarVista();
         }
 
