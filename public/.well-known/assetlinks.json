@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.sigestgya.app",
+    "sha256_cert_fingerprints": [
+      "DA:53:1F:64:52:EE:3C:CC:7A:D5:3F:66:98:87:1B:53:C8:3A:5E:89:CF:63:CB:B4:8C:3E:E5:17:83:FD:CA:4B"
+    ]
+  }
+}]
