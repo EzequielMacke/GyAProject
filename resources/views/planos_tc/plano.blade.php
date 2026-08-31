@@ -735,6 +735,14 @@
                 </svg>
                 Selección
             </button>
+            <button type="button" class="tool-btn" data-tool="seleccion_multiple" title="Selección múltiple">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="4 3"></rect>
+                    <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"></circle>
+                    <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"></circle>
+                </svg>
+                Selección múltiple
+            </button>
         </nav>
 
         <div class="lienzo-wrap" id="lienzo-wrap">
@@ -746,6 +754,10 @@
             <div class="panel-seleccion" id="panel-seleccion">
                 <button type="button" class="panel-seleccion-btn" id="btn-seleccion-mover" @if(!$puedeEditar) style="display:none" @endif>Mover</button>
                 <button type="button" class="panel-seleccion-btn borrar" id="btn-seleccion-eliminar" @if(!$puedeEliminar) style="display:none" @endif>Eliminar</button>
+            </div>
+            <div class="panel-seleccion" id="panel-seleccion-multiple">
+                <button type="button" class="panel-seleccion-btn" id="btn-multi-mover" @if(!$puedeEditar) style="display:none" @endif>Mover</button>
+                <button type="button" class="panel-seleccion-btn borrar" id="btn-multi-eliminar" @if(!$puedeEliminar) style="display:none" @endif>Eliminar (<span id="multi-cantidad">0</span>)</button>
             </div>
         </div>
     </div>
@@ -1466,6 +1478,7 @@
         document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
             btn.addEventListener('click', () => {
                 deseleccionarElemento();
+                deseleccionarMultiple();
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('activo'));
                 btn.classList.add('activo');
                 herramientaActual = btn.dataset.tool;
@@ -1648,7 +1661,7 @@
         let estadoRecibidoPendiente = null;
 
         function aplicarEstadoPendienteSiHay() {
-            if (estadoRecibidoPendiente && !dibujando && !arrastrandoMover) {
+            if (estadoRecibidoPendiente && !dibujando && !arrastrandoMover && !arrastrandoMoverMultiple && !dibujandoRectangulo) {
                 const pendiente = estadoRecibidoPendiente;
                 estadoRecibidoPendiente = null;
                 aplicarEstadoRecibido(pendiente);
@@ -1737,7 +1750,7 @@
            elemento seleccionado, etc.) no queda huérfana ni se pierde el
            cambio que estaba por aplicar. */
         function aplicarEstadoRecibido(estadoJson) {
-            if (dibujando || arrastrandoMover) {
+            if (dibujando || arrastrandoMover || arrastrandoMoverMultiple || dibujandoRectangulo) {
                 estadoRecibidoPendiente = estadoJson;
                 return;
             }
@@ -1759,6 +1772,9 @@
                        otro usuario. */
                     estadoPlano.trazos.splice(i, 1);
                     if (elementoSeleccionado === item) deseleccionarElemento();
+                    if (seleccionMultiple.includes(item)) {
+                        seleccionMultiple = seleccionMultiple.filter(it => it !== item);
+                    }
                 } /* si no, es algo local recién creado que todavía no se
                      guardó — no se toca. */
             }
@@ -1779,6 +1795,12 @@
 
             if (fotoAbiertaItem) actualizarOverlayFoto();
             if (elementoSeleccionado && panelSeleccion.classList.contains('abierto')) mostrarPanelSeleccion();
+            if (seleccionMultiple.length && panelSeleccionMultiple.classList.contains('abierto')) {
+                multiCantidadEl.textContent = seleccionMultiple.length;
+                mostrarPanelSeleccionMultiple();
+            } else if (!seleccionMultiple.length) {
+                ocultarPanelSeleccionMultiple();
+            }
 
             redibujarTrazos();
         }
@@ -1965,7 +1987,7 @@
                de estadoPlano, y si la respuesta vuelve después de que esa
                acción terminó, pisaría la versión final con esa parcial.
                Mejor esperar a que termine y reintentar. */
-            if (dibujando || arrastrandoMover) {
+            if (dibujando || arrastrandoMover || arrastrandoMoverMultiple || dibujandoRectangulo) {
                 programarGuardado();
                 return;
             }
@@ -2172,6 +2194,9 @@
             dibujarResaltadoSeleccion();
             if (elementoSeleccionado && panelSeleccion.classList.contains('abierto')) {
                 posicionarPanelSeleccion();
+            }
+            if (seleccionMultiple.length && panelSeleccionMultiple.classList.contains('abierto')) {
+                posicionarPanelSeleccionMultiple();
             }
         }
 
@@ -3260,10 +3285,7 @@
             return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
         }
 
-        function dibujarResaltadoSeleccion() {
-            if (!elementoSeleccionado) return;
-            const bbox = calcularBBoxPantalla(elementoSeleccionado);
-            if (!bbox) return;
+        function dibujarRectanguloResaltado(bbox) {
             const pad = 8;
             drawCtx.save();
             drawCtx.strokeStyle = '#2a6fdb';
@@ -3271,6 +3293,35 @@
             drawCtx.setLineDash([6, 4]);
             drawCtx.strokeRect(bbox.minX - pad, bbox.minY - pad, (bbox.maxX - bbox.minX) + pad * 2, (bbox.maxY - bbox.minY) + pad * 2);
             drawCtx.restore();
+        }
+
+        function dibujarResaltadoSeleccion() {
+            if (elementoSeleccionado) {
+                const bbox = calcularBBoxPantalla(elementoSeleccionado);
+                if (bbox) dibujarRectanguloResaltado(bbox);
+            }
+
+            seleccionMultiple.forEach(item => {
+                const bbox = calcularBBoxPantalla(item);
+                if (bbox) dibujarRectanguloResaltado(bbox);
+            });
+
+            if (dibujandoRectangulo && rectSeleccion) {
+                const pA = mundoAPantalla(rectSeleccion.inicio.x, rectSeleccion.inicio.y);
+                const pB = mundoAPantalla(rectSeleccion.actual.x, rectSeleccion.actual.y);
+                const x = Math.min(pA.x, pB.x);
+                const y = Math.min(pA.y, pB.y);
+                const w = Math.abs(pB.x - pA.x);
+                const h = Math.abs(pB.y - pA.y);
+                drawCtx.save();
+                drawCtx.fillStyle = 'rgba(42,111,219,0.1)';
+                drawCtx.strokeStyle = '#2a6fdb';
+                drawCtx.lineWidth = 1.5;
+                drawCtx.setLineDash([5, 4]);
+                drawCtx.fillRect(x, y, w, h);
+                drawCtx.strokeRect(x, y, w, h);
+                drawCtx.restore();
+            }
         }
 
         window.addEventListener('resize', () => {
@@ -3338,6 +3389,7 @@
             factorActual = factorInicial;
             estadoPlano.trazos = [];
             deseleccionarElemento();
+            deseleccionarMultiple();
             cargarEstadoGuardado();
             await fusionarEstadoLocalPendiente();
             dispararSubidaFotosPendientes();
@@ -3722,6 +3774,22 @@
         let arrastreMoverInicio = null;
         let arrastreMoverOrigen = null;
 
+        /* ─── Selección múltiple: arrastrar un rectángulo y agarrar todo
+             lo que quede completamente adentro (respetando capas ocultas),
+             para moverlo o borrarlo en bloque. ─ */
+        const panelSeleccionMultiple = document.getElementById('panel-seleccion-multiple');
+        const btnMultiMover = document.getElementById('btn-multi-mover');
+        const btnMultiEliminar = document.getElementById('btn-multi-eliminar');
+        const multiCantidadEl = document.getElementById('multi-cantidad');
+
+        let seleccionMultiple = [];
+        let modoMoverMultiple = false;
+        let arrastrandoMoverMultiple = false;
+        let arrastreMoverMultipleInicio = null;
+        let arrastreMoverMultipleOrigen = null;
+        let dibujandoRectangulo = false;
+        let rectSeleccion = null;
+
         function distanciaPuntoSegmento(p, a, b) {
             const dx = b.x - a.x, dy = b.y - a.y;
             const largoSq = dx * dx + dy * dy;
@@ -3868,6 +3936,134 @@
             btnSeleccionMover.classList.toggle('activo', modoMover);
         });
 
+        function bboxUnion(bboxes) {
+            return {
+                minX: Math.min(...bboxes.map(b => b.minX)),
+                maxX: Math.max(...bboxes.map(b => b.maxX)),
+                minY: Math.min(...bboxes.map(b => b.minY)),
+                maxY: Math.max(...bboxes.map(b => b.maxY)),
+            };
+        }
+
+        function mostrarPanelSeleccionMultiple() {
+            panelSeleccionMultiple.classList.add('abierto');
+            posicionarPanelSeleccionMultiple();
+        }
+
+        function ocultarPanelSeleccionMultiple() {
+            panelSeleccionMultiple.classList.remove('abierto');
+        }
+
+        function posicionarPanelSeleccionMultiple() {
+            const bboxes = seleccionMultiple.map(calcularBBoxPantalla).filter(Boolean);
+            if (!bboxes.length) { ocultarPanelSeleccionMultiple(); return; }
+            const bbox = bboxUnion(bboxes);
+            const cx = (bbox.minX + bbox.maxX) / 2;
+            panelSeleccionMultiple.style.left = cx + 'px';
+            panelSeleccionMultiple.style.top = Math.max(bbox.minY - 14, 12) + 'px';
+        }
+
+        function seleccionarMultiple(items) {
+            seleccionMultiple = items;
+            modoMoverMultiple = false;
+            btnMultiMover.classList.remove('activo');
+            multiCantidadEl.textContent = items.length;
+            if (items.length) mostrarPanelSeleccionMultiple(); else ocultarPanelSeleccionMultiple();
+            redibujarTrazos();
+        }
+
+        function deseleccionarMultiple() {
+            seleccionMultiple = [];
+            modoMoverMultiple = false;
+            arrastrandoMoverMultiple = false;
+            btnMultiMover.classList.remove('activo');
+            ocultarPanelSeleccionMultiple();
+            dibujandoRectangulo = false;
+            rectSeleccion = null;
+        }
+
+        /* "Completamente contenido": el bbox del elemento tiene que caer
+           entero dentro del rectángulo, no alcanza con que se toquen. */
+        function elementoDentroDeRectangulo(item, rectPantalla) {
+            const bbox = calcularBBoxPantalla(item);
+            if (!bbox) return false;
+            return bbox.minX >= rectPantalla.minX && bbox.maxX <= rectPantalla.maxX &&
+                bbox.minY >= rectPantalla.minY && bbox.maxY <= rectPantalla.maxY;
+        }
+
+        function seleccionarElementosEnRectangulo(mundoA, mundoB) {
+            const pA = mundoAPantalla(mundoA.x, mundoA.y);
+            const pB = mundoAPantalla(mundoB.x, mundoB.y);
+            const rectPantalla = {
+                minX: Math.min(pA.x, pB.x), maxX: Math.max(pA.x, pB.x),
+                minY: Math.min(pA.y, pB.y), maxY: Math.max(pA.y, pB.y),
+            };
+            const seleccionados = estadoPlano.trazos.filter(item => {
+                if (capasVisibles[item.tool] === false) return false;
+                return elementoDentroDeRectangulo(item, rectPantalla);
+            });
+            seleccionarMultiple(seleccionados);
+        }
+
+        function iniciarArrastreMoverMultiple(mundo) {
+            arrastrandoMoverMultiple = true;
+            arrastreMoverMultipleInicio = mundo;
+            arrastreMoverMultipleOrigen = seleccionMultiple.map(item => ({
+                item,
+                puntos: item.puntos ? item.puntos.map(p => ({ x: p.x, y: p.y })) : null,
+                x: item.x,
+                y: item.y,
+            }));
+            ocultarPanelSeleccionMultiple();
+        }
+
+        function moverSeleccionMultiple(mundo) {
+            if (!arrastreMoverMultipleInicio || !arrastreMoverMultipleOrigen) return;
+            const dx = mundo.x - arrastreMoverMultipleInicio.x;
+            const dy = mundo.y - arrastreMoverMultipleInicio.y;
+            arrastreMoverMultipleOrigen.forEach(({ item, puntos, x, y }) => {
+                if (puntos) {
+                    item.puntos = puntos.map(p => ({ x: p.x + dx, y: p.y + dy }));
+                } else {
+                    item.x = x + dx;
+                    item.y = y + dy;
+                }
+            });
+            solicitarRedibujado();
+        }
+
+        function finalizarArrastreMoverMultiple() {
+            arrastrandoMoverMultiple = false;
+            modoMoverMultiple = false;
+            btnMultiMover.classList.remove('activo');
+            if (seleccionMultiple.length) mostrarPanelSeleccionMultiple();
+            programarGuardado();
+            aplicarEstadoPendienteSiHay();
+        }
+
+        function eliminarSeleccionMultiple() {
+            if (!PUEDE_ELIMINAR) return;
+            if (!seleccionMultiple.length) return;
+            const capasAfectadas = new Set(seleccionMultiple.map(item => item.tool));
+            seleccionMultiple.forEach(item => {
+                const idx = estadoPlano.trazos.indexOf(item);
+                if (idx !== -1) estadoPlano.trazos.splice(idx, 1);
+            });
+            deseleccionarMultiple();
+            capasAfectadas.forEach(tool => quitarCapaSiVacia(tool));
+            redibujarTrazos();
+            programarGuardado();
+        }
+
+        btnMultiMover.addEventListener('click', () => {
+            if (!PUEDE_EDITAR) return;
+            if (!seleccionMultiple.length) return;
+            modoMoverMultiple = !modoMoverMultiple;
+            btnMultiMover.classList.toggle('activo', modoMoverMultiple);
+        });
+
+        btnMultiEliminar.addEventListener('click', eliminarSeleccionMultiple);
+
         btnSeleccionEliminar.addEventListener('click', eliminarElementoSeleccionado);
 
         /* Busca el menor número consecutivo libre para un ícono/texto
@@ -3895,6 +4091,16 @@
 
             if (herramientaActual === 'seleccion') {
                 manejarClickSeleccion(mundoPunto);
+                return;
+            }
+
+            if (herramientaActual === 'seleccion_multiple') {
+                if (modoMoverMultiple && seleccionMultiple.length) {
+                    iniciarArrastreMoverMultiple(mundoPunto);
+                    return;
+                }
+                dibujandoRectangulo = true;
+                rectSeleccion = { inicio: puntosMundo[0], actual: mundoPunto };
                 return;
             }
 
@@ -3976,6 +4182,7 @@
         lienzoWrap.addEventListener('pointerdown', e => {
             if (e.target === inputTextoFlotante) return;
             if (panelSeleccion.contains(e.target)) return;
+            if (panelSeleccionMultiple.contains(e.target)) return;
             if (edicionTextoPendiente) cerrarInputTexto(true);
             lienzoWrap.setPointerCapture(e.pointerId);
             punterosActivos.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -3985,6 +4192,9 @@
                 dibujando = false;
                 trazoActual = null;
                 if (arrastrandoMover) finalizarArrastreMover();
+                if (arrastrandoMoverMultiple) finalizarArrastreMoverMultiple();
+                dibujandoRectangulo = false;
+                rectSeleccion = null;
                 aplicarEstadoPendienteSiHay();
                 const pts = Array.from(punterosActivos.values());
                 const rect = lienzoWrap.getBoundingClientRect();
@@ -4037,6 +4247,19 @@
                 return;
             }
 
+            if (arrastrandoMoverMultiple) {
+                const pantalla = posicionPantalla(e);
+                moverSeleccionMultiple(pantallaAMundo(pantalla.x, pantalla.y));
+                return;
+            }
+
+            if (dibujandoRectangulo && rectSeleccion) {
+                const pantalla = posicionPantalla(e);
+                rectSeleccion.actual = pantallaAMundo(pantalla.x, pantalla.y);
+                solicitarRedibujado();
+                return;
+            }
+
             if (punteroPendiente && punteroPendiente.pointerId === e.pointerId) {
                 const pantalla = posicionPantalla(e);
                 const mundo = pantallaAMundo(pantalla.x, pantalla.y);
@@ -4067,6 +4290,30 @@
             if (arrastrandoMover) {
                 punterosActivos.delete(e.pointerId);
                 finalizarArrastreMover();
+                return;
+            }
+
+            if (arrastrandoMoverMultiple) {
+                punterosActivos.delete(e.pointerId);
+                finalizarArrastreMoverMultiple();
+                return;
+            }
+
+            if (dibujandoRectangulo) {
+                punterosActivos.delete(e.pointerId);
+                const rect = rectSeleccion;
+                dibujandoRectangulo = false;
+                rectSeleccion = null;
+                if (rect && e.type === 'pointerup') {
+                    const pA = mundoAPantalla(rect.inicio.x, rect.inicio.y);
+                    const pB = mundoAPantalla(rect.actual.x, rect.actual.y);
+                    if (Math.hypot(pB.x - pA.x, pB.y - pA.y) < 6) {
+                        deseleccionarMultiple();
+                    } else {
+                        seleccionarElementosEnRectangulo(rect.inicio, rect.actual);
+                    }
+                }
+                redibujarTrazos();
                 return;
             }
 

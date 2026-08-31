@@ -231,7 +231,65 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             padding: 3.5rem 4.5rem 4rem;
         }
-        .overlay-foto-contenido img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 0.4rem; }
+        .overlay-foto-panels {
+            width: 100%; height: 100%;
+            display: flex; align-items: stretch; justify-content: center;
+            gap: 1.5rem; min-height: 0;
+        }
+        .overlay-foto-principal {
+            flex: 1 1 auto; min-width: 0; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .overlay-foto-principal img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 0.4rem; }
+        .overlay-foto-panels.sin-plano .overlay-foto-principal { flex: 1 1 100%; }
+
+        /* ── PANEL DE PLANO (contexto) ── */
+        .overlay-plano-panel {
+            flex: 0 0 380px; max-width: 40%; height: 100%;
+            display: flex; flex-direction: column; min-height: 0;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 0.6rem; padding: 0.75rem;
+        }
+        .overlay-plano-panel.oculto { display: none; }
+        .overlay-plano-titulo {
+            display: flex; align-items: center; gap: 0.4rem;
+            color: #dfe3e8; font-size: 0.78rem; font-weight: 700;
+            margin-bottom: 0.6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .overlay-plano-titulo i { color: var(--accent); }
+        .overlay-plano-viewport {
+            flex: 1; min-height: 0; overflow: hidden; border-radius: 0.45rem;
+            background: #14171b; display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+        .overlay-plano-inner { position: relative; display: inline-block; transition: transform 0.15s ease-out; }
+        .overlay-plano-inner canvas { display: block; }
+        .overlay-plano-pin {
+            display: none;
+            position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+            border-radius: 50%; background: #ff3b30; border: 2.5px solid #fff;
+            box-shadow: 0 0 0 5px rgba(255,59,48,0.35), 0 1px 4px rgba(0,0,0,0.5);
+            animation: pinPulso 1.6s ease-in-out infinite;
+        }
+        .overlay-plano-pin.visible { display: block; }
+        @keyframes pinPulso {
+            0%, 100% { box-shadow: 0 0 0 5px rgba(255,59,48,0.35), 0 1px 4px rgba(0,0,0,0.5); }
+            50% { box-shadow: 0 0 0 9px rgba(255,59,48,0.18), 0 1px 4px rgba(0,0,0,0.5); }
+        }
+        .overlay-plano-cargando {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            color: #9aa4b2; font-size: 1.3rem;
+        }
+        .overlay-plano-cargando.oculto { display: none; }
+        .overlay-plano-zoom { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.7rem; }
+        .overlay-plano-zoom button {
+            width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+            background: #333; color: #fff; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 0.72rem;
+            transition: background 0.14s;
+        }
+        .overlay-plano-zoom button:hover { background: #555; }
+        .overlay-plano-zoom input[type="range"] { flex: 1; accent-color: var(--accent); }
         .overlay-foto-cerrar {
             position: absolute; top: 1rem; right: 1.25rem;
             width: 38px; height: 38px; border-radius: 50%;
@@ -270,6 +328,8 @@
             .autocomplete-wrap { width: 100%; }
             .overlay-foto-contenido { padding: 3rem 1.25rem 3.5rem; }
             .overlay-foto-nav { width: 38px; height: 38px; font-size: 1.5rem; }
+            .overlay-foto-panels { flex-direction: column; }
+            .overlay-plano-panel { flex: 0 0 42%; max-width: 100%; width: 100%; }
         }
     </style>
 </head>
@@ -446,7 +506,28 @@
     <div class="overlay-foto-contenido">
         <button type="button" class="overlay-foto-cerrar" id="overlay-foto-cerrar">&times;</button>
         <button type="button" class="overlay-foto-nav overlay-foto-prev" id="overlay-foto-prev">&lsaquo;</button>
-        <img id="overlay-foto-img" src="" alt="Fotografía">
+        <div class="overlay-foto-panels" id="overlay-foto-panels">
+            <div class="overlay-foto-principal">
+                <img id="overlay-foto-img" src="" alt="Fotografía">
+            </div>
+            <div class="overlay-plano-panel" id="overlay-plano-panel">
+                <div class="overlay-plano-titulo">
+                    <i class="fas fa-map-location-dot"></i> <span id="overlay-plano-nombre">Plano</span>
+                </div>
+                <div class="overlay-plano-viewport">
+                    <div class="overlay-plano-inner" id="overlay-plano-inner">
+                        <canvas id="overlay-plano-canvas"></canvas>
+                        <div class="overlay-plano-pin" id="overlay-plano-pin"></div>
+                    </div>
+                    <div class="overlay-plano-cargando" id="overlay-plano-cargando"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+                <div class="overlay-plano-zoom">
+                    <button type="button" id="overlay-plano-zoom-out" title="Alejar"><i class="fas fa-minus"></i></button>
+                    <input type="range" id="overlay-plano-zoom-range" min="0.5" max="10" step="0.1" value="1">
+                    <button type="button" id="overlay-plano-zoom-in" title="Acercar"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+        </div>
         <button type="button" class="overlay-foto-nav overlay-foto-next" id="overlay-foto-next">&rsaquo;</button>
         <div class="overlay-foto-pie">
             <span class="overlay-foto-info" id="overlay-foto-info"></span>
@@ -454,7 +535,10 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
     const CSRF_TOKEN = @json(csrf_token());
     const urlDescargarFotos = @json(route('galeria_tc.descargar', $obraTc->id));
 
@@ -463,6 +547,10 @@
         {
             src: @js($foto->archivo),
             plano: @js($foto->plano->descripcion ?? 'Sin plano'),
+            planoArchivo: @js($foto->plano ? Storage::url('planos/' . $foto->plano->archivo) : null),
+            planoRotacion: @js((int) ($foto->plano->rotacion ?? 0)),
+            posX: @js($foto->pos_x !== null ? (float) $foto->pos_x : null),
+            posY: @js($foto->pos_y !== null ? (float) $foto->pos_y : null),
             clasificacion: @js($foto->clasificacion ? ucfirst(str_replace('_', ' ', $foto->clasificacion)) : null),
             fecha: @js($foto->created_at?->format('d/m/Y H:i')),
             usuario: @js($foto->usuario ? ($foto->usuario->nombre_completo ?: $foto->usuario->nombre) : null),
@@ -495,7 +583,129 @@
         partes.push(`(${indiceActual + 1}/${indicesVisibles.length})`);
 
         document.getElementById('overlay-foto-info').innerHTML = partes.join(' &middot; ');
+
+        mostrarPlanoContexto(foto);
     }
+
+    /* ─── Panel de plano (contexto + zoom) ─────────────────── */
+    const pdfCachePlanos = new Map();
+    let tokenRenderPlano = 0;
+
+    function cargarPdfPlano(url) {
+        if (!pdfCachePlanos.has(url)) {
+            pdfCachePlanos.set(url, pdfjsLib.getDocument(url).promise);
+        }
+        return pdfCachePlanos.get(url);
+    }
+
+    function clamp01(valor) {
+        return Math.min(1, Math.max(0, valor));
+    }
+
+    function fijarZoomPlano(valor) {
+        const range = document.getElementById('overlay-plano-zoom-range');
+        const inner = document.getElementById('overlay-plano-inner');
+        const pin = document.getElementById('overlay-plano-pin');
+        range.value = valor;
+        inner.style.transform = `scale(${valor})`;
+        pin.style.transform = `scale(${1 / valor})`;
+    }
+
+    async function mostrarPlanoContexto(foto) {
+        const panel = document.getElementById('overlay-plano-panel');
+        const panels = document.getElementById('overlay-foto-panels');
+        const cargando = document.getElementById('overlay-plano-cargando');
+        const nombreEl = document.getElementById('overlay-plano-nombre');
+        const canvas = document.getElementById('overlay-plano-canvas');
+        const inner = document.getElementById('overlay-plano-inner');
+        const pin = document.getElementById('overlay-plano-pin');
+
+        fijarZoomPlano(1);
+        inner.style.transformOrigin = '50% 50%';
+        pin.classList.remove('visible');
+
+        if (!foto.planoArchivo) {
+            panel.classList.add('oculto');
+            panels.classList.add('sin-plano');
+            return;
+        }
+
+        panel.classList.remove('oculto');
+        panels.classList.remove('sin-plano');
+        nombreEl.textContent = foto.plano || 'Plano';
+        cargando.classList.remove('oculto');
+
+        const miToken = ++tokenRenderPlano;
+
+        try {
+            const pdf = await cargarPdfPlano(foto.planoArchivo);
+            if (miToken !== tokenRenderPlano) return;
+
+            const pagina = await pdf.getPage(1);
+            if (miToken !== tokenRenderPlano) return;
+
+            const viewportEl = document.querySelector('.overlay-plano-viewport');
+            const anchoDisponible = viewportEl.clientWidth || 320;
+            const altoDisponible = viewportEl.clientHeight || 320;
+
+            const viewportBase = pagina.getViewport({ scale: 1, rotation: foto.planoRotacion || 0 });
+            const dpr = window.devicePixelRatio || 1;
+            const escalaAjuste = Math.min(
+                (anchoDisponible * dpr) / viewportBase.width,
+                (altoDisponible * dpr) / viewportBase.height
+            );
+
+            /* Se renderiza a mayor resolución que la necesaria para el
+               tamaño "ajustado" (SOBREMUESTREO_PLANO), así el zoom con la
+               barrita (hasta 10x) no queda pixelado — el tamaño en
+               pantalla (canvas.style.width/height) se mantiene igual al
+               ajustado; solo crece la resolución interna del canvas. */
+            const SOBREMUESTREO_PLANO = 3;
+            const DIMENSION_MAXIMA = 3500;
+            let escalaRender = escalaAjuste * SOBREMUESTREO_PLANO;
+            const anchoEstimado = viewportBase.width * escalaRender;
+            const altoEstimado = viewportBase.height * escalaRender;
+            const excesoDimension = Math.max(anchoEstimado / DIMENSION_MAXIMA, altoEstimado / DIMENSION_MAXIMA, 1);
+            escalaRender = escalaRender / excesoDimension;
+
+            const viewportRender = pagina.getViewport({ scale: escalaRender, rotation: foto.planoRotacion || 0 });
+
+            canvas.width = viewportRender.width;
+            canvas.height = viewportRender.height;
+            canvas.style.width = (viewportBase.width * escalaAjuste / dpr) + 'px';
+            canvas.style.height = (viewportBase.height * escalaAjuste / dpr) + 'px';
+
+            const ctx = canvas.getContext('2d');
+            await pagina.render({ canvasContext: ctx, viewport: viewportRender }).promise;
+
+            if (miToken !== tokenRenderPlano) return;
+
+            if (foto.posX !== null && foto.posY !== null) {
+                const fracX = clamp01(foto.posX / viewportBase.width);
+                const fracY = clamp01(foto.posY / viewportBase.height);
+                pin.style.left = (fracX * 100) + '%';
+                pin.style.top = (fracY * 100) + '%';
+                pin.classList.add('visible');
+                inner.style.transformOrigin = (fracX * 100) + '% ' + (fracY * 100) + '%';
+            }
+
+            cargando.classList.add('oculto');
+        } catch (err) {
+            if (miToken === tokenRenderPlano) cargando.classList.add('oculto');
+        }
+    }
+
+    document.getElementById('overlay-plano-zoom-range').addEventListener('input', function () {
+        fijarZoomPlano(parseFloat(this.value));
+    });
+    document.getElementById('overlay-plano-zoom-in').addEventListener('click', function () {
+        const range = document.getElementById('overlay-plano-zoom-range');
+        fijarZoomPlano(Math.min(parseFloat(range.max), parseFloat(range.value) + 0.5));
+    });
+    document.getElementById('overlay-plano-zoom-out').addEventListener('click', function () {
+        const range = document.getElementById('overlay-plano-zoom-range');
+        fijarZoomPlano(Math.max(parseFloat(range.min), parseFloat(range.value) - 0.5));
+    });
 
     function cerrarLightbox() {
         document.getElementById('overlay-foto').classList.remove('abierto');

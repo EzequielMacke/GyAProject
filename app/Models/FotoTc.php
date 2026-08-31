@@ -16,6 +16,8 @@ class FotoTc extends Model
         'plano_tc_id',
         'clasificacion',
         'archivo',
+        'pos_x',
+        'pos_y',
         'usuario_id',
     ];
 

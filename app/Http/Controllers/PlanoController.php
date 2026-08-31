@@ -272,6 +272,12 @@ class PlanoController extends Controller
                 if (! $trazos->has($item['id'])) continue; // otro usuario lo borró mientras tanto
                 $trazos->put($item['id'], $item);
                 $registros[] = $this->filaActividad($plano->id, $usuarioId, 'mover', $item, $ahora);
+
+                if (! empty($item['fotos'])) {
+                    FotoTc::where('plano_tc_id', $plano->id)
+                        ->whereIn('archivo', $item['fotos'])
+                        ->update(['pos_x' => $item['x'] ?? null, 'pos_y' => $item['y'] ?? null]);
+                }
             }
 
             /* Se aplica un diff (agregadas/eliminadas) sobre el array de
@@ -341,6 +347,8 @@ class PlanoController extends Controller
             'plano_tc_id' => $plano->id,
             'clasificacion' => $tool === 'foto' ? ($item['etiqueta'] ?? null) : $tool,
             'archivo' => $foto,
+            'pos_x' => $item['x'] ?? null,
+            'pos_y' => $item['y'] ?? null,
             'usuario_id' => $usuarioId,
         ]);
     }
