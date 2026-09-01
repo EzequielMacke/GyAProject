@@ -298,6 +298,15 @@
             transition: background 0.14s;
         }
         .overlay-foto-cerrar:hover { background: #555; }
+        .overlay-foto-descargar {
+            position: absolute; top: 1rem; right: 4.25rem;
+            width: 38px; height: 38px; border-radius: 50%;
+            background: #333; color: #fff; border: none; cursor: pointer;
+            font-size: 1rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+            transition: background 0.14s;
+        }
+        .overlay-foto-descargar:hover { background: #555; }
+        .overlay-foto-descargar:disabled { opacity: 0.5; cursor: not-allowed; }
         .overlay-foto-nav {
             position: absolute; top: 50%; transform: translateY(-50%);
             width: 44px; height: 44px; border-radius: 50%;
@@ -320,6 +329,7 @@
             .ph { padding: 1rem 0 0.75rem; gap: 0.75rem; margin-bottom: 1rem; }
             .ph-title { font-size: 1.3rem; }
             .ph-right { width: 100%; }
+            #btn-toggle-plano { width: 100%; justify-content: center; }
             .btn-descargar-wrap { width: 100%; }
             .btn-descargar { width: 100%; justify-content: center; }
             .btn-descargar-menu { left: 0; right: 0; min-width: 0; }
@@ -327,6 +337,7 @@
             .filtro-select { width: 100%; }
             .autocomplete-wrap { width: 100%; }
             .overlay-foto-contenido { padding: 3rem 1.25rem 3.5rem; }
+            .overlay-foto-descargar { top: 4.5rem; right: 1.25rem; }
             .overlay-foto-nav { width: 38px; height: 38px; font-size: 1.5rem; }
             .overlay-foto-panels { flex-direction: column; }
             .overlay-plano-panel { flex: 0 0 42%; max-width: 100%; width: 100%; }
@@ -358,6 +369,9 @@
                     </div>
                     <div class="ph-right">
                         @if(!$fotos->isEmpty())
+                        <button type="button" class="btn" id="btn-toggle-plano" title="Mostrar u ocultar el plano al ver una foto">
+                            <i class="fas fa-map-location-dot"></i> <span id="texto-toggle-plano">Ver sin plano</span>
+                        </button>
                         <div class="btn-descargar-wrap" id="wrap-descargar">
                             <button type="button" class="btn btn-descargar" id="btn-descargar">
                                 <i class="fas fa-download"></i> Descargar <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>
@@ -505,6 +519,7 @@
 <div class="overlay-foto" id="overlay-foto">
     <div class="overlay-foto-contenido">
         <button type="button" class="overlay-foto-cerrar" id="overlay-foto-cerrar">&times;</button>
+        <button type="button" class="overlay-foto-descargar" id="overlay-foto-descargar" title="Descargar imagen"><i class="fas fa-download"></i></button>
         <button type="button" class="overlay-foto-nav overlay-foto-prev" id="overlay-foto-prev">&lsaquo;</button>
         <div class="overlay-foto-panels" id="overlay-foto-panels">
             <div class="overlay-foto-principal">
@@ -561,6 +576,28 @@
     let indicesVisibles = fotos.map((_, i) => i);
     let indiceActual = 0;
 
+    /* ─── Preferencia: ver foto con/sin plano ──────────────── */
+    const LS_KEY_MOSTRAR_PLANO = 'galeria_tc_mostrar_plano';
+    let mostrarPlanoPreferencia = localStorage.getItem(LS_KEY_MOSTRAR_PLANO) !== '0';
+
+    const btnTogglePlano = document.getElementById('btn-toggle-plano');
+    const textoTogglePlano = document.getElementById('texto-toggle-plano');
+    const iconoTogglePlano = btnTogglePlano?.querySelector('i');
+
+    function actualizarBotonTogglePlano() {
+        if (!textoTogglePlano) return;
+        textoTogglePlano.textContent = mostrarPlanoPreferencia ? 'Ver sin plano' : 'Ver con plano';
+        if (iconoTogglePlano) iconoTogglePlano.className = mostrarPlanoPreferencia ? 'fas fa-map-location-dot' : 'fas fa-image';
+    }
+    actualizarBotonTogglePlano();
+
+    btnTogglePlano?.addEventListener('click', function () {
+        mostrarPlanoPreferencia = !mostrarPlanoPreferencia;
+        localStorage.setItem(LS_KEY_MOSTRAR_PLANO, mostrarPlanoPreferencia ? '1' : '0');
+        actualizarBotonTogglePlano();
+        if (document.getElementById('overlay-foto').classList.contains('abierto')) mostrarFotoActual();
+    });
+
     function abrirLightbox(index) {
         indiceActual = indicesVisibles.indexOf(index);
         if (indiceActual === -1) indiceActual = 0;
@@ -590,6 +627,21 @@
     /* ─── Panel de plano (contexto + zoom) ─────────────────── */
     const pdfCachePlanos = new Map();
     let tokenRenderPlano = 0;
+    let tareaRenderPlano = null;
+    let temporizadorZoomPlano = null;
+
+    /* Tope de resolución interna del canvas (px). Con re-render dinámico
+       según el zoom real, este tope solo entra en juego en el extremo
+       de la barrita (10x) o en pantallas de dpr muy alto. */
+    const DIMENSION_MAXIMA_PLANO = 4096;
+
+    const planoActual = {
+        pagina: null,
+        viewportBase: null,
+        rotacion: 0,
+        escalaAjuste: 0,
+        escalaRenderizada: 0,
+    };
 
     function cargarPdfPlano(url) {
         if (!pdfCachePlanos.has(url)) {
@@ -602,6 +654,53 @@
         return Math.min(1, Math.max(0, valor));
     }
 
+    function escalaRenderNecesaria(factorZoom) {
+        const dpr = window.devicePixelRatio || 1;
+        let escalaRender = planoActual.escalaAjuste * factorZoom * dpr;
+        const anchoEstimado = planoActual.viewportBase.width * escalaRender;
+        const altoEstimado = planoActual.viewportBase.height * escalaRender;
+        const excesoDimension = Math.max(
+            anchoEstimado / DIMENSION_MAXIMA_PLANO,
+            altoEstimado / DIMENSION_MAXIMA_PLANO,
+            1
+        );
+        return escalaRender / excesoDimension;
+    }
+
+    /* Renderiza el PDF a la escala pedida. Cancela cualquier render en
+       curso (de un zoom anterior o de la foto anterior) antes de pintar
+       el canvas, para que dos renders no terminen pisándose. */
+    async function renderizarPlanoAEscala(escalaRender) {
+        const canvas = document.getElementById('overlay-plano-canvas');
+        const viewportRender = planoActual.pagina.getViewport({ scale: escalaRender, rotation: planoActual.rotacion });
+
+        tareaRenderPlano?.cancel();
+        canvas.width = viewportRender.width;
+        canvas.height = viewportRender.height;
+
+        const ctx = canvas.getContext('2d');
+        const tarea = planoActual.pagina.render({ canvasContext: ctx, viewport: viewportRender });
+        tareaRenderPlano = tarea;
+
+        try {
+            await tarea.promise;
+            planoActual.escalaRenderizada = escalaRender;
+        } catch (err) {
+            if (err?.name !== 'RenderingCancelledException') throw err;
+        }
+    }
+
+    /* Vuelve a renderizar el plano a mayor resolución si el zoom actual
+       lo requiere, así se ve nítido sin importar cuánto se acerque. Si
+       ya está renderizado a una resolución igual o mayor (por ej. se
+       alejó el zoom), no hace nada. */
+    function solicitarRenderZoom(factorZoom) {
+        if (!planoActual.pagina) return;
+        const escalaRender = escalaRenderNecesaria(factorZoom);
+        if (escalaRender <= planoActual.escalaRenderizada) return;
+        renderizarPlanoAEscala(escalaRender);
+    }
+
     function fijarZoomPlano(valor) {
         const range = document.getElementById('overlay-plano-zoom-range');
         const inner = document.getElementById('overlay-plano-inner');
@@ -609,6 +708,12 @@
         range.value = valor;
         inner.style.transform = `scale(${valor})`;
         pin.style.transform = `scale(${1 / valor})`;
+
+        /* El zoom visual es instantáneo (transform de CSS); la
+           re-renderización a mayor resolución se posterga un toque para
+           no recalcular en cada tick mientras se arrastra la barrita. */
+        clearTimeout(temporizadorZoomPlano);
+        temporizadorZoomPlano = setTimeout(() => solicitarRenderZoom(parseFloat(valor)), 180);
     }
 
     async function mostrarPlanoContexto(foto) {
@@ -620,13 +725,19 @@
         const inner = document.getElementById('overlay-plano-inner');
         const pin = document.getElementById('overlay-plano-pin');
 
+        clearTimeout(temporizadorZoomPlano);
+        tareaRenderPlano?.cancel();
         fijarZoomPlano(1);
         inner.style.transformOrigin = '50% 50%';
         pin.classList.remove('visible');
+        planoActual.pagina = null;
+        planoActual.escalaRenderizada = 0;
 
-        if (!foto.planoArchivo) {
+        if (!foto.planoArchivo || !mostrarPlanoPreferencia) {
             panel.classList.add('oculto');
             panels.classList.add('sin-plano');
+            cargando.classList.add('oculto');
+            document.getElementById('overlay-foto-descargar').disabled = false;
             return;
         }
 
@@ -634,6 +745,10 @@
         panels.classList.remove('sin-plano');
         nombreEl.textContent = foto.plano || 'Plano';
         cargando.classList.remove('oculto');
+        /* Mientras el plano está renderizando, el canvas puede estar en
+           blanco o a medio dibujar: se bloquea la descarga para no
+           generar un compuesto incompleto. */
+        document.getElementById('overlay-foto-descargar').disabled = true;
 
         const miToken = ++tokenRenderPlano;
 
@@ -655,29 +770,26 @@
                 (altoDisponible * dpr) / viewportBase.height
             );
 
-            /* Se renderiza a mayor resolución que la necesaria para el
-               tamaño "ajustado" (SOBREMUESTREO_PLANO), así el zoom con la
-               barrita (hasta 10x) no queda pixelado — el tamaño en
-               pantalla (canvas.style.width/height) se mantiene igual al
-               ajustado; solo crece la resolución interna del canvas. */
-            const SOBREMUESTREO_PLANO = 3;
-            const DIMENSION_MAXIMA = 3500;
-            let escalaRender = escalaAjuste * SOBREMUESTREO_PLANO;
-            const anchoEstimado = viewportBase.width * escalaRender;
-            const altoEstimado = viewportBase.height * escalaRender;
-            const excesoDimension = Math.max(anchoEstimado / DIMENSION_MAXIMA, altoEstimado / DIMENSION_MAXIMA, 1);
-            escalaRender = escalaRender / excesoDimension;
-
-            const viewportRender = pagina.getViewport({ scale: escalaRender, rotation: foto.planoRotacion || 0 });
-
-            canvas.width = viewportRender.width;
-            canvas.height = viewportRender.height;
+            /* El tamaño en pantalla (CSS) queda fijo al "ajustado"; el
+               zoom con la barrita escala ese elemento vía transform.
+               La nitidez a cada nivel de zoom la da la resolución
+               interna del canvas, que se recalcula en solicitarRenderZoom(). */
             canvas.style.width = (viewportBase.width * escalaAjuste / dpr) + 'px';
             canvas.style.height = (viewportBase.height * escalaAjuste / dpr) + 'px';
 
-            const ctx = canvas.getContext('2d');
-            await pagina.render({ canvasContext: ctx, viewport: viewportRender }).promise;
+            planoActual.pagina = pagina;
+            planoActual.viewportBase = viewportBase;
+            planoActual.rotacion = foto.planoRotacion || 0;
+            planoActual.escalaAjuste = escalaAjuste;
+            planoActual.escalaRenderizada = 0;
 
+            /* Primer renderizado con margen de nitidez (1.5x el ajuste)
+               para que se vea bien apenas se abre, sin pagar de entrada
+               el costo de renderizar como si ya estuviera al máximo
+               zoom (10x) — eso se hace bajo demanda al mover la
+               barrita, así en mobile no se gasta de más si el usuario
+               nunca hace zoom. */
+            await renderizarPlanoAEscala(escalaRenderNecesaria(1.5));
             if (miToken !== tokenRenderPlano) return;
 
             if (foto.posX !== null && foto.posY !== null) {
@@ -690,8 +802,12 @@
             }
 
             cargando.classList.add('oculto');
+            document.getElementById('overlay-foto-descargar').disabled = false;
         } catch (err) {
-            if (miToken === tokenRenderPlano) cargando.classList.add('oculto');
+            if (miToken === tokenRenderPlano) {
+                cargando.classList.add('oculto');
+                document.getElementById('overlay-foto-descargar').disabled = false;
+            }
         }
     }
 
@@ -705,6 +821,203 @@
     document.getElementById('overlay-plano-zoom-out').addEventListener('click', function () {
         const range = document.getElementById('overlay-plano-zoom-range');
         fijarZoomPlano(Math.max(parseFloat(range.min), parseFloat(range.value) - 0.5));
+    });
+
+    /* ─── Descarga de la foto (con o sin plano) ────────────── */
+    function sanitizarNombreArchivo(texto) {
+        return (texto || 'foto').toString().normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'foto';
+    }
+
+    function cargarImagen(url) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('No se pudo cargar la imagen'));
+            img.src = url;
+        });
+    }
+
+    /* Dibuja `src` (imagen o canvas) ajustándolo sin deformar dentro
+       del rectángulo destino (equivalente a "object-fit: contain") y
+       devuelve dónde quedó dibujado, para poder ubicar el pin o el
+       rectángulo indicador sobre esa misma zona. */
+    function dibujarAjustado(ctx, src, sx, sy, sw, sh, dx, dy, dw, dh) {
+        const escala = Math.min(dw / sw, dh / sh);
+        const drawW = sw * escala;
+        const drawH = sh * escala;
+        const offsetX = dx + (dw - drawW) / 2;
+        const offsetY = dy + (dh - drawH) / 2;
+        ctx.drawImage(src, sx, sy, sw, sh, offsetX, offsetY, drawW, drawH);
+        return { x: offsetX, y: offsetY, w: drawW, h: drawH };
+    }
+
+    /* Contorno negro pegado al borde real de la imagen dibujada (no al
+       cuadro completo), ya que con "contain" puede quedar espacio
+       transparente alrededor si la proporción no coincide. */
+    function dibujarContorno(ctx, info, grosor = 4) {
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = grosor;
+        ctx.strokeRect(info.x + grosor / 2, info.y + grosor / 2, info.w - grosor, info.h - grosor);
+    }
+
+    function dibujarPin(ctx, x, y, radio) {
+        ctx.beginPath();
+        ctx.arc(x, y, radio, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff3b30';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+    }
+
+    /* Calcula, en píxeles del canvas del plano (resolución interna,
+       no CSS), qué recorte es el que se ve actualmente dentro del
+       viewport según el zoom aplicado con la barrita — es la misma
+       transformación que hace el CSS (scale con transform-origin en
+       el punto de referencia), resuelta de forma inversa. */
+    function calcularRectanguloVisiblePlano() {
+        const viewportEl = document.querySelector('.overlay-plano-viewport');
+        const inner = document.getElementById('overlay-plano-inner');
+        const canvas = document.getElementById('overlay-plano-canvas');
+        const zoomValor = parseFloat(document.getElementById('overlay-plano-zoom-range').value) || 1;
+
+        const viewportWidth = viewportEl.clientWidth;
+        const viewportHeight = viewportEl.clientHeight;
+        const boxWidth = inner.clientWidth;
+        const boxHeight = inner.clientHeight;
+
+        const origen = (inner.style.transformOrigin || '50% 50%').split(' ').map(v => parseFloat(v));
+        const ox = (isNaN(origen[0]) ? 50 : origen[0]) / 100 * boxWidth;
+        const oy = (isNaN(origen[1]) ? 50 : origen[1]) / 100 * boxHeight;
+
+        const boxLeft = (viewportWidth - boxWidth) / 2;
+        const boxTop = (viewportHeight - boxHeight) / 2;
+
+        const aBoxX = px => ox + (px - boxLeft - ox) / zoomValor;
+        const aBoxY = py => oy + (py - boxTop - oy) / zoomValor;
+
+        const pxMin = Math.max(0, Math.min(boxWidth, aBoxX(0)));
+        const pxMax = Math.max(0, Math.min(boxWidth, aBoxX(viewportWidth)));
+        const pyMin = Math.max(0, Math.min(boxHeight, aBoxY(0)));
+        const pyMax = Math.max(0, Math.min(boxHeight, aBoxY(viewportHeight)));
+
+        const ratioX = canvas.width / boxWidth;
+        const ratioY = canvas.height / boxHeight;
+
+        return {
+            sx: pxMin * ratioX,
+            sy: pyMin * ratioY,
+            sw: Math.max(1, (pxMax - pxMin) * ratioX),
+            sh: Math.max(1, (pyMax - pyMin) * ratioY),
+        };
+    }
+
+    async function descargarFotoActual() {
+        const btnDescargarFoto = document.getElementById('overlay-foto-descargar');
+        if (btnDescargarFoto.disabled) return;
+
+        const foto = fotos[indicesVisibles[indiceActual]];
+        if (!foto) return;
+
+        const hayPlano = !!foto.planoArchivo && mostrarPlanoPreferencia && !!planoActual.pagina;
+        const iconoOriginal = btnDescargarFoto.innerHTML;
+        btnDescargarFoto.disabled = true;
+        btnDescargarFoto.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        try {
+            let blob;
+            let nombreArchivo;
+
+            if (!hayPlano) {
+                const respuesta = await fetch(foto.src);
+                blob = await respuesta.blob();
+                nombreArchivo = `${sanitizarNombreArchivo(foto.plano)}_${sanitizarNombreArchivo(foto.fecha)}.jpg`;
+            } else {
+                const imgFoto = await cargarImagen(foto.src);
+                const canvasPlano = document.getElementById('overlay-plano-canvas');
+                const rectVisible = calcularRectanguloVisiblePlano();
+
+                /* Fila principal: la foto y el plano con el zoom actual,
+                   pegados uno al lado del otro y a la misma altura (cada
+                   uno ocupa el ancho que le corresponda según su propia
+                   proporción, sin espacio desperdiciado). Debajo, en un
+                   tamaño chico, el plano general completo con el punto
+                   de referencia y el rectángulo de la zona ampliada. */
+                const ALTO_PRINCIPAL = 1200;
+                const ALTO_PLANO_GENERAL = 380;
+                const SEPARACION_FILAS = 20;
+
+                const ratioFoto = imgFoto.naturalWidth / imgFoto.naturalHeight;
+                const ratioZoom = rectVisible.sw / rectVisible.sh;
+                const anchoFoto = ALTO_PRINCIPAL * ratioFoto;
+                const anchoZoom = ALTO_PRINCIPAL * ratioZoom;
+                const anchoTotal = anchoFoto + anchoZoom;
+
+                const canvasFinal = document.createElement('canvas');
+                canvasFinal.width = Math.round(anchoTotal);
+                canvasFinal.height = Math.round(ALTO_PRINCIPAL + SEPARACION_FILAS + ALTO_PLANO_GENERAL);
+                const ctx = canvasFinal.getContext('2d');
+                /* Sin relleno de fondo: el canvas queda transparente y el
+                   PNG se exporta sin fondo. Cada imagen lleva su propio
+                   contorno negro en vez de líneas separadoras. */
+
+                const infoFoto = dibujarAjustado(ctx, imgFoto, 0, 0, imgFoto.naturalWidth, imgFoto.naturalHeight, 0, 0, anchoFoto, ALTO_PRINCIPAL);
+                dibujarContorno(ctx, infoFoto);
+
+                const infoZoom = dibujarAjustado(ctx, canvasPlano, rectVisible.sx, rectVisible.sy, rectVisible.sw, rectVisible.sh, anchoFoto, 0, anchoZoom, ALTO_PRINCIPAL);
+                dibujarContorno(ctx, infoZoom);
+
+                const infoCompleto = dibujarAjustado(ctx, canvasPlano, 0, 0, canvasPlano.width, canvasPlano.height, 0, ALTO_PRINCIPAL + SEPARACION_FILAS, anchoTotal, ALTO_PLANO_GENERAL);
+                dibujarContorno(ctx, infoCompleto);
+
+                if (foto.posX !== null && foto.posY !== null && planoActual.viewportBase) {
+                    const fracX = clamp01(foto.posX / planoActual.viewportBase.width);
+                    const fracY = clamp01(foto.posY / planoActual.viewportBase.height);
+                    const pinCanvasX = fracX * canvasPlano.width;
+                    const pinCanvasY = fracY * canvasPlano.height;
+
+                    if (pinCanvasX >= rectVisible.sx && pinCanvasX <= rectVisible.sx + rectVisible.sw &&
+                        pinCanvasY >= rectVisible.sy && pinCanvasY <= rectVisible.sy + rectVisible.sh) {
+                        const px = infoZoom.x + ((pinCanvasX - rectVisible.sx) / rectVisible.sw) * infoZoom.w;
+                        const py = infoZoom.y + ((pinCanvasY - rectVisible.sy) / rectVisible.sh) * infoZoom.h;
+                        dibujarPin(ctx, px, py, 7);
+                    }
+
+                    dibujarPin(ctx, infoCompleto.x + fracX * infoCompleto.w, infoCompleto.y + fracY * infoCompleto.h, 5);
+                }
+
+                const rx = infoCompleto.x + (rectVisible.sx / canvasPlano.width) * infoCompleto.w;
+                const ry = infoCompleto.y + (rectVisible.sy / canvasPlano.height) * infoCompleto.h;
+                const rw = (rectVisible.sw / canvasPlano.width) * infoCompleto.w;
+                const rh = (rectVisible.sh / canvasPlano.height) * infoCompleto.h;
+                ctx.strokeStyle = '#ff3b30';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(rx, ry, Math.max(rw, 3), Math.max(rh, 3));
+
+                blob = await new Promise(resolve => canvasFinal.toBlob(resolve, 'image/png'));
+                nombreArchivo = `${sanitizarNombreArchivo(foto.plano)}_con_plano_${sanitizarNombreArchivo(foto.fecha)}.png`;
+            }
+
+            const url = URL.createObjectURL(blob);
+            const enlace = document.createElement('a');
+            enlace.href = url;
+            enlace.download = nombreArchivo;
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            alert('No se pudo descargar la imagen. Probá de nuevo.');
+        } finally {
+            btnDescargarFoto.disabled = false;
+            btnDescargarFoto.innerHTML = iconoOriginal;
+        }
+    }
+
+    document.getElementById('overlay-foto-descargar').addEventListener('click', function (e) {
+        e.stopPropagation();
+        descargarFotoActual();
     });
 
     function cerrarLightbox() {
