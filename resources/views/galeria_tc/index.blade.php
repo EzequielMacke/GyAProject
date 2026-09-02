@@ -505,7 +505,6 @@
                         @endforeach
                     </select>
                     @endif
-                    @if($etiquetasTc->isNotEmpty())
                     <div class="multi-wrap" id="wrap-filtro-etiqueta">
                         <button type="button" class="filtro-select multi-btn" id="btn-filtro-etiqueta">
                             <span id="texto-filtro-etiqueta">Toda etiqueta</span>
@@ -526,7 +525,6 @@
                             </div>
                         </div>
                     </div>
-                    @endif
                     @if($usuariosConFotos->isNotEmpty())
                     <div class="multi-wrap" id="wrap-filtro-usuario">
                         <button type="button" class="filtro-select multi-btn" id="btn-filtro-usuario">
@@ -809,9 +807,8 @@
     /* agregarOpcionFiltroEtiqueta() se define más abajo, junto con el
        resto de los filtros (msEtiqueta.agregarOpcion): si se crea una
        etiqueta nueva desde el modal, se suma como opción al toque al
-       filtro multi-select (si la obra no tenía ninguna etiqueta
-       todavía, ese filtro directamente no se renderizó, así que no
-       hay nada que agregarle). */
+       filtro multi-select (que siempre está en el DOM, tenga o no
+       etiquetas cargadas la obra todavía). */
 
     const LS_KEY_MOSTRAR_ETIQUETAS = 'galeria_tc_mostrar_etiquetas';
     let mostrarEtiquetasPreferencia = localStorage.getItem(LS_KEY_MOSTRAR_ETIQUETAS) === '1';
