@@ -325,7 +325,7 @@
                     </a>
                     @endpermiso
 
-                    @permiso('pla_tc', 'ver')
+                    @permiso('gal_tc', 'ver')
                     <a href="{{ route('galeria_tc.index', $obraTc->id) }}" class="opcion-card" style="animation-delay:0.12s">
                         <div class="opcion-icon ic-teal"><i class="fas fa-images"></i></div>
                         <span class="opcion-label">Galería de Fotos</span>

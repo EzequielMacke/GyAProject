@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\DirectorioTc;
+use App\Models\EtiquetaDetalleTc;
+use App\Models\EtiquetaTc;
 use App\Models\FotoTc;
 use App\Models\ObraTc;
 use Illuminate\Http\Request;
@@ -25,7 +27,7 @@ class GaleriaTcController extends Controller
         }
 
         $fotos = FotoTc::where('obra_tc_id', $obraTc->id)
-            ->with(['plano', 'usuario'])
+            ->with(['plano', 'usuario', 'etiquetas'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -68,9 +70,13 @@ class GaleriaTcController extends Controller
             ->sort()
             ->mapWithKeys(fn ($mes) => [$mes => self::NOMBRES_MESES[$mes]]);
 
+        $etiquetasTc = EtiquetaTc::where('obra_tc_id', $obraTc->id)
+            ->orderBy('descripcion')
+            ->get(['id', 'descripcion']);
+
         return view('galeria_tc.index', compact(
             'obraTc', 'fotos', 'planosConFotos', 'clasificaciones', 'usuariosConFotos',
-            'aniosConFotos', 'diasConFotos', 'mesesConFotos'
+            'aniosConFotos', 'diasConFotos', 'mesesConFotos', 'etiquetasTc'
         ));
     }
 
@@ -79,6 +85,57 @@ class GaleriaTcController extends Controller
         return DirectorioTc::where('obra_tc_id', $obraTc->id)
             ->where('usuario_id', session('usuario_id'))
             ->exists();
+    }
+
+    public function crearEtiqueta(Request $request, ObraTc $obraTc)
+    {
+        if (! $this->verificarAcceso($obraTc)) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'descripcion' => 'required|string|max:255',
+        ]);
+
+        $etiqueta = EtiquetaTc::firstOrCreate([
+            'obra_tc_id' => $obraTc->id,
+            'descripcion' => $data['descripcion'],
+        ]);
+
+        return response()->json($etiqueta);
+    }
+
+    public function marcarFoto(Request $request, ObraTc $obraTc, FotoTc $foto)
+    {
+        if (! $this->verificarAcceso($obraTc) || $foto->obra_tc_id !== $obraTc->id) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'etiqueta_tc_id' => 'required|integer',
+        ]);
+
+        $etiqueta = EtiquetaTc::where('obra_tc_id', $obraTc->id)->findOrFail($data['etiqueta_tc_id']);
+
+        EtiquetaDetalleTc::firstOrCreate([
+            'foto_tc_id' => $foto->id,
+            'etiqueta_tc_id' => $etiqueta->id,
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function desmarcarFoto(ObraTc $obraTc, FotoTc $foto, EtiquetaTc $etiqueta)
+    {
+        if (! $this->verificarAcceso($obraTc) || $foto->obra_tc_id !== $obraTc->id) {
+            abort(403);
+        }
+
+        EtiquetaDetalleTc::where('foto_tc_id', $foto->id)
+            ->where('etiqueta_tc_id', $etiqueta->id)
+            ->delete();
+
+        return response()->json(['success' => true]);
     }
 
     /**

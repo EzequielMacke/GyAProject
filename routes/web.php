@@ -492,6 +492,8 @@ Route::middleware('permiso:dir_tc,eliminar')->group(function () {
 });
 Route::middleware('permiso:pla_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos', [PlanoController::class, 'index'])->name('planos_tc.index');
+});
+Route::middleware('permiso:gal_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/galeria', [GaleriaTcController::class, 'index'])->name('galeria_tc.index');
     Route::post('/trabajo-campo/{obraTc}/galeria/descargar', [GaleriaTcController::class, 'descargar'])->name('galeria_tc.descargar');
 });
@@ -523,6 +525,14 @@ Route::middleware('permiso:pla_tc,editar')->group(function () {
     Route::patch('/trabajo-campo/{obraTc}/planos/{plano}/mover', [PlanoController::class, 'moverPlano'])
         ->where('plano', '[0-9]+')
         ->name('planos_tc.plano.mover');
+});
+Route::middleware('permiso:gal_tc,editar')->group(function () {
+    Route::post('/trabajo-campo/{obraTc}/galeria/etiquetas', [GaleriaTcController::class, 'crearEtiqueta'])
+        ->name('galeria_tc.etiquetas.store');
+    Route::post('/trabajo-campo/{obraTc}/galeria/fotos/{foto}/etiquetas', [GaleriaTcController::class, 'marcarFoto'])
+        ->name('galeria_tc.fotos.etiquetas.store');
+    Route::delete('/trabajo-campo/{obraTc}/galeria/fotos/{foto}/etiquetas/{etiqueta}', [GaleriaTcController::class, 'desmarcarFoto'])
+        ->name('galeria_tc.fotos.etiquetas.destroy');
 });
 Route::middleware('permiso:pla_tc,eliminar')->group(function () {
     Route::delete('/trabajo-campo/{obraTc}/planos/{plano}', [PlanoController::class, 'eliminarPlano'])

@@ -35,4 +35,9 @@ class FotoTc extends Model
     {
         return $this->belongsTo(Usuarios::class);
     }
+
+    public function etiquetas()
+    {
+        return $this->belongsToMany(EtiquetaTc::class, 'etiqueta_detalles_tc', 'foto_tc_id', 'etiqueta_tc_id')->withTimestamps();
+    }
 }

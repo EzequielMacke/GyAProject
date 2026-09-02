@@ -58,6 +58,8 @@
         .btn:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn:disabled:hover { background: var(--surface); border-color: var(--border); color: var(--text2); }
+        .btn.activo { background: var(--accent-s); border-color: var(--accent); color: var(--accent-b); }
+        .btn.activo:hover { background: var(--accent-s); border-color: var(--accent); color: var(--accent-b); }
 
         /* ── DESCARGAR (menú + selección) ── */
         .btn-descargar-wrap { position: relative; }
@@ -119,28 +121,40 @@
         }
         .filtro-select:focus { border-color: var(--accent); }
 
-        /* ── AUTOCOMPLETE (filtros plano / usuario) ── */
-        .autocomplete-wrap { position: relative; }
-        .autocomplete-input { cursor: text; }
-        .autocomplete-sugerencias {
+        /* ── MULTI-SELECT (filtros: plano / etiqueta / usuario / día / mes / año) ── */
+        .multi-wrap { position: relative; }
+        .multi-btn {
+            display: inline-flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+            text-align: left; white-space: nowrap; max-width: 220px;
+        }
+        .multi-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .multi-btn .multi-caret { font-size: 0.62rem; color: var(--muted); flex-shrink: 0; transition: transform 0.15s; }
+        .multi-wrap.open .multi-btn .multi-caret { transform: rotate(180deg); }
+        .multi-btn.activo { background: var(--accent-s); border-color: var(--accent); color: var(--accent-b); }
+        .multi-panel {
             display: none;
-            position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+            position: absolute; left: 0; top: calc(100% + 4px);
             background: #fff; border: 1.5px solid var(--border);
-            border-radius: 0.55rem;
-            max-height: 220px; overflow-y: auto;
+            border-radius: 0.55rem; min-width: 220px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            z-index: 20; min-width: 220px;
+            z-index: 20; padding: 0.4rem;
         }
-        .autocomplete-wrap.open .autocomplete-sugerencias { display: block; }
-        .autocomplete-sugerencia {
-            padding: 0.55rem 0.85rem;
-            font-size: 0.84rem; color: var(--text2);
-            cursor: pointer;
-            transition: background 0.1s;
+        .multi-wrap.open .multi-panel { display: block; }
+        .multi-buscar {
+            width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem;
+            border: 1.5px solid var(--border); border-radius: 0.4rem;
+            padding: 0.4rem 0.6rem; outline: none; margin-bottom: 0.35rem;
         }
-        .autocomplete-sugerencia:hover { background: var(--surface2); color: var(--text); }
-        .autocomplete-sugerencia.hidden { display: none; }
-        .autocomplete-sugerencia-todos { color: var(--muted); font-style: italic; }
+        .multi-buscar:focus { border-color: var(--accent); }
+        .multi-opciones { max-height: 230px; overflow-y: auto; }
+        .multi-opcion {
+            display: flex; align-items: center; gap: 0.55rem;
+            padding: 0.45rem 0.5rem; border-radius: 0.4rem;
+            font-size: 0.84rem; color: var(--text2); cursor: pointer; transition: background 0.1s;
+        }
+        .multi-opcion:hover { background: var(--surface2); color: var(--text); }
+        .multi-opcion input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+        .multi-opcion.hidden { display: none; }
 
         .btn-filtros-clear {
             height: 42px; padding: 0 0.9rem; border-radius: 0.65rem;
@@ -194,6 +208,14 @@
             background: var(--accent-s); border-radius: 999px;
             padding: 0.12rem 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
         }
+        .foto-etiquetas { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
+        .foto-etiquetas:empty { display: none; }
+        .foto-etiqueta-chip {
+            font-size: 0.63rem; font-weight: 600; color: var(--text2);
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 999px; padding: 0.1rem 0.5rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+        }
 
         /* ── SELECCIÓN PARA DESCARGA ── */
         .foto-check {
@@ -232,7 +254,7 @@
             padding: 3.5rem 4.5rem 4rem;
         }
         .overlay-foto-panels {
-            width: 100%; height: 100%;
+            width: 100%; flex: 1 1 auto;
             display: flex; align-items: stretch; justify-content: center;
             gap: 1.5rem; min-height: 0;
         }
@@ -290,6 +312,52 @@
         }
         .overlay-plano-zoom button:hover { background: #555; }
         .overlay-plano-zoom input[type="range"] { flex: 1; accent-color: var(--accent); }
+
+        /* ── PANEL DE ETIQUETAS (clasificación) ── */
+        .overlay-etiquetas-panel {
+            width: 100%; flex: 0 0 auto;
+            display: flex; flex-direction: column; gap: 0.55rem;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 0.6rem; padding: 0.75rem 0.9rem; margin-top: 1rem;
+        }
+        .overlay-etiquetas-panel.oculto { display: none; }
+        .overlay-etiquetas-titulo {
+            display: flex; align-items: center; gap: 0.4rem;
+            color: #dfe3e8; font-size: 0.78rem; font-weight: 700;
+        }
+        .overlay-etiquetas-titulo i { color: var(--accent); }
+        .overlay-etiquetas-lista {
+            display: flex; flex-wrap: wrap; gap: 0.45rem;
+            max-height: 84px; overflow-y: auto; padding-right: 0.15rem;
+        }
+        .overlay-etiquetas-vacio { font-size: 0.78rem; color: #9aa4b2; font-style: italic; }
+        .overlay-etiqueta-chip {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.32rem 0.75rem; border-radius: 999px;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
+            background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.2);
+            color: #cfd6df; cursor: pointer; transition: all 0.14s; white-space: nowrap;
+        }
+        .overlay-etiqueta-chip:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
+        .overlay-etiqueta-chip i { font-size: 0.68rem; display: none; }
+        .overlay-etiqueta-chip.activa { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .overlay-etiqueta-chip.activa i { display: inline-block; }
+        .overlay-etiquetas-agregar { display: flex; gap: 0.5rem; }
+        .overlay-etiquetas-agregar input {
+            flex: 1; min-width: 0; height: 32px;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem;
+            background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.2);
+            border-radius: 0.5rem; padding: 0 0.65rem; color: #fff; outline: none;
+        }
+        .overlay-etiquetas-agregar input::placeholder { color: #8b94a0; }
+        .overlay-etiquetas-agregar input:focus { border-color: var(--accent); }
+        .overlay-etiquetas-agregar button {
+            height: 32px; padding: 0 0.75rem; border-radius: 0.5rem; flex-shrink: 0;
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
+            background: #333; color: #fff; border: none; cursor: pointer; transition: background 0.14s;
+        }
+        .overlay-etiquetas-agregar button:hover { background: #555; }
         .overlay-foto-cerrar {
             position: absolute; top: 1rem; right: 1.25rem;
             width: 38px; height: 38px; border-radius: 50%;
@@ -329,13 +397,15 @@
             .ph { padding: 1rem 0 0.75rem; gap: 0.75rem; margin-bottom: 1rem; }
             .ph-title { font-size: 1.3rem; }
             .ph-right { width: 100%; }
-            #btn-toggle-plano { width: 100%; justify-content: center; }
+            #btn-toggle-plano, #btn-toggle-etiquetas { width: 100%; justify-content: center; }
+            .overlay-etiquetas-lista { max-height: 64px; }
             .btn-descargar-wrap { width: 100%; }
             .btn-descargar { width: 100%; justify-content: center; }
             .btn-descargar-menu { left: 0; right: 0; min-width: 0; }
             .filtros-wrap { flex-direction: column; }
             .filtro-select { width: 100%; }
-            .autocomplete-wrap { width: 100%; }
+            .multi-wrap { width: 100%; }
+            .multi-btn { width: 100%; max-width: none; }
             .overlay-foto-contenido { padding: 3rem 1.25rem 3.5rem; }
             .overlay-foto-descargar { top: 4.5rem; right: 1.25rem; }
             .overlay-foto-nav { width: 38px; height: 38px; font-size: 1.5rem; }
@@ -369,6 +439,11 @@
                     </div>
                     <div class="ph-right">
                         @if(!$fotos->isEmpty())
+                        @permiso('gal_tc', 'editar')
+                        <button type="button" class="btn" id="btn-toggle-etiquetas" title="Marcar las fotos con etiquetas de clasificación">
+                            <i class="fas fa-tags"></i> <span id="texto-toggle-etiquetas">Clasificación de fotos</span>
+                        </button>
+                        @endpermiso
                         <button type="button" class="btn" id="btn-toggle-plano" title="Mostrar u ocultar el plano al ver una foto">
                             <i class="fas fa-map-location-dot"></i> <span id="texto-toggle-plano">Ver sin plano</span>
                         </button>
@@ -405,13 +480,21 @@
                         <input type="text" id="input-buscar-foto" class="search-input" placeholder="Buscar por plano...">
                         <button type="button" class="search-clear" id="btn-buscar-clear" title="Limpiar"><i class="fas fa-times"></i></button>
                     </div>
-                    <div class="autocomplete-wrap" id="wrap-filtro-plano">
-                        <input type="text" id="filtro-plano" class="filtro-select autocomplete-input" placeholder="Todos los planos" autocomplete="off">
-                        <div class="autocomplete-sugerencias" id="sugerencias-plano">
-                            <div class="autocomplete-sugerencia autocomplete-sugerencia-todos" data-valor="">Todos los planos</div>
-                            @foreach($planosConFotos as $planoOpcion)
-                            <div class="autocomplete-sugerencia" data-valor="{{ $planoOpcion->descripcion }}">{{ $planoOpcion->descripcion }}</div>
-                            @endforeach
+                    <div class="multi-wrap" id="wrap-filtro-plano">
+                        <button type="button" class="filtro-select multi-btn" id="btn-filtro-plano">
+                            <span id="texto-filtro-plano">Todos los planos</span>
+                            <i class="fas fa-chevron-down multi-caret"></i>
+                        </button>
+                        <div class="multi-panel" id="panel-filtro-plano">
+                            <input type="text" class="multi-buscar" placeholder="Buscar plano...">
+                            <div class="multi-opciones">
+                                @foreach($planosConFotos as $planoOpcion)
+                                <label class="multi-opcion" data-texto="{{ Str::lower($planoOpcion->descripcion) }}">
+                                    <input type="checkbox" value="{{ Str::lower($planoOpcion->descripcion) }}">
+                                    <span>{{ $planoOpcion->descripcion }}</span>
+                                </label>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
                     @if($clasificaciones->isNotEmpty())
@@ -422,35 +505,95 @@
                         @endforeach
                     </select>
                     @endif
-                    @if($usuariosConFotos->isNotEmpty())
-                    <div class="autocomplete-wrap" id="wrap-filtro-usuario">
-                        <input type="text" id="filtro-usuario" class="filtro-select autocomplete-input" placeholder="Todos los usuarios" autocomplete="off">
-                        <div class="autocomplete-sugerencias" id="sugerencias-usuario">
-                            <div class="autocomplete-sugerencia autocomplete-sugerencia-todos" data-valor="">Todos los usuarios</div>
-                            @foreach($usuariosConFotos as $usuarioOpcion)
-                            <div class="autocomplete-sugerencia" data-valor="{{ $usuarioOpcion->nombre_completo ?: $usuarioOpcion->nombre }}">{{ $usuarioOpcion->nombre_completo ?: $usuarioOpcion->nombre }}</div>
-                            @endforeach
+                    @if($etiquetasTc->isNotEmpty())
+                    <div class="multi-wrap" id="wrap-filtro-etiqueta">
+                        <button type="button" class="filtro-select multi-btn" id="btn-filtro-etiqueta">
+                            <span id="texto-filtro-etiqueta">Toda etiqueta</span>
+                            <i class="fas fa-chevron-down multi-caret"></i>
+                        </button>
+                        <div class="multi-panel" id="panel-filtro-etiqueta">
+                            <div class="multi-opciones">
+                                <label class="multi-opcion" data-texto="sin etiquetas">
+                                    <input type="checkbox" value="__sin_etiquetas__">
+                                    <span>Sin etiquetas</span>
+                                </label>
+                                @foreach($etiquetasTc as $etiquetaOpcion)
+                                <label class="multi-opcion" data-texto="{{ Str::lower($etiquetaOpcion->descripcion) }}">
+                                    <input type="checkbox" value="{{ $etiquetaOpcion->id }}">
+                                    <span>{{ $etiquetaOpcion->descripcion }}</span>
+                                </label>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
                     @endif
-                    <select id="filtro-dia" class="filtro-select">
-                        <option value="">Día</option>
-                        @foreach($diasConFotos as $diaOpcion)
-                        <option value="{{ $diaOpcion }}">{{ (int) $diaOpcion }}</option>
-                        @endforeach
-                    </select>
-                    <select id="filtro-mes" class="filtro-select">
-                        <option value="">Mes</option>
-                        @foreach($mesesConFotos as $numMes => $nombreMes)
-                        <option value="{{ $numMes }}">{{ $nombreMes }}</option>
-                        @endforeach
-                    </select>
-                    <select id="filtro-anio" class="filtro-select">
-                        <option value="">Año</option>
-                        @foreach($aniosConFotos as $anioOpcion)
-                        <option value="{{ $anioOpcion }}">{{ $anioOpcion }}</option>
-                        @endforeach
-                    </select>
+                    @if($usuariosConFotos->isNotEmpty())
+                    <div class="multi-wrap" id="wrap-filtro-usuario">
+                        <button type="button" class="filtro-select multi-btn" id="btn-filtro-usuario">
+                            <span id="texto-filtro-usuario">Todos los usuarios</span>
+                            <i class="fas fa-chevron-down multi-caret"></i>
+                        </button>
+                        <div class="multi-panel" id="panel-filtro-usuario">
+                            <input type="text" class="multi-buscar" placeholder="Buscar usuario...">
+                            <div class="multi-opciones">
+                                @foreach($usuariosConFotos as $usuarioOpcion)
+                                <label class="multi-opcion" data-texto="{{ Str::lower($usuarioOpcion->nombre_completo ?: $usuarioOpcion->nombre) }}">
+                                    <input type="checkbox" value="{{ Str::lower($usuarioOpcion->nombre_completo ?: $usuarioOpcion->nombre) }}">
+                                    <span>{{ $usuarioOpcion->nombre_completo ?: $usuarioOpcion->nombre }}</span>
+                                </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+                    <div class="multi-wrap" id="wrap-filtro-dia">
+                        <button type="button" class="filtro-select multi-btn" id="btn-filtro-dia">
+                            <span id="texto-filtro-dia">Día</span>
+                            <i class="fas fa-chevron-down multi-caret"></i>
+                        </button>
+                        <div class="multi-panel" id="panel-filtro-dia">
+                            <div class="multi-opciones">
+                                @foreach($diasConFotos as $diaOpcion)
+                                <label class="multi-opcion">
+                                    <input type="checkbox" value="{{ $diaOpcion }}">
+                                    <span>{{ (int) $diaOpcion }}</span>
+                                </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    <div class="multi-wrap" id="wrap-filtro-mes">
+                        <button type="button" class="filtro-select multi-btn" id="btn-filtro-mes">
+                            <span id="texto-filtro-mes">Mes</span>
+                            <i class="fas fa-chevron-down multi-caret"></i>
+                        </button>
+                        <div class="multi-panel" id="panel-filtro-mes">
+                            <div class="multi-opciones">
+                                @foreach($mesesConFotos as $numMes => $nombreMes)
+                                <label class="multi-opcion">
+                                    <input type="checkbox" value="{{ $numMes }}">
+                                    <span>{{ $nombreMes }}</span>
+                                </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    <div class="multi-wrap" id="wrap-filtro-anio">
+                        <button type="button" class="filtro-select multi-btn" id="btn-filtro-anio">
+                            <span id="texto-filtro-anio">Año</span>
+                            <i class="fas fa-chevron-down multi-caret"></i>
+                        </button>
+                        <div class="multi-panel" id="panel-filtro-anio">
+                            <div class="multi-opciones">
+                                @foreach($aniosConFotos as $anioOpcion)
+                                <label class="multi-opcion">
+                                    <input type="checkbox" value="{{ $anioOpcion }}">
+                                    <span>{{ $anioOpcion }}</span>
+                                </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
                     <button type="button" class="btn-filtros-clear" id="btn-filtros-clear" title="Limpiar filtros">
                         <i class="fas fa-filter-circle-xmark"></i> Limpiar
                     </button>
@@ -478,6 +621,7 @@
                          data-plano-id="{{ $foto->plano_tc_id }}"
                          data-plano-nombre="{{ Str::lower($foto->plano->descripcion ?? '') }}"
                          data-clasificacion="{{ $foto->clasificacion }}"
+                         data-etiquetas="{{ $foto->etiquetas->pluck('id')->implode(',') }}"
                          data-usuario-nombre="{{ Str::lower($foto->usuario ? ($foto->usuario->nombre_completo ?: $foto->usuario->nombre) : '') }}"
                          data-dia="{{ $foto->created_at?->format('d') }}"
                          data-mes="{{ $foto->created_at?->format('m') }}"
@@ -493,6 +637,11 @@
                                 @if($foto->clasificacion)
                                 <span class="foto-clasificacion" title="{{ $foto->clasificacion }}">{{ ucfirst(str_replace('_', ' ', $foto->clasificacion)) }}</span>
                                 @endif
+                            </div>
+                            <div class="foto-etiquetas" data-etiquetas-chips>
+                                @foreach($foto->etiquetas as $etiquetaFoto)
+                                <span class="foto-etiqueta-chip">{{ $etiquetaFoto->descripcion }}</span>
+                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -543,6 +692,18 @@
                 </div>
             </div>
         </div>
+        @permiso('gal_tc', 'editar')
+        <div class="overlay-etiquetas-panel oculto" id="overlay-etiquetas-panel">
+            <div class="overlay-etiquetas-titulo">
+                <i class="fas fa-tags"></i> Etiquetas
+            </div>
+            <div class="overlay-etiquetas-lista" id="overlay-etiquetas-lista"></div>
+            <div class="overlay-etiquetas-agregar">
+                <input type="text" id="overlay-etiquetas-input" placeholder="Nueva etiqueta..." maxlength="60">
+                <button type="button" id="overlay-etiquetas-agregar-btn"><i class="fas fa-plus"></i> Agregar</button>
+            </div>
+        </div>
+        @endpermiso
         <button type="button" class="overlay-foto-nav overlay-foto-next" id="overlay-foto-next">&rsaquo;</button>
         <div class="overlay-foto-pie">
             <span class="overlay-foto-info" id="overlay-foto-info"></span>
@@ -556,10 +717,14 @@
 
     const CSRF_TOKEN = @json(csrf_token());
     const urlDescargarFotos = @json(route('galeria_tc.descargar', $obraTc->id));
+    const urlCrearEtiqueta = @json(route('galeria_tc.etiquetas.store', $obraTc->id));
+    const urlMarcarFotoBase = "{{ route('galeria_tc.fotos.etiquetas.store', [$obraTc->id, '__FOTO__']) }}";
+    const urlDesmarcarFotoBase = "{{ route('galeria_tc.fotos.etiquetas.destroy', [$obraTc->id, '__FOTO__', '__ETIQUETA__']) }}";
 
     const fotos = [
         @foreach($fotos as $foto)
         {
+            id: @js($foto->id),
             src: @js($foto->archivo),
             plano: @js($foto->plano->descripcion ?? 'Sin plano'),
             planoArchivo: @js($foto->plano ? Storage::url('planos/' . $foto->plano->archivo) : null),
@@ -569,6 +734,7 @@
             clasificacion: @js($foto->clasificacion ? ucfirst(str_replace('_', ' ', $foto->clasificacion)) : null),
             fecha: @js($foto->created_at?->format('d/m/Y H:i')),
             usuario: @js($foto->usuario ? ($foto->usuario->nombre_completo ?: $foto->usuario->nombre) : null),
+            etiquetas: @js($foto->etiquetas->pluck('id')),
         },
         @endforeach
     ];
@@ -588,6 +754,7 @@
         if (!textoTogglePlano) return;
         textoTogglePlano.textContent = mostrarPlanoPreferencia ? 'Ver sin plano' : 'Ver con plano';
         if (iconoTogglePlano) iconoTogglePlano.className = mostrarPlanoPreferencia ? 'fas fa-map-location-dot' : 'fas fa-image';
+        btnTogglePlano?.classList.toggle('activo', mostrarPlanoPreferencia);
     }
     actualizarBotonTogglePlano();
 
@@ -598,11 +765,252 @@
         if (document.getElementById('overlay-foto').classList.contains('abierto')) mostrarFotoActual();
     });
 
+    /* ─── Etiquetas de clasificación ───────────────────────
+       Cada click guarda al toque contra el servidor (marcar,
+       desmarcar o crear etiqueta): no hay botón "Guardar" ni
+       estado pendiente que se pueda perder al cerrar el modal. */
+    const etiquetasObra = [
+        @foreach($etiquetasTc as $etiqueta)
+        { id: @js($etiqueta->id), descripcion: @js($etiqueta->descripcion) },
+        @endforeach
+    ];
+    const etiquetasPorFoto = new Map(); // fotoId -> Set(etiquetaId), sembrado desde foto.etiquetas
+
+    function seleccionadasDe(foto) {
+        if (!etiquetasPorFoto.has(foto.id)) {
+            etiquetasPorFoto.set(foto.id, new Set(foto.etiquetas || []));
+        }
+        return etiquetasPorFoto.get(foto.id);
+    }
+
+    /* La grilla (data-etiquetas de cada .foto-card) se renderiza una
+       sola vez desde el servidor; hay que reflejar ahí cada marca
+       para que el filtro por etiqueta no quede desactualizado. No
+       se reaplican los filtros acá mismo (recalcularían
+       indicesVisibles con el lightbox todavía abierto y romperían la
+       navegación prev/next): eso pasa recién al cerrar el modal, en
+       cerrarLightbox(). */
+    function sincronizarDatasetTarjeta(foto) {
+        const card = document.querySelector(`.foto-card[data-id="${foto.id}"]`);
+        if (!card) return;
+        card.dataset.etiquetas = [...seleccionadasDe(foto)].join(',');
+
+        const chipsWrap = card.querySelector('[data-etiquetas-chips]');
+        if (!chipsWrap) return;
+        chipsWrap.innerHTML = '';
+        etiquetasDescripcionesDe(foto).forEach(descripcion => {
+            const chip = document.createElement('span');
+            chip.className = 'foto-etiqueta-chip';
+            chip.textContent = descripcion;
+            chipsWrap.appendChild(chip);
+        });
+    }
+
+    /* agregarOpcionFiltroEtiqueta() se define más abajo, junto con el
+       resto de los filtros (msEtiqueta.agregarOpcion): si se crea una
+       etiqueta nueva desde el modal, se suma como opción al toque al
+       filtro multi-select (si la obra no tenía ninguna etiqueta
+       todavía, ese filtro directamente no se renderizó, así que no
+       hay nada que agregarle). */
+
+    const LS_KEY_MOSTRAR_ETIQUETAS = 'galeria_tc_mostrar_etiquetas';
+    let mostrarEtiquetasPreferencia = localStorage.getItem(LS_KEY_MOSTRAR_ETIQUETAS) === '1';
+
+    const btnToggleEtiquetas = document.getElementById('btn-toggle-etiquetas');
+    const textoToggleEtiquetas = document.getElementById('texto-toggle-etiquetas');
+    const panelEtiquetas = document.getElementById('overlay-etiquetas-panel');
+
+    function actualizarBotonToggleEtiquetas() {
+        if (!textoToggleEtiquetas) return;
+        textoToggleEtiquetas.textContent = mostrarEtiquetasPreferencia ? 'Ocultar clasificación' : 'Clasificación de fotos';
+        btnToggleEtiquetas?.classList.toggle('activo', mostrarEtiquetasPreferencia);
+        panelEtiquetas?.classList.toggle('oculto', !mostrarEtiquetasPreferencia);
+    }
+    actualizarBotonToggleEtiquetas();
+
+    btnToggleEtiquetas?.addEventListener('click', function () {
+        mostrarEtiquetasPreferencia = !mostrarEtiquetasPreferencia;
+        localStorage.setItem(LS_KEY_MOSTRAR_ETIQUETAS, mostrarEtiquetasPreferencia ? '1' : '0');
+        actualizarBotonToggleEtiquetas();
+        if (document.getElementById('overlay-foto').classList.contains('abierto')) renderizarEtiquetasPanel();
+    });
+
+    function renderizarEtiquetasPanel() {
+        const lista = document.getElementById('overlay-etiquetas-lista');
+        if (!lista) return;
+        const idx = indicesVisibles[indiceActual];
+        const foto = fotos[idx];
+        if (!foto) return;
+
+        const seleccionadas = seleccionadasDe(foto);
+
+        lista.innerHTML = '';
+        if (!etiquetasObra.length) {
+            const vacio = document.createElement('span');
+            vacio.className = 'overlay-etiquetas-vacio';
+            vacio.textContent = 'Todavía no hay etiquetas cargadas en esta obra.';
+            lista.appendChild(vacio);
+        }
+        etiquetasObra.forEach(etiqueta => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'overlay-etiqueta-chip' + (seleccionadas.has(etiqueta.id) ? ' activa' : '');
+            const icono = document.createElement('i');
+            icono.className = 'fas fa-check';
+            const texto = document.createElement('span');
+            texto.textContent = etiqueta.descripcion;
+            chip.append(icono, texto);
+            chip.addEventListener('click', () => alternarEtiquetaEnFoto(foto, etiqueta, chip));
+            lista.appendChild(chip);
+        });
+    }
+
+    /* Descripciones (no ids) de las etiquetas marcadas en una foto,
+       en el orden en que se marcaron. Se usa tanto en la grilla como
+       en el modal para mostrar la clasificación sin tener que activar
+       el modo de edición. */
+    function etiquetasDescripcionesDe(foto) {
+        return [...seleccionadasDe(foto)]
+            .map(id => etiquetasObra.find(e => e.id === id)?.descripcion)
+            .filter(Boolean);
+    }
+
+    /* Pedido al servidor para marcar o desmarcar una etiqueta en una
+       foto puntual (sin tocar el Map ni el DOM: eso lo maneja quien
+       llama, según si necesita optimismo con reversión o no). */
+    function guardarMarca(foto, etiqueta, marcar) {
+        return marcar
+            ? fetch(urlMarcarFotoBase.replace('__FOTO__', foto.id), {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ etiqueta_tc_id: etiqueta.id }),
+            })
+            : fetch(urlDesmarcarFotoBase.replace('__FOTO__', foto.id).replace('__ETIQUETA__', etiqueta.id), {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+            });
+    }
+
+    /* Optimista: marca/desmarca en pantalla al toque y recién
+       revierte si el pedido al servidor falla, para no bloquear el
+       click esperando la respuesta. */
+    function alternarEtiquetaEnFoto(foto, etiqueta, chip) {
+        const seleccionadas = seleccionadasDe(foto);
+        const estabaActiva = seleccionadas.has(etiqueta.id);
+
+        if (estabaActiva) seleccionadas.delete(etiqueta.id); else seleccionadas.add(etiqueta.id);
+        chip.classList.toggle('activa', !estabaActiva);
+        chip.disabled = true;
+        sincronizarDatasetTarjeta(foto);
+        actualizarInfoLightbox(foto);
+
+        guardarMarca(foto, etiqueta, !estabaActiva).then(res => {
+            if (!res.ok) throw new Error('No se pudo guardar la etiqueta');
+        }).catch(() => {
+            if (estabaActiva) seleccionadas.add(etiqueta.id); else seleccionadas.delete(etiqueta.id);
+            chip.classList.toggle('activa', estabaActiva);
+            sincronizarDatasetTarjeta(foto);
+            actualizarInfoLightbox(foto);
+        }).finally(() => {
+            chip.disabled = false;
+        });
+    }
+
+    /* Usado al agregar una etiqueta ya existente desde el input:
+       la marca en la foto actual sigue el mismo criterio optimista,
+       solo que acá no hay un chip todavía (se re-renderiza de una). */
+    function marcarEtiquetaEnFoto(foto, etiqueta) {
+        seleccionadasDe(foto).add(etiqueta.id);
+        renderizarEtiquetasPanel();
+        sincronizarDatasetTarjeta(foto);
+        actualizarInfoLightbox(foto);
+
+        guardarMarca(foto, etiqueta, true).then(res => {
+            if (!res.ok) throw new Error('No se pudo guardar la etiqueta');
+        }).catch(() => {
+            seleccionadasDe(foto).delete(etiqueta.id);
+            renderizarEtiquetasPanel();
+            sincronizarDatasetTarjeta(foto);
+            actualizarInfoLightbox(foto);
+            alert('No se pudo guardar la etiqueta. Probá de nuevo.');
+        });
+    }
+
+    function agregarEtiquetaNueva() {
+        const input = document.getElementById('overlay-etiquetas-input');
+        const boton = document.getElementById('overlay-etiquetas-agregar-btn');
+        const texto = (input?.value || '').trim();
+        if (!texto) return;
+
+        const idx = indicesVisibles[indiceActual];
+        const foto = fotos[idx];
+        if (!foto) return;
+
+        const yaExiste = etiquetasObra.find(e => e.descripcion.toLowerCase() === texto.toLowerCase());
+        input.value = '';
+        if (yaExiste) {
+            if (!seleccionadasDe(foto).has(yaExiste.id)) marcarEtiquetaEnFoto(foto, yaExiste);
+            return;
+        }
+
+        boton.disabled = true;
+        fetch(urlCrearEtiqueta, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ descripcion: texto }),
+        })
+            .then(res => {
+                if (!res.ok) throw new Error('No se pudo crear la etiqueta');
+                return res.json();
+            })
+            .then(etiqueta => {
+                etiquetasObra.push({ id: etiqueta.id, descripcion: etiqueta.descripcion });
+                agregarOpcionFiltroEtiqueta(etiqueta);
+                marcarEtiquetaEnFoto(foto, etiqueta);
+            })
+            .catch(() => {
+                alert('No se pudo crear la etiqueta. Probá de nuevo.');
+            })
+            .finally(() => {
+                boton.disabled = false;
+            });
+    }
+
+    document.getElementById('overlay-etiquetas-agregar-btn')?.addEventListener('click', agregarEtiquetaNueva);
+    document.getElementById('overlay-etiquetas-input')?.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); agregarEtiquetaNueva(); }
+    });
+
     function abrirLightbox(index) {
         indiceActual = indicesVisibles.indexOf(index);
         if (indiceActual === -1) indiceActual = 0;
         mostrarFotoActual();
         document.getElementById('overlay-foto').classList.add('abierto');
+    }
+
+    /* Reconstruye el pie del lightbox desde cero con nodos de texto
+       (nunca innerHTML con datos interpolados: plano/etiqueta/usuario
+       son texto que puede haber escrito cualquier usuario). */
+    function actualizarInfoLightbox(foto) {
+        const infoEl = document.getElementById('overlay-foto-info');
+        infoEl.innerHTML = '';
+        function agregarParte(texto, fuerte) {
+            if (!texto) return;
+            if (infoEl.childNodes.length > 0) infoEl.appendChild(document.createTextNode(' · '));
+            if (fuerte) {
+                const nodo = document.createElement('strong');
+                nodo.textContent = texto;
+                infoEl.appendChild(nodo);
+            } else {
+                infoEl.appendChild(document.createTextNode(texto));
+            }
+        }
+        agregarParte(foto.plano, true);
+        agregarParte(etiquetasDescripcionesDe(foto).join(', '));
+        if (foto.clasificacion) agregarParte(foto.clasificacion);
+        if (foto.usuario) agregarParte('Subida por ' + foto.usuario);
+        agregarParte(foto.fecha);
+        agregarParte(`(${indiceActual + 1}/${indicesVisibles.length})`);
     }
 
     function mostrarFotoActual() {
@@ -611,17 +1019,9 @@
         if (!foto) return;
 
         document.getElementById('overlay-foto-img').src = foto.src;
-
-        const partes = [];
-        partes.push(`<strong>${foto.plano}</strong>`);
-        if (foto.clasificacion) partes.push(foto.clasificacion);
-        if (foto.usuario) partes.push('Subida por ' + foto.usuario);
-        if (foto.fecha) partes.push(foto.fecha);
-        partes.push(`(${indiceActual + 1}/${indicesVisibles.length})`);
-
-        document.getElementById('overlay-foto-info').innerHTML = partes.join(' &middot; ');
-
+        actualizarInfoLightbox(foto);
         mostrarPlanoContexto(foto);
+        renderizarEtiquetasPanel();
     }
 
     /* ─── Panel de plano (contexto + zoom) ─────────────────── */
@@ -1022,6 +1422,9 @@
 
     function cerrarLightbox() {
         document.getElementById('overlay-foto').classList.remove('abierto');
+        /* Por si se clasificaron fotos con el modal abierto: recién acá
+           es seguro recalcular indicesVisibles (ver sincronizarDatasetTarjeta). */
+        aplicarFiltros();
     }
 
     document.getElementById('overlay-foto-cerrar').addEventListener('click', cerrarLightbox);
@@ -1045,23 +1448,114 @@
 
     /* ─── Filtros ──────────────────────────────────────────── */
     const inputBuscarFoto = document.getElementById('input-buscar-foto');
-    const filtroPlano = document.getElementById('filtro-plano');
     const filtroClasificacion = document.getElementById('filtro-clasificacion');
-    const filtroUsuario = document.getElementById('filtro-usuario');
-    const filtroDia = document.getElementById('filtro-dia');
-    const filtroMes = document.getElementById('filtro-mes');
-    const filtroAnio = document.getElementById('filtro-anio');
     const tarjetas = Array.from(document.querySelectorAll('.foto-card'));
     const emptyBusqueda = document.getElementById('empty-busqueda');
 
+    /* ─── Multi-select con checkboxes (plano / etiqueta / usuario /
+       día / mes / año): a diferencia de un <select> nativo, cada uno
+       de estos filtros permite marcar varias opciones a la vez —
+       dentro de un mismo filtro es "o" (cualquiera de las marcadas),
+       entre filtros distintos sigue siendo "y" (como antes). ─── */
+    function crearMultiSelect({ wrapId, btnId, textoId, panelId, etiquetaVacia, onCambio }) {
+        const wrap = document.getElementById(wrapId);
+        const btn = document.getElementById(btnId);
+        const texto = document.getElementById(textoId);
+        const panel = document.getElementById(panelId);
+        const vacio = { seleccionados: new Set(), agregarOpcion() {}, limpiar() {} };
+        if (!wrap || !btn || !panel) return vacio;
+
+        const seleccionados = new Set();
+        const buscar = panel.querySelector('.multi-buscar');
+        const opcionesWrap = panel.querySelector('.multi-opciones');
+
+        function opciones() {
+            return Array.from(opcionesWrap.querySelectorAll('.multi-opcion'));
+        }
+
+        function actualizarTexto() {
+            if (!texto) return;
+            if (seleccionados.size === 0) texto.textContent = etiquetaVacia;
+            else if (seleccionados.size === 1) texto.textContent = opciones()
+                .find(op => op.querySelector('input').value === [...seleccionados][0])
+                ?.querySelector('span')?.textContent || etiquetaVacia;
+            else texto.textContent = seleccionados.size + ' seleccionadas';
+            btn.classList.toggle('activo', seleccionados.size > 0);
+        }
+
+        function ligarOpcion(opcion) {
+            const checkbox = opcion.querySelector('input[type="checkbox"]');
+            checkbox.addEventListener('change', function () {
+                if (this.checked) seleccionados.add(this.value); else seleccionados.delete(this.value);
+                actualizarTexto();
+                onCambio();
+            });
+        }
+
+        opciones().forEach(ligarOpcion);
+
+        function filtrarOpciones(q) {
+            q = q.trim().toLowerCase();
+            opciones().forEach(opcion => {
+                const texto = opcion.dataset.texto || opcion.textContent.trim().toLowerCase();
+                opcion.classList.toggle('hidden', q !== '' && !texto.includes(q));
+            });
+        }
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const yaAbierto = wrap.classList.contains('open');
+            document.querySelectorAll('.multi-wrap.open').forEach(w => w.classList.remove('open'));
+            if (yaAbierto) return;
+            wrap.classList.add('open');
+            if (buscar) { buscar.value = ''; filtrarOpciones(''); buscar.focus(); }
+        });
+
+        buscar?.addEventListener('input', function () { filtrarOpciones(this.value); });
+
+        document.addEventListener('click', function (e) {
+            if (!wrap.contains(e.target)) wrap.classList.remove('open');
+        });
+
+        actualizarTexto();
+
+        return {
+            seleccionados,
+            agregarOpcion(valor, etiquetaTexto) {
+                const label = document.createElement('label');
+                label.className = 'multi-opcion';
+                label.dataset.texto = etiquetaTexto.toLowerCase();
+                const span = document.createElement('span');
+                span.textContent = etiquetaTexto;
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = valor;
+                label.append(input, span);
+                opcionesWrap.appendChild(label);
+                ligarOpcion(label);
+            },
+            limpiar() {
+                seleccionados.clear();
+                opciones().forEach(op => { op.querySelector('input').checked = false; });
+                actualizarTexto();
+            },
+        };
+    }
+
+    const msPlano = crearMultiSelect({ wrapId: 'wrap-filtro-plano', btnId: 'btn-filtro-plano', textoId: 'texto-filtro-plano', panelId: 'panel-filtro-plano', etiquetaVacia: 'Todos los planos', onCambio: () => aplicarFiltros() });
+    const msEtiqueta = crearMultiSelect({ wrapId: 'wrap-filtro-etiqueta', btnId: 'btn-filtro-etiqueta', textoId: 'texto-filtro-etiqueta', panelId: 'panel-filtro-etiqueta', etiquetaVacia: 'Toda etiqueta', onCambio: () => aplicarFiltros() });
+    const msUsuario = crearMultiSelect({ wrapId: 'wrap-filtro-usuario', btnId: 'btn-filtro-usuario', textoId: 'texto-filtro-usuario', panelId: 'panel-filtro-usuario', etiquetaVacia: 'Todos los usuarios', onCambio: () => aplicarFiltros() });
+    const msDia = crearMultiSelect({ wrapId: 'wrap-filtro-dia', btnId: 'btn-filtro-dia', textoId: 'texto-filtro-dia', panelId: 'panel-filtro-dia', etiquetaVacia: 'Día', onCambio: () => aplicarFiltros() });
+    const msMes = crearMultiSelect({ wrapId: 'wrap-filtro-mes', btnId: 'btn-filtro-mes', textoId: 'texto-filtro-mes', panelId: 'panel-filtro-mes', etiquetaVacia: 'Mes', onCambio: () => aplicarFiltros() });
+    const msAnio = crearMultiSelect({ wrapId: 'wrap-filtro-anio', btnId: 'btn-filtro-anio', textoId: 'texto-filtro-anio', panelId: 'panel-filtro-anio', etiquetaVacia: 'Año', onCambio: () => aplicarFiltros() });
+
+    function agregarOpcionFiltroEtiqueta(etiqueta) {
+        msEtiqueta.agregarOpcion(String(etiqueta.id), etiqueta.descripcion);
+    }
+
     function aplicarFiltros() {
         const q = (inputBuscarFoto?.value || '').trim().toLowerCase();
-        const planoQ = (filtroPlano?.value || '').trim().toLowerCase();
         const clasificacion = filtroClasificacion?.value || '';
-        const usuarioQ = (filtroUsuario?.value || '').trim().toLowerCase();
-        const dia = filtroDia?.value || '';
-        const mes = filtroMes?.value || '';
-        const anio = filtroAnio?.value || '';
 
         document.getElementById('btn-buscar-clear')?.classList.toggle('show', q.length > 0);
 
@@ -1069,13 +1563,17 @@
 
         tarjetas.forEach(card => {
             const coincideTexto = q === '' || card.dataset.planoNombre.includes(q);
-            const coincidePlano = planoQ === '' || card.dataset.planoNombre.includes(planoQ);
+            const coincidePlano = msPlano.seleccionados.size === 0 || msPlano.seleccionados.has(card.dataset.planoNombre);
             const coincideClasificacion = clasificacion === '' || card.dataset.clasificacion === clasificacion;
-            const coincideUsuario = usuarioQ === '' || (card.dataset.usuarioNombre || '').includes(usuarioQ);
-            const coincideDia = dia === '' || card.dataset.dia === dia;
-            const coincideMes = mes === '' || card.dataset.mes === mes;
-            const coincideAnio = anio === '' || card.dataset.anio === anio;
-            const visible = coincideTexto && coincidePlano && coincideClasificacion &&
+            const etiquetasCard = (card.dataset.etiquetas || '').split(',').filter(Boolean);
+            const coincideEtiqueta = msEtiqueta.seleccionados.size === 0 ||
+                (msEtiqueta.seleccionados.has('__sin_etiquetas__') && etiquetasCard.length === 0) ||
+                etiquetasCard.some(id => msEtiqueta.seleccionados.has(id));
+            const coincideUsuario = msUsuario.seleccionados.size === 0 || msUsuario.seleccionados.has(card.dataset.usuarioNombre || '');
+            const coincideDia = msDia.seleccionados.size === 0 || msDia.seleccionados.has(card.dataset.dia);
+            const coincideMes = msMes.seleccionados.size === 0 || msMes.seleccionados.has(card.dataset.mes);
+            const coincideAnio = msAnio.seleccionados.size === 0 || msAnio.seleccionados.has(card.dataset.anio);
+            const visible = coincideTexto && coincidePlano && coincideClasificacion && coincideEtiqueta &&
                 coincideUsuario && coincideDia && coincideMes && coincideAnio;
 
             card.style.display = visible ? '' : 'none';
@@ -1086,59 +1584,8 @@
         actualizarBotonesDescarga();
     }
 
-    /* ─── Combobox con autocompletado (plano / usuario) ───── */
-    function crearAutocomplete(wrapId, inputId, sugerenciasId, onCambio) {
-        const wrap = document.getElementById(wrapId);
-        const input = document.getElementById(inputId);
-        if (!wrap || !input) return;
-
-        const sugerenciasWrap = document.getElementById(sugerenciasId);
-        const opciones = Array.from(sugerenciasWrap.querySelectorAll('.autocomplete-sugerencia'));
-
-        function filtrarSugerencias(valor) {
-            const q = valor.trim().toLowerCase();
-            let hayCoincidencias = false;
-
-            opciones.forEach(op => {
-                const esTodos = op.classList.contains('autocomplete-sugerencia-todos');
-                const match = esTodos || q === '' || op.dataset.valor.toLowerCase().includes(q);
-                op.classList.toggle('hidden', !match);
-                if (match) hayCoincidencias = true;
-            });
-
-            wrap.classList.toggle('open', hayCoincidencias);
-        }
-
-        input.addEventListener('input', function () {
-            filtrarSugerencias(this.value);
-            onCambio();
-        });
-
-        input.addEventListener('focus', function () {
-            filtrarSugerencias(this.value);
-        });
-
-        opciones.forEach(op => {
-            op.addEventListener('click', () => {
-                input.value = op.dataset.valor;
-                wrap.classList.remove('open');
-                onCambio();
-            });
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!wrap.contains(e.target)) wrap.classList.remove('open');
-        });
-    }
-
-    crearAutocomplete('wrap-filtro-plano', 'filtro-plano', 'sugerencias-plano', aplicarFiltros);
-    crearAutocomplete('wrap-filtro-usuario', 'filtro-usuario', 'sugerencias-usuario', aplicarFiltros);
-
     inputBuscarFoto?.addEventListener('input', aplicarFiltros);
     filtroClasificacion?.addEventListener('change', aplicarFiltros);
-    filtroDia?.addEventListener('change', aplicarFiltros);
-    filtroMes?.addEventListener('change', aplicarFiltros);
-    filtroAnio?.addEventListener('change', aplicarFiltros);
     document.getElementById('btn-buscar-clear')?.addEventListener('click', function () {
         inputBuscarFoto.value = '';
         aplicarFiltros();
@@ -1146,12 +1593,13 @@
     });
     document.getElementById('btn-filtros-clear')?.addEventListener('click', function () {
         inputBuscarFoto.value = '';
-        if (filtroPlano) filtroPlano.value = '';
         if (filtroClasificacion) filtroClasificacion.value = '';
-        if (filtroUsuario) filtroUsuario.value = '';
-        if (filtroDia) filtroDia.value = '';
-        if (filtroMes) filtroMes.value = '';
-        if (filtroAnio) filtroAnio.value = '';
+        msPlano.limpiar();
+        msEtiqueta.limpiar();
+        msUsuario.limpiar();
+        msDia.limpiar();
+        msMes.limpiar();
+        msAnio.limpiar();
         aplicarFiltros();
     });
 
