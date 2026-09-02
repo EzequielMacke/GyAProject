@@ -146,6 +146,13 @@
             padding: 0.4rem 0.6rem; outline: none; margin-bottom: 0.35rem;
         }
         .multi-buscar:focus { border-color: var(--accent); }
+        .multi-modo {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.3rem 0.2rem 0.5rem; margin-bottom: 0.3rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.78rem; font-weight: 500; color: var(--text2); cursor: pointer;
+        }
+        .multi-modo input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
         .multi-opciones { max-height: 230px; overflow-y: auto; }
         .multi-opcion {
             display: flex; align-items: center; gap: 0.55rem;
@@ -511,6 +518,10 @@
                             <i class="fas fa-chevron-down multi-caret"></i>
                         </button>
                         <div class="multi-panel" id="panel-filtro-etiqueta">
+                            <label class="multi-modo">
+                                <input type="checkbox" id="modo-filtro-etiqueta">
+                                <span>Debe tener todas las etiquetas marcadas</span>
+                            </label>
                             <div class="multi-opciones">
                                 <label class="multi-opcion" data-texto="sin etiquetas">
                                     <input type="checkbox" value="__sin_etiquetas__">
@@ -1550,6 +1561,15 @@
         msEtiqueta.agregarOpcion(String(etiqueta.id), etiqueta.descripcion);
     }
 
+    /* Modo de combinación del filtro por etiqueta: destildado, la foto
+       coincide si tiene cualquiera de las marcadas (por defecto);
+       tildado, tiene que tenerlas todas. Solo aplica a este filtro —
+       los demás (plano, usuario, día, mes, año) siguen siendo siempre
+       "cualquiera de las marcadas" entre sus propias opciones. */
+    const checkModoEtiqueta = document.getElementById('modo-filtro-etiqueta');
+    checkModoEtiqueta?.addEventListener('click', e => e.stopPropagation());
+    checkModoEtiqueta?.addEventListener('change', aplicarFiltros);
+
     function aplicarFiltros() {
         const q = (inputBuscarFoto?.value || '').trim().toLowerCase();
         const clasificacion = filtroClasificacion?.value || '';
@@ -1563,9 +1583,12 @@
             const coincidePlano = msPlano.seleccionados.size === 0 || msPlano.seleccionados.has(card.dataset.planoNombre);
             const coincideClasificacion = clasificacion === '' || card.dataset.clasificacion === clasificacion;
             const etiquetasCard = (card.dataset.etiquetas || '').split(',').filter(Boolean);
-            const coincideEtiqueta = msEtiqueta.seleccionados.size === 0 ||
-                (msEtiqueta.seleccionados.has('__sin_etiquetas__') && etiquetasCard.length === 0) ||
-                etiquetasCard.some(id => msEtiqueta.seleccionados.has(id));
+            const etiquetasElegidas = [...msEtiqueta.seleccionados];
+            const coincideValorEtiqueta = valor => valor === '__sin_etiquetas__'
+                ? etiquetasCard.length === 0
+                : etiquetasCard.includes(valor);
+            const coincideEtiqueta = etiquetasElegidas.length === 0 ||
+                (checkModoEtiqueta?.checked ? etiquetasElegidas.every(coincideValorEtiqueta) : etiquetasElegidas.some(coincideValorEtiqueta));
             const coincideUsuario = msUsuario.seleccionados.size === 0 || msUsuario.seleccionados.has(card.dataset.usuarioNombre || '');
             const coincideDia = msDia.seleccionados.size === 0 || msDia.seleccionados.has(card.dataset.dia);
             const coincideMes = msMes.seleccionados.size === 0 || msMes.seleccionados.has(card.dataset.mes);
@@ -1597,6 +1620,7 @@
         msDia.limpiar();
         msMes.limpiar();
         msAnio.limpiar();
+        if (checkModoEtiqueta) checkModoEtiqueta.checked = false;
         aplicarFiltros();
     });
 
