@@ -563,14 +563,25 @@
 
     <div class="app">
         <nav class="toolbar-vertical" @if(!$puedeEditar && !$puedeEliminar) style="display:none" @endif>
-            <div class="tool-submenu-wrap activo" id="danos-wrap" @if(!$puedeEditar) style="display:none" @endif>
+            <button type="button" class="tool-btn activo" data-tool="mover" title="Mover">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="5 9 2 12 5 15"></polyline>
+                    <polyline points="9 5 12 2 15 5"></polyline>
+                    <polyline points="15 19 12 22 9 19"></polyline>
+                    <polyline points="19 9 22 12 19 15"></polyline>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <line x1="12" y1="2" x2="12" y2="22"></line>
+                </svg>
+                Mover
+            </button>
+            <div class="tool-submenu-wrap" id="danos-wrap" @if(!$puedeEditar) style="display:none" @endif>
                 <button type="button" class="tool-btn" id="tool-danos" title="Daños">
                     <span class="tool-swatch" style="background:#e53e3e; display:none"></span>
                     <img class="tool-icon-img" src="{{ asset('img/iconos/Fisura.svg') }}" alt="">
                     Daños
                 </button>
                 <div class="submenu-lateral" id="submenu-danos">
-                    <button type="button" class="tool-btn tool-submenu-item activo" data-tool="fisura" title="Fisura">
+                    <button type="button" class="tool-btn tool-submenu-item" data-tool="fisura" title="Fisura">
                         <img class="tool-icon-img" src="{{ asset('img/iconos/Fisura.svg') }}" alt="">
                         Fisura
                     </button>
@@ -1471,7 +1482,7 @@
             HERRAMIENTAS.linea_recta.color = color;
         });
 
-        let herramientaActual = 'fisura';
+        let herramientaActual = 'mover';
 
         const wrapsSubmenu = document.querySelectorAll('.tool-submenu-wrap');
 
@@ -3413,6 +3424,10 @@
         let pinchInfo = null;
         let punteroPendiente = null;
         const RETRASO_CONFIRMACION_TACTIL = 150;
+        /* Herramienta "Mover": arrastre con un dedo sin la demora de
+           RETRASO_CONFIRMACION_TACTIL (no hay ambigüedad con un tap, así
+           que no hace falta esperar a ver si llega un segundo dedo). */
+        let panInfo = null;
 
         function distancia(p1, p2) { return Math.hypot(p1.x - p2.x, p1.y - p2.y); }
 
@@ -4195,6 +4210,7 @@
                 if (arrastrandoMoverMultiple) finalizarArrastreMoverMultiple();
                 dibujandoRectangulo = false;
                 rectSeleccion = null;
+                panInfo = null;
                 aplicarEstadoPendienteSiHay();
                 const pts = Array.from(punterosActivos.values());
                 const rect = lienzoWrap.getBoundingClientRect();
@@ -4208,6 +4224,11 @@
             } else if (punterosActivos.size === 1) {
                 const pantalla = posicionPantalla(e);
                 const mundo = pantallaAMundo(pantalla.x, pantalla.y);
+
+                if (herramientaActual === 'mover') {
+                    panInfo = { pointerId: e.pointerId, mundo, inicioPantalla: pantalla };
+                    return;
+                }
 
                 if (e.pointerType === 'touch') {
                     punteroPendiente = {
@@ -4238,6 +4259,12 @@
                 const cy = (pts[0].y + pts[1].y) / 2 - rect.top;
                 const nuevaScale = pinchInfo.scaleInicial * (distActual / pinchInfo.distInicial);
                 fijarPuntoEnPantalla(pinchInfo.mundo.x, pinchInfo.mundo.y, cx, cy, nuevaScale);
+                return;
+            }
+
+            if (panInfo && e.pointerId === panInfo.pointerId) {
+                const pantalla = posicionPantalla(e);
+                fijarPuntoEnPantalla(panInfo.mundo.x, panInfo.mundo.y, pantalla.x, pantalla.y, vista.scale);
                 return;
             }
 
@@ -4287,6 +4314,23 @@
         });
 
         function finalizarPuntero(e) {
+            if (panInfo && e.pointerId === panInfo.pointerId) {
+                const infoPan = panInfo;
+                panInfo = null;
+                punterosActivos.delete(e.pointerId);
+                /* Un "tap" sin arrastre (ver umbral de 6px más abajo, en
+                   dibujandoRectangulo) sigue permitiendo ver una foto ya
+                   cargada, igual que con el resto de las herramientas. */
+                if (e.type === 'pointerup') {
+                    const pantalla = posicionPantalla(e);
+                    if (distancia(pantalla, infoPan.inicioPantalla) < 6) {
+                        const fotoExistente = buscarFotoEnPunto(infoPan.mundo);
+                        if (fotoExistente) mostrarFotoEnGrande(fotoExistente);
+                    }
+                }
+                return;
+            }
+
             if (arrastrandoMover) {
                 punterosActivos.delete(e.pointerId);
                 finalizarArrastreMover();
