@@ -502,6 +502,8 @@ Route::middleware('permiso:ens_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planillas', [PlanillaTcController::class, 'index'])->name('planilla_tc.index');
     Route::get('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'esclerometria'])->name('planilla_tc.esclerometria');
     Route::get('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto', [PlanillaTcController::class, 'ultrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto');
+    Route::get('/trabajo-campo/{obraTc}/planillas/esclerometria/reporte', [PlanillaTcController::class, 'reporteEsclerometria'])->name('planilla_tc.esclerometria.reporte');
+    Route::get('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto/reporte', [PlanillaTcController::class, 'reporteUltrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto.reporte');
 });
 Route::middleware('permiso:ens_tc,agregar')->group(function () {
     Route::post('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'crearEsclerometria'])->name('planilla_tc.esclerometria.crear');

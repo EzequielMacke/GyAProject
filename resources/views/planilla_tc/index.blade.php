@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planillas</title>
     @include('partials.head')
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg:       #f0f3f7;
@@ -152,6 +152,17 @@
         .planilla-nombre { font-size: 0.92rem; font-weight: 700; color: var(--text); }
         .planilla-resumen { font-size: 0.76rem; color: var(--muted); margin-top: 0.2rem; }
 
+        .planilla-reporte-btn {
+            position: relative; z-index: 2; align-self: flex-start;
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            height: 32px; padding: 0 0.75rem; border-radius: 0.5rem;
+            border: 1.5px solid var(--border); background: #fff; color: var(--text2);
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.76rem; font-weight: 600;
+            cursor: pointer; transition: all 0.14s;
+        }
+        .planilla-reporte-btn:hover { border-color: var(--accent); color: var(--accent-b); background: var(--accent-s); }
+        .planilla-reporte-btn:disabled { opacity: 0.6; cursor: default; }
+
         .planilla-card-link {
             position: absolute; inset: 0; z-index: 1;
             border-radius: inherit;
@@ -228,6 +239,11 @@
                                 <div class="planilla-nombre">{{ $tipo['nombre'] }}</div>
                                 <div class="planilla-resumen">{{ $tipo['resumen'] }}</div>
                             </div>
+                            @if(isset($tipo['ruta_reporte']))
+                            <button type="button" class="planilla-reporte-btn" title="Generar reporte PNG" data-tipo="{{ $tipo['codigo'] }}" data-ruta="{{ $tipo['ruta_reporte'] }}" onclick="generarReporte(this)">
+                                <i class="fas fa-file-image"></i> Reporte
+                            </button>
+                            @endif
                             <a href="{{ $tipo['ruta'] }}" class="planilla-card-link" aria-label="Abrir {{ $tipo['nombre'] }}"></a>
                         </div>
                     @endforeach
@@ -361,6 +377,163 @@
             alert('No se pudo eliminar la planilla. Intentá de nuevo.');
             boton.disabled = false;
         }
+    }
+
+    /* ─── Reporte PNG de planillas ───────────────────────────── */
+    const FUENTE_REPORTE = "'EB Garamond', Garamond, serif";
+
+    const REPORTES = {
+        esclerometria: {
+            titulo: datos => `Reporte de Esclerometría — ${datos.obra || ''}`,
+            columnas: ['Elemento', 'Identificación', 'Dirección', 'Índice esclerométrico corregido'],
+            fila: p => [p.elemento, p.identificacion, p.direccion, p.n_final],
+            prefijoArchivo: 'reporte-esclerometria',
+        },
+        ultrasonido_indirecto: {
+            titulo: datos => `Reporte de Ultrasonido Indirecto — ${datos.obra || ''}`,
+            columnas: ['Elemento', 'Identificación', 'Velocidad (m/s)', 'Compactación del hormigón'],
+            fila: p => [p.elemento, p.identificacion, p.velocidad, p.compactacion],
+            prefijoArchivo: 'reporte-ultrasonido-indirecto',
+        },
+    };
+
+    async function generarReporte(boton) {
+        const config = REPORTES[boton.dataset.tipo];
+        const iconoOriginal = boton.innerHTML;
+        boton.disabled = true;
+        boton.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Generando...';
+        try {
+            const respuesta = await fetch(boton.dataset.ruta, {
+                headers: { 'Accept': 'application/json' },
+            });
+            if (!respuesta.ok) throw new Error('No se pudo obtener el reporte');
+            const datos = await respuesta.json();
+
+            if (!datos.puntos || datos.puntos.length === 0) {
+                alert('Todavía no hay puntos ensayados para generar el reporte.');
+                return;
+            }
+
+            await Promise.all([
+                document.fonts.load(`700 20px ${FUENTE_REPORTE}`),
+                document.fonts.load(`400 15px ${FUENTE_REPORTE}`),
+                document.fonts.load(`700 15px ${FUENTE_REPORTE}`),
+            ]);
+
+            const dataUrl = dibujarReportePng(config.titulo(datos), config.columnas, datos.puntos.map(config.fila));
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = `${config.prefijoArchivo}-${(datos.obra || 'obra').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (e) {
+            alert('No se pudo generar el reporte. Intentá de nuevo.');
+        } finally {
+            boton.disabled = false;
+            boton.innerHTML = iconoOriginal;
+        }
+    }
+
+    function dibujarReportePng(titulo, columnas, filas) {
+        const escala = 2;
+        const padding = 28;
+        const colPaddingX = 18;
+        const filaAltura = 38;
+        const encabezadoAltura = 44;
+        const tituloAltura = 44;
+
+        const medidor = document.createElement('canvas').getContext('2d');
+
+        function anchoTexto(texto, negrita, tamano) {
+            medidor.font = `${negrita ? '700' : '400'} ${tamano}px ${FUENTE_REPORTE}`;
+            return medidor.measureText(String(texto)).width;
+        }
+
+        const anchosCol = columnas.map((titulo, i) => {
+            let maximo = anchoTexto(titulo, true, 15);
+            filas.forEach(fila => {
+                maximo = Math.max(maximo, anchoTexto(fila[i], false, 15));
+            });
+            return maximo + colPaddingX * 2;
+        });
+
+        const anchoTabla = anchosCol.reduce((s, w) => s + w, 0);
+        const anchoLienzo = anchoTabla + padding * 2;
+        const alturaLienzo = padding * 2 + tituloAltura + encabezadoAltura + filas.length * filaAltura;
+        const centroX = anchoLienzo / 2;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = anchoLienzo * escala;
+        canvas.height = alturaLienzo * escala;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(escala, escala);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, anchoLienzo, alturaLienzo);
+
+        let y = padding;
+        ctx.fillStyle = '#000000';
+        ctx.font = `700 20px ${FUENTE_REPORTE}`;
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'center';
+        ctx.fillText(titulo, centroX, y);
+        ctx.textAlign = 'left';
+        y += tituloAltura;
+        const yTablaInicio = y;
+
+        // Encabezado
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(padding, y, anchoTabla, encabezadoAltura);
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(padding, y, anchoTabla, encabezadoAltura);
+
+        ctx.font = `700 15px ${FUENTE_REPORTE}`;
+        ctx.fillStyle = '#000000';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        let x = padding;
+        columnas.forEach((titulo, i) => {
+            ctx.fillText(titulo, x + anchosCol[i] / 2, y + encabezadoAltura / 2);
+            x += anchosCol[i];
+        });
+        y += encabezadoAltura;
+
+        // Filas
+        ctx.font = `400 15px ${FUENTE_REPORTE}`;
+        filas.forEach((fila, i) => {
+            if (i % 2 === 1) {
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(padding, y, anchoTabla, filaAltura);
+            }
+            ctx.strokeStyle = '#000000';
+            ctx.strokeRect(padding, y, anchoTabla, filaAltura);
+
+            ctx.fillStyle = '#000000';
+            let xFila = padding;
+            fila.forEach((valor, c) => {
+                ctx.fillText(String(valor), xFila + anchosCol[c] / 2, y + filaAltura / 2);
+                xFila += anchosCol[c];
+            });
+            y += filaAltura;
+        });
+
+        // Líneas verticales entre columnas
+        ctx.strokeStyle = '#000000';
+        let xLinea = padding;
+        ctx.beginPath();
+        anchosCol.forEach(ancho => {
+            ctx.moveTo(xLinea, yTablaInicio);
+            ctx.lineTo(xLinea, y);
+            xLinea += ancho;
+        });
+        ctx.moveTo(xLinea, yTablaInicio);
+        ctx.lineTo(xLinea, y);
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        return canvas.toDataURL('image/png');
     }
 </script>
 </body>

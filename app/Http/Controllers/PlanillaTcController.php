@@ -34,6 +34,7 @@ class PlanillaTcController extends Controller
                 'ruta' => route('planilla_tc.esclerometria', $obraTc->id),
                 'ruta_crear' => route('planilla_tc.esclerometria.crear', $obraTc->id),
                 'ruta_eliminar' => route('planilla_tc.esclerometria.eliminar', $obraTc->id),
+                'ruta_reporte' => route('planilla_tc.esclerometria.reporte', $obraTc->id),
                 'cargada' => (bool) $esclerometria,
                 'resumen' => $esclerometria
                     ? ($esclerometria->fecha
@@ -48,6 +49,7 @@ class PlanillaTcController extends Controller
                 'ruta' => route('planilla_tc.ultrasonido_indirecto', $obraTc->id),
                 'ruta_crear' => route('planilla_tc.ultrasonido_indirecto.crear', $obraTc->id),
                 'ruta_eliminar' => route('planilla_tc.ultrasonido_indirecto.eliminar', $obraTc->id),
+                'ruta_reporte' => route('planilla_tc.ultrasonido_indirecto.reporte', $obraTc->id),
                 'cargada' => (bool) $ultrasonidoIndirecto,
                 'resumen' => $ultrasonidoIndirecto
                     ? ($ultrasonidoIndirecto->fecha
@@ -107,6 +109,78 @@ class PlanillaTcController extends Controller
         $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
 
         return view('planilla_tc.ultrasonido_indirecto_pla', compact('obraTc', 'ultrasonidoIndirecto', 'datosUltrasonidoIndirecto', 'puedeEditar'));
+    }
+
+    public function reporteEsclerometria(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $esclerometria = EsclerometriaTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }])->where('obra_tc_id', $obraTc->id)->first();
+
+        $puntos = $esclerometria
+            ? $esclerometria->detalles->values()->map(function ($detalle, $i) {
+                return [
+                    'identificacion' => 'E'.($i + 1),
+                    'elemento' => $detalle->elemento ?: '-',
+                    'direccion' => $detalle->direccion.'°',
+                    'n_final' => $detalle->n_final !== null ? number_format(round((float) $detalle->n_final), 0, '', '.') : '-',
+                ];
+            })
+            : collect();
+
+        return response()->json([
+            'obra' => $obraTc->descripcion,
+            'fecha' => $esclerometria?->fecha?->format('d/m/Y'),
+            'puntos' => $puntos,
+        ]);
+    }
+
+    public function reporteUltrasonidoIndirecto(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $ultrasonidoIndirecto = UltrasonidoIndirectoTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }])->where('obra_tc_id', $obraTc->id)->first();
+
+        $puntos = $ultrasonidoIndirecto
+            ? $ultrasonidoIndirecto->detalles->values()->map(function ($detalle, $i) {
+                $velocidad = $detalle->promedio !== null ? round((float) $detalle->promedio) : null;
+
+                return [
+                    'identificacion' => 'U'.($i + 1),
+                    'elemento' => $detalle->elemento ?: '-',
+                    'velocidad' => $velocidad !== null ? number_format($velocidad, 0, '', '.') : '-',
+                    'compactacion' => $this->compactacionHormigon($velocidad),
+                ];
+            })
+            : collect();
+
+        return response()->json([
+            'obra' => $obraTc->descripcion,
+            'puntos' => $puntos,
+        ]);
+    }
+
+    private function compactacionHormigon(?float $velocidad): string
+    {
+        if ($velocidad === null) {
+            return '-';
+        }
+
+        return match (true) {
+            $velocidad > 4500 => 'Excelente',
+            $velocidad > 3600 => 'Buena',
+            $velocidad > 3000 => 'Aceptable',
+            $velocidad >= 2100 => 'Mala',
+            default => 'Muy mala',
+        };
     }
 
     public function crearEsclerometria(ObraTc $obraTc)
