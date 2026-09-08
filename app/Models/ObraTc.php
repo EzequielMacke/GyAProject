@@ -21,6 +21,16 @@ class ObraTc extends Model
         return $this->hasMany(DirectorioTc::class, 'obra_tc_id');
     }
 
+    public function esclerometrias()
+    {
+        return $this->hasMany(EsclerometriaTc::class, 'obra_tc_id');
+    }
+
+    public function ultrasonidosIndirectos()
+    {
+        return $this->hasMany(UltrasonidoIndirectoTc::class, 'obra_tc_id');
+    }
+
     public function usuario()
     {
         return $this->belongsTo(Usuarios::class);

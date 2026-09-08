@@ -326,7 +326,7 @@
                     @endpermiso
 
                     @permiso('ens_tc', 'ver')
-                    <a href="{{ route('planilla_tc.esclerometria', $obraTc->id) }}" class="opcion-card" style="animation-delay:0.10s">
+                    <a href="{{ route('planilla_tc.index', $obraTc->id) }}" class="opcion-card" style="animation-delay:0.10s">
                         <div class="opcion-icon ic-green"><i class="fas fa-clipboard-list"></i></div>
                         <span class="opcion-label">Planillas</span>
                     </a>

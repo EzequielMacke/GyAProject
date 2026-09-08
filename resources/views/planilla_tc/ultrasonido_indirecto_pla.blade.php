@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planilla de Esclerometría</title>
+    <title>Planilla de Ultrasonido Indirecto</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
@@ -94,11 +94,11 @@
 
         /* ── CAMPOS INCOMPLETOS ── */
         .form-control.incompleto,
-        .impacto-input.incompleto {
+        .velocidad-input.incompleto {
             border-color: #e08e0b; background: #fff8ec;
         }
         .form-control.incompleto:focus,
-        .impacto-input.incompleto:focus {
+        .velocidad-input.incompleto:focus {
             border-color: #e08e0b; box-shadow: 0 0 0 3px rgba(224,142,11,0.15);
         }
 
@@ -109,8 +109,18 @@
             background: var(--surface); border: 1.5px solid var(--border); border-radius: 0.85rem;
             overflow: hidden;
             animation: cardIn 0.18s ease both;
+            transition: border-color 0.14s;
         }
         @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        .punto-card.alerta { border-color: #e74c3c; }
+
+        .punto-alerta-mensaje {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.75rem 1.1rem;
+            background: #fff0f0; color: #c0392b;
+            font-size: 0.78rem; font-weight: 600;
+            border-bottom: 1px solid #f5c2c2;
+        }
 
         .punto-head {
             display: flex; align-items: center; gap: 0.7rem;
@@ -137,24 +147,24 @@
 
         .punto-datos-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr;
             gap: 1rem;
             margin-bottom: 1.1rem;
         }
 
-        .impactos-label {
+        .velocidades-label {
             font-size: 0.72rem; font-weight: 700; color: var(--text2);
             text-transform: uppercase; letter-spacing: 0.04em;
             margin-bottom: 0.5rem; display: block;
         }
-        .impactos-grid {
+        .velocidades-grid {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 0.5rem;
         }
-        .impacto-item { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
-        .impacto-num { font-size: 0.66rem; font-weight: 700; color: var(--muted); }
-        .impacto-input {
+        .velocidad-item { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+        .velocidad-num { font-size: 0.66rem; font-weight: 700; color: var(--muted); }
+        .velocidad-input {
             width: 100%; text-align: center;
             font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem;
             background: #fff; border: 1.5px solid var(--border);
@@ -162,12 +172,9 @@
             outline: none; transition: border-color 0.15s, box-shadow 0.15s;
             -moz-appearance: textfield;
         }
-        .impacto-input::-webkit-outer-spin-button,
-        .impacto-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .impacto-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
-        .impacto-input.impacto-descartado {
-            border-color: #e74c3c; background: #fff0f0; color: #c0392b; text-decoration: line-through;
-        }
+        .velocidad-input::-webkit-outer-spin-button,
+        .velocidad-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .velocidad-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
 
         /* ── RESULTADOS DEL PUNTO ── */
         .punto-resultados {
@@ -179,8 +186,8 @@
         .resultado-label { font-size: 0.66rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
         .resultado-valor { font-size: 1rem; font-weight: 700; color: var(--text); }
         .resultado-final .resultado-valor { color: var(--green); }
-        .resultado-n-corregido .resultado-valor { color: var(--accent-b); }
-        .resultado-n-final .resultado-valor { color: var(--green); font-size: 1.1rem; }
+        .resultado-coef .resultado-valor { color: var(--green); font-size: 1.1rem; }
+        .resultado-valor.alerta { color: #c0392b; }
 
         .btn-agregar-punto {
             width: 100%;
@@ -219,15 +226,14 @@
         /* ── MOBILE ── */
         @media (max-width: 900px) {
             .form-grid { grid-template-columns: repeat(2, 1fr); }
-            .punto-datos-grid { grid-template-columns: 1fr; }
-            .impactos-grid { grid-template-columns: repeat(4, 1fr); }
+            .velocidades-grid { grid-template-columns: repeat(4, 1fr); }
         }
         @media (max-width: 640px) {
             .ph { padding: 1rem 0 0.75rem; gap: 0.75rem; margin-bottom: 1rem; }
             .ph-title { font-size: 1.3rem; }
             .ph-right { width: 100%; }
             .form-grid { grid-template-columns: 1fr; }
-            .impactos-grid { grid-template-columns: repeat(3, 1fr); }
+            .velocidades-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -249,9 +255,9 @@
                             <i class="fas fa-chevron-right"></i>
                             <a href="{{ route('obras_tc.index', $obraTc->id) }}">{{ $obraTc->descripcion ?? '-' }}</a>
                             <i class="fas fa-chevron-right"></i>
-                            Esclerometría
+                            Ultrasonido Indirecto
                         </div>
-                        <h1 class="ph-title"><em>Planilla de Esclerometría</em></h1>
+                        <h1 class="ph-title"><em>Planilla de Ultrasonido Indirecto</em></h1>
                         <p class="ph-sub">{{ $obraTc->descripcion ?? '-' }}</p>
                     </div>
                     <div class="ph-right">
@@ -280,7 +286,7 @@
                     @endif
                 </div>
 
-                <form id="form-esclerometria">
+                <form id="form-ultrasonido">
 
                     {{-- ═══ DATOS GENERALES ═══ --}}
                     <div class="panel">
@@ -292,15 +298,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="input-fecha">Fecha</label>
-                                <input type="date" id="input-fecha" name="fecha" class="form-control" value="{{ $esclerometria?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d') }}" @if(! $puedeEditar) readonly @endif>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="input-lectura-inicial">Lectura inicial yunque</label>
-                                <input type="number" step="any" id="input-lectura-inicial" name="lectura_inicial_yunque" class="form-control" placeholder="0" value="{{ $esclerometria?->lectura_inicial_yunque ?? 80 }}" @if(! $puedeEditar) readonly @endif>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="input-lectura-final">Lectura final yunque</label>
-                                <input type="number" step="any" id="input-lectura-final" name="lectura_final_yunque" class="form-control" placeholder="0" value="{{ $esclerometria?->lectura_final_yunque ?? 80 }}" @if(! $puedeEditar) readonly @endif>
+                                <input type="date" id="input-fecha" name="fecha" class="form-control" value="{{ $ultrasonidoIndirecto?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d') }}" @if(! $puedeEditar) readonly @endif>
                             </div>
                         </div>
                     </div>
@@ -333,19 +331,19 @@
 
 <script>
     const PUEDE_EDITAR = @json($puedeEditar);
-    const CANTIDAD_IMPACTOS = 14;
+    const CANTIDAD_VELOCIDADES = 8;
     const listaPuntos = document.getElementById('puntos-list');
     const emptyPuntos = document.getElementById('empty-puntos');
     let contadorPuntos = 0;
 
-    function crearImpactosHTML(idx) {
+    function crearVelocidadesHTML(idx) {
         let html = '';
         const soloLectura = PUEDE_EDITAR ? '' : 'readonly';
-        for (let i = 1; i <= CANTIDAD_IMPACTOS; i++) {
+        for (let i = 1; i <= CANTIDAD_VELOCIDADES; i++) {
             html += `
-                <div class="impacto-item">
-                    <span class="impacto-num">${i}</span>
-                    <input type="number" step="any" class="impacto-input" name="puntos[${idx}][impactos][]" inputmode="decimal" ${soloLectura}>
+                <div class="velocidad-item">
+                    <span class="velocidad-num">${i}</span>
+                    <input type="number" step="any" class="velocidad-input" name="puntos[${idx}][velocidades][]" inputmode="decimal" ${soloLectura}>
                 </div>
             `;
         }
@@ -357,18 +355,21 @@
         card.className = 'punto-card';
         card.dataset.idx = idx;
         const soloLectura = PUEDE_EDITAR ? '' : 'readonly';
-        const deshabilitado = PUEDE_EDITAR ? '' : 'disabled';
         const botonEliminar = PUEDE_EDITAR
             ? `<button type="button" class="punto-delete-btn" title="Eliminar punto"><i class="fas fa-trash"></i></button>`
             : '';
         card.innerHTML = `
             <div class="punto-head">
-                <div class="punto-badge punto-identificacion">E?</div>
+                <div class="punto-badge punto-identificacion">U?</div>
                 <div>
                     <div class="punto-head-title">Punto de ensayo</div>
                     <div class="punto-head-sub">Identificación automática</div>
                 </div>
                 ${botonEliminar}
+            </div>
+            <div class="punto-alerta-mensaje" style="display:none">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span class="punto-alerta-texto">Repetir ensayo</span>
             </div>
             <div class="punto-body">
                 <div class="punto-datos-grid">
@@ -376,47 +377,25 @@
                         <label class="form-label">Elemento</label>
                         <input type="text" class="form-control punto-elemento-input" name="puntos[${idx}][elemento]" placeholder="Ej: Columna, Viga, Losa..." ${soloLectura}>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Dirección de ensayo</label>
-                        <select class="form-control punto-direccion-select" name="puntos[${idx}][direccion]" ${deshabilitado}>
-                            <option value="0">0°</option>
-                            <option value="45">45°</option>
-                            <option value="-45">-45°</option>
-                            <option value="90">90°</option>
-                            <option value="-90">-90°</option>
-                        </select>
-                    </div>
                 </div>
                 <div>
-                    <span class="impactos-label">14 impactos</span>
-                    <div class="impactos-grid">
-                        ${crearImpactosHTML(idx)}
+                    <span class="velocidades-label">8 velocidades de ultrasonido (m/s)</span>
+                    <div class="velocidades-grid">
+                        ${crearVelocidadesHTML(idx)}
                     </div>
                 </div>
                 <div class="punto-resultados">
-                    <div class="resultado-item">
-                        <span class="resultado-label">Promedio inicial</span>
-                        <span class="resultado-valor resultado-promedio-inicial">—</span>
-                    </div>
-                    <div class="resultado-item">
-                        <span class="resultado-label">Válidos</span>
-                        <span class="resultado-valor resultado-validos">—</span>
-                    </div>
                     <div class="resultado-item resultado-final">
-                        <span class="resultado-label">Promedio final</span>
+                        <span class="resultado-label">Promedio (8)</span>
                         <span class="resultado-valor resultado-promedio-final">—</span>
                     </div>
-                    <div class="resultado-item resultado-n-corregido">
-                        <span class="resultado-label">N corregido</span>
-                        <span class="resultado-valor resultado-n-corregido-valor">—</span>
-                    </div>
                     <div class="resultado-item">
-                        <span class="resultado-label">Corrección ángulo</span>
-                        <span class="resultado-valor resultado-correccion-angulo">—</span>
+                        <span class="resultado-label">Desviación estándar</span>
+                        <span class="resultado-valor resultado-desviacion">—</span>
                     </div>
-                    <div class="resultado-item resultado-n-final">
-                        <span class="resultado-label">N final</span>
-                        <span class="resultado-valor resultado-n-final-valor">—</span>
+                    <div class="resultado-item resultado-coef">
+                        <span class="resultado-label">Coeficiente de variación</span>
+                        <span class="resultado-valor resultado-coef-variacion">—</span>
                     </div>
                 </div>
             </div>
@@ -428,16 +407,11 @@
             programarGuardado();
         });
 
-        card.querySelectorAll('.impacto-input').forEach(function (input) {
+        card.querySelectorAll('.velocidad-input').forEach(function (input) {
             input.addEventListener('input', function () {
                 recalcularPunto(card);
                 programarGuardado();
             });
-        });
-
-        card.querySelector('.punto-direccion-select').addEventListener('change', function () {
-            recalcularPunto(card);
-            programarGuardado();
         });
 
         card.querySelector('.punto-elemento-input').addEventListener('input', function () {
@@ -453,197 +427,101 @@
         input.classList.toggle('incompleto', input.value.trim() === '');
     }
 
-    /* ─── Tabla de corrección por ángulo de ensayo ──────────────
-       Clave = índice esclerométrico (N corregido, redondeado al
-       entero más cercano), valor = corrección a sumar según el
-       ángulo. A 0° no se aplica ninguna corrección. */
-    const CORRECCION_ANGULO = {
-        10: { '90': 0, '45': 0, '-45': 2.4, '-90': 3.2 },
-        11: { '90': 0, '45': 0, '-45': 2.41, '-90': 3.22 },
-        12: { '90': 0, '45': 0, '-45': 2.42, '-90': 3.24 },
-        13: { '90': 0, '45': 0, '-45': 2.43, '-90': 3.26 },
-        14: { '90': 0, '45': 0, '-45': 2.44, '-90': 3.28 },
-        15: { '90': 0, '45': 0, '-45': 2.45, '-90': 3.3 },
-        16: { '90': 0, '45': 0, '-45': 2.46, '-90': 3.32 },
-        17: { '90': 0, '45': 0, '-45': 2.47, '-90': 3.34 },
-        18: { '90': 0, '45': 0, '-45': 2.48, '-90': 3.36 },
-        19: { '90': 0, '45': 0, '-45': 2.49, '-90': 3.38 },
-        20: { '90': -5.4, '45': -3.5, '-45': 2.5, '-90': 3.4 },
-        21: { '90': -5.33, '45': -3.46, '-45': 2.48, '-90': 3.37 },
-        22: { '90': -5.26, '45': -3.42, '-45': 2.46, '-90': 3.34 },
-        23: { '90': -5.19, '45': -3.38, '-45': 2.44, '-90': 3.31 },
-        24: { '90': -5.12, '45': -3.34, '-45': 2.42, '-90': 3.28 },
-        25: { '90': -5.05, '45': -3.3, '-45': 2.4, '-90': 3.25 },
-        26: { '90': -4.98, '45': -3.26, '-45': 2.38, '-90': 3.22 },
-        27: { '90': -4.91, '45': -3.22, '-45': 2.36, '-90': 3.19 },
-        28: { '90': -4.84, '45': -3.18, '-45': 2.34, '-90': 3.16 },
-        29: { '90': -4.77, '45': -3.14, '-45': 2.32, '-90': 3.13 },
-        30: { '90': -4.7, '45': -3.1, '-45': 2.3, '-90': 3.1 },
-        31: { '90': -4.62, '45': -3.05, '-45': 2.3, '-90': 3.06 },
-        32: { '90': -4.54, '45': -3, '-45': 2.3, '-90': 3.02 },
-        33: { '90': -4.46, '45': -2.95, '-45': 2.3, '-90': 2.98 },
-        34: { '90': -4.38, '45': -2.9, '-45': 2.3, '-90': 2.94 },
-        35: { '90': -4.3, '45': -2.85, '-45': 2.3, '-90': 2.9 },
-        36: { '90': -4.22, '45': -2.8, '-45': 2.3, '-90': 2.86 },
-        37: { '90': -4.14, '45': -2.75, '-45': 2.3, '-90': 2.82 },
-        38: { '90': -4.06, '45': -2.7, '-45': 2.3, '-90': 2.78 },
-        39: { '90': -3.98, '45': -2.65, '-45': 2.3, '-90': 2.74 },
-        40: { '90': -3.9, '45': -2.6, '-45': 2.3, '-90': 2.7 },
-        41: { '90': -3.82, '45': -2.55, '-45': 2.23, '-90': 2.65 },
-        42: { '90': -3.74, '45': -2.5, '-45': 2.16, '-90': 2.6 },
-        43: { '90': -3.66, '45': -2.45, '-45': 2.09, '-90': 2.55 },
-        44: { '90': -3.58, '45': -2.4, '-45': 2.02, '-90': 2.5 },
-        45: { '90': -3.5, '45': -2.35, '-45': 1.95, '-90': 2.45 },
-        46: { '90': -3.42, '45': -2.3, '-45': 1.88, '-90': 2.4 },
-        47: { '90': -3.34, '45': -2.25, '-45': 1.81, '-90': 2.35 },
-        48: { '90': -3.26, '45': -2.2, '-45': 1.74, '-90': 2.3 },
-        49: { '90': -3.18, '45': -2.15, '-45': 1.67, '-90': 2.25 },
-        50: { '90': -3.1, '45': -2.1, '-45': 1.6, '-90': 2.2 },
-        51: { '90': -3.02, '45': -2.05, '-45': 1.57, '-90': 2.15 },
-        52: { '90': -2.94, '45': -2, '-45': 1.54, '-90': 2.1 },
-        53: { '90': -2.86, '45': -1.95, '-45': 1.51, '-90': 2.05 },
-        54: { '90': -2.78, '45': -1.9, '-45': 1.48, '-90': 2 },
-        55: { '90': -2.7, '45': -1.85, '-45': 1.45, '-90': 1.95 },
-        56: { '90': -2.62, '45': -1.8, '-45': 1.42, '-90': 1.9 },
-        57: { '90': -2.54, '45': -1.75, '-45': 1.39, '-90': 1.85 },
-        58: { '90': -2.46, '45': -1.7, '-45': 1.36, '-90': 1.8 },
-        59: { '90': -2.38, '45': -1.65, '-45': 1.33, '-90': 1.75 },
-        60: { '90': -2.3, '45': -1.6, '-45': 1.3, '-90': 1.7 },
-    };
+    /* ─── Cálculo del ultrasonido indirecto ─────────────────────
+       Todo se calcula sobre las 8 mediciones cargadas, sin descartar
+       ningún valor:
+       1) Promedio de las 8 velocidades.
+       2) Desviación estándar (muestral, n-1) de las 8 velocidades.
+          Si supera 200, el ensayo se marca para repetir.
+       3) Coeficiente de variación (%) = (desviación estándar / promedio) × 100.
+          Si supera 5%, el ensayo también se marca para repetir. */
+    const DESVIACION_MAXIMA = 200;
+    const COEF_VARIACION_MAXIMO = 5;
 
-    /* ─── Cálculo del promedio esclerométrico ──────────────────
-       1) Promedio de los 14 impactos cargados.
-       2) Se descartan los que quedan fuera de ±6 de ese promedio.
-       3) Se promedian los restantes y se vuelve a descartar ±6
-          de ese nuevo promedio (sobre lo que quedó del paso 2).
-       4) El promedio de lo que sobrevive a ambas rondas es el final.
-       5) N corregido = (sumatoria final × yunque inicial) /
-                        (cantidad de válidos × yunque final). */
     function promediar(valores) {
         return valores.reduce((s, v) => s + v, 0) / valores.length;
     }
 
-    function obtenerYunques() {
-        const inicial = parseFloat(document.getElementById('input-lectura-inicial').value);
-        const final = parseFloat(document.getElementById('input-lectura-final').value);
-        return {
-            inicial: isNaN(inicial) ? null : inicial,
-            final: isNaN(final) ? null : final,
-        };
+    function desviacionEstandar(valores, promedio) {
+        if (valores.length < 2) return null;
+        const sumaCuadrados = valores.reduce((s, v) => s + Math.pow(v - promedio, 2), 0);
+        return Math.sqrt(sumaCuadrados / (valores.length - 1));
     }
 
     function recalcularPunto(card) {
-        const inputs = Array.from(card.querySelectorAll('.impacto-input'));
-        inputs.forEach(inp => {
-            inp.classList.remove('impacto-descartado');
-            inp.classList.toggle('incompleto', inp.value.trim() === '');
+        const inputs = Array.from(card.querySelectorAll('.velocidad-input'));
+
+        inputs.forEach(input => {
+            input.classList.toggle('incompleto', input.value.trim() === '');
         });
 
         const cargados = inputs
-            .map(input => ({ input, valor: parseFloat(input.value) }))
-            .filter(d => d.input.value.trim() !== '' && !isNaN(d.valor));
+            .map(input => parseFloat(input.value))
+            .filter((valor, i) => inputs[i].value.trim() !== '' && !isNaN(valor));
 
-        const elInicial = card.querySelector('.resultado-promedio-inicial');
-        const elValidos = card.querySelector('.resultado-validos');
-        const elFinal = card.querySelector('.resultado-promedio-final');
-        const elNCorregido = card.querySelector('.resultado-n-corregido-valor');
-        const elCorreccion = card.querySelector('.resultado-correccion-angulo');
-        const elNFinal = card.querySelector('.resultado-n-final-valor');
+        const elPromedio = card.querySelector('.resultado-promedio-final');
+        const elDesviacion = card.querySelector('.resultado-desviacion');
+        const elCoefVariacion = card.querySelector('.resultado-coef-variacion');
+        const elAlertaBox = card.querySelector('.punto-alerta-mensaje');
+        const elAlertaTexto = card.querySelector('.punto-alerta-texto');
+
+        elDesviacion.classList.remove('alerta');
+        elCoefVariacion.classList.remove('alerta');
 
         if (cargados.length === 0) {
-            elInicial.textContent = '—';
-            elValidos.textContent = '—';
-            elFinal.textContent = '—';
-            elNCorregido.textContent = '—';
-            elCorreccion.textContent = '—';
-            elNFinal.textContent = '—';
+            elPromedio.textContent = '—';
+            elDesviacion.textContent = '—';
+            elCoefVariacion.textContent = '—';
+            card.classList.remove('alerta');
+            elAlertaBox.style.display = 'none';
             Object.assign(card.dataset, {
-                promedioInicial: '', validos: '', promedioFinal: '',
-                nCorregido: '', correccionAngulo: '', nFinal: '',
+                promedio: '', desviacionEstandar: '', coeficienteVariacion: '', repetirEnsayo: '0',
             });
             return;
         }
 
-        const promedio1 = promediar(cargados.map(d => d.valor));
-        const rondaUno = cargados.filter(d => Math.abs(d.valor - promedio1) <= 6);
-        const descartadosUno = cargados.filter(d => Math.abs(d.valor - promedio1) > 6);
+        const promedio = promediar(cargados);
+        const desviacion = desviacionEstandar(cargados, promedio);
+        const coefVariacion = (desviacion !== null && promedio) ? (desviacion / promedio) * 100 : null;
 
-        let rondaDos = [];
-        let descartadosDos = [];
-        let sumaFinal = null;
-        let promedioFinal = null;
+        elPromedio.textContent = promedio.toFixed(2);
+        elDesviacion.textContent = desviacion !== null ? desviacion.toFixed(3) : '—';
+        elCoefVariacion.textContent = coefVariacion !== null ? coefVariacion.toFixed(2) + '%' : '—';
 
-        if (rondaUno.length > 0) {
-            const promedio2 = promediar(rondaUno.map(d => d.valor));
-            rondaDos = rondaUno.filter(d => Math.abs(d.valor - promedio2) <= 6);
-            descartadosDos = rondaUno.filter(d => Math.abs(d.valor - promedio2) > 6);
+        const desviacionAlta = desviacion !== null && desviacion > DESVIACION_MAXIMA;
+        const coefVariacionAlto = coefVariacion !== null && coefVariacion > COEF_VARIACION_MAXIMO;
 
-            if (rondaDos.length > 0) {
-                sumaFinal = rondaDos.reduce((s, d) => s + d.valor, 0);
-                promedioFinal = sumaFinal / rondaDos.length;
-            }
+        if (desviacionAlta) elDesviacion.classList.add('alerta');
+        if (coefVariacionAlto) elCoefVariacion.classList.add('alerta');
+
+        const repetirEnsayo = desviacionAlta || coefVariacionAlto;
+
+        if (repetirEnsayo) {
+            const motivos = [];
+            if (desviacionAlta) motivos.push(`desviación estándar > ${DESVIACION_MAXIMA}`);
+            if (coefVariacionAlto) motivos.push(`coeficiente de variación > ${COEF_VARIACION_MAXIMO}%`);
+            card.classList.add('alerta');
+            elAlertaTexto.textContent = `Repetir ensayo: ${motivos.join(' · ')}`;
+            elAlertaBox.style.display = 'flex';
+        } else {
+            card.classList.remove('alerta');
+            elAlertaBox.style.display = 'none';
         }
-
-        [...descartadosUno, ...descartadosDos].forEach(d => d.input.classList.add('impacto-descartado'));
-
-        elInicial.textContent = promedio1.toFixed(2);
-        elValidos.textContent = `${rondaDos.length} / ${cargados.length}`;
-        elFinal.textContent = promedioFinal !== null ? promedioFinal.toFixed(2) : '—';
-
-        const yunques = obtenerYunques();
-        let nCorregido = null;
-        if (sumaFinal !== null && rondaDos.length > 0 && yunques.inicial !== null && yunques.final) {
-            nCorregido = (sumaFinal * yunques.inicial) / (rondaDos.length * yunques.final);
-        }
-        elNCorregido.textContent = nCorregido !== null ? nCorregido.toFixed(2) : '—';
-
-        let correccion = null;
-        let nFinal = null;
-        if (nCorregido !== null) {
-            const direccion = card.querySelector('.punto-direccion-select').value;
-            if (direccion === '0') {
-                correccion = 0;
-                nFinal = nCorregido;
-            } else {
-                const indice = Math.round(nCorregido);
-                const fila = CORRECCION_ANGULO[indice];
-                if (fila && direccion in fila) {
-                    correccion = fila[direccion];
-                    nFinal = nCorregido + correccion;
-                }
-            }
-        }
-        elCorreccion.textContent = correccion !== null ? correccion.toFixed(2) : '—';
-        elNFinal.textContent = nFinal !== null ? nFinal.toFixed(2) : '—';
 
         Object.assign(card.dataset, {
-            promedioInicial: promedio1,
-            validos: rondaDos.length,
-            promedioFinal: promedioFinal !== null ? promedioFinal : '',
-            nCorregido: nCorregido !== null ? nCorregido : '',
-            correccionAngulo: correccion !== null ? correccion : '',
-            nFinal: nFinal !== null ? nFinal : '',
+            promedio: promedio,
+            desviacionEstandar: desviacion !== null ? desviacion : '',
+            coeficienteVariacion: coefVariacion !== null ? coefVariacion : '',
+            repetirEnsayo: repetirEnsayo ? '1' : '0',
         });
     }
 
-    function recalcularTodosPuntos() {
-        listaPuntos.querySelectorAll('.punto-card').forEach(recalcularPunto);
-    }
-
-    document.getElementById('input-lectura-inicial').addEventListener('input', function () {
-        recalcularTodosPuntos();
-        programarGuardado();
-    });
-    document.getElementById('input-lectura-final').addEventListener('input', function () {
-        recalcularTodosPuntos();
-        programarGuardado();
-    });
     document.getElementById('input-fecha').addEventListener('input', programarGuardado);
 
     function renumerarPuntos() {
         const cards = listaPuntos.querySelectorAll('.punto-card');
         cards.forEach((card, i) => {
-            card.querySelector('.punto-identificacion').textContent = `E${i + 1}`;
+            card.querySelector('.punto-identificacion').textContent = `U${i + 1}`;
         });
         emptyPuntos.style.display = cards.length === 0 ? '' : 'none';
     }
@@ -653,11 +531,10 @@
         const card = crearPuntoHTML(contadorPuntos);
         if (datos) {
             card.querySelector('.punto-elemento-input').value = datos.elemento || '';
-            card.querySelector('.punto-direccion-select').value = String(datos.direccion ?? 0);
-            const impactoInputs = card.querySelectorAll('.impacto-input');
-            (datos.impactos || []).forEach((valor, i) => {
-                if (impactoInputs[i] && valor !== null && valor !== undefined) {
-                    impactoInputs[i].value = valor;
+            const velocidadInputs = card.querySelectorAll('.velocidad-input');
+            (datos.velocidades || []).forEach((valor, i) => {
+                if (velocidadInputs[i] && valor !== null && valor !== undefined) {
+                    velocidadInputs[i].value = valor;
                 }
             });
         }
@@ -675,7 +552,7 @@
 
     /* ─── Autoguardado ────────────────────────────────────────── */
     const CSRF_TOKEN = @json(csrf_token());
-    const URL_GUARDAR = @json(route('planilla_tc.esclerometria.guardar', $obraTc->id));
+    const URL_GUARDAR = @json(route('planilla_tc.ultrasonido_indirecto.guardar', $obraTc->id));
     const DEMORA_GUARDADO_MS = 900;
 
     const elEstadoGuardado = document.getElementById('estado-guardado');
@@ -702,20 +579,17 @@
 
     function recolectarPuntos() {
         return Array.from(listaPuntos.querySelectorAll('.punto-card')).map(function (card) {
-            const impactos = Array.from(card.querySelectorAll('.impacto-input')).map(function (input) {
+            const velocidades = Array.from(card.querySelectorAll('.velocidad-input')).map(function (input) {
                 const valor = parseFloat(input.value);
                 return input.value.trim() === '' || isNaN(valor) ? null : valor;
             });
             return {
                 elemento: card.querySelector('.punto-elemento-input').value || null,
-                direccion: parseInt(card.querySelector('.punto-direccion-select').value, 10),
-                impactos: impactos,
-                promedio_inicial: card.dataset.promedioInicial || null,
-                validos: card.dataset.validos || null,
-                promedio_final: card.dataset.promedioFinal || null,
-                n_corregido: card.dataset.nCorregido || null,
-                correccion_angulo: card.dataset.correccionAngulo || null,
-                n_final: card.dataset.nFinal || null,
+                velocidades: velocidades,
+                promedio: card.dataset.promedio || null,
+                desviacion_estandar: card.dataset.desviacionEstandar || null,
+                coeficiente_variacion: card.dataset.coeficienteVariacion || null,
+                repetir_ensayo: card.dataset.repetirEnsayo === '1',
             };
         });
     }
@@ -734,8 +608,6 @@
 
         const payload = {
             fecha: document.getElementById('input-fecha').value,
-            lectura_inicial_yunque: document.getElementById('input-lectura-inicial').value,
-            lectura_final_yunque: document.getElementById('input-lectura-final').value,
             puntos: recolectarPuntos(),
         };
 
@@ -770,7 +642,7 @@
     }
 
     // Precarga la planilla existente, o arranca con un primer punto vacío.
-    const datosIniciales = @json($datosEsclerometria);
+    const datosIniciales = @json($datosUltrasonidoIndirecto);
 
     if (datosIniciales && datosIniciales.puntos.length > 0) {
         datosIniciales.puntos.forEach(function (punto) {
@@ -781,7 +653,7 @@
     }
     fijarEstadoGuardado('guardado');
 
-    document.getElementById('form-esclerometria').addEventListener('submit', function (e) {
+    document.getElementById('form-ultrasonido').addEventListener('submit', function (e) {
         e.preventDefault();
     });
 </script>

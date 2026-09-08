@@ -499,7 +499,21 @@ Route::middleware('permiso:gal_tc,ver')->group(function () {
     Route::post('/trabajo-campo/{obraTc}/galeria/descargar', [GaleriaTcController::class, 'descargar'])->name('galeria_tc.descargar');
 });
 Route::middleware('permiso:ens_tc,ver')->group(function () {
+    Route::get('/trabajo-campo/{obraTc}/planillas', [PlanillaTcController::class, 'index'])->name('planilla_tc.index');
     Route::get('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'esclerometria'])->name('planilla_tc.esclerometria');
+    Route::get('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto', [PlanillaTcController::class, 'ultrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto');
+});
+Route::middleware('permiso:ens_tc,agregar')->group(function () {
+    Route::post('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'crearEsclerometria'])->name('planilla_tc.esclerometria.crear');
+    Route::post('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto', [PlanillaTcController::class, 'crearUltrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto.crear');
+});
+Route::middleware('permiso:ens_tc,editar')->group(function () {
+    Route::patch('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'guardarEsclerometria'])->name('planilla_tc.esclerometria.guardar');
+    Route::patch('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto', [PlanillaTcController::class, 'guardarUltrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto.guardar');
+});
+Route::middleware('permiso:ens_tc,eliminar')->group(function () {
+    Route::delete('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'eliminarEsclerometria'])->name('planilla_tc.esclerometria.eliminar');
+    Route::delete('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto', [PlanillaTcController::class, 'eliminarUltrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto.eliminar');
 });
 Route::middleware(['permiso:pla_tc,ver', 'permiso:ano_pla,ver'])->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos/{plano}', [PlanoController::class, 'show'])
