@@ -102,6 +102,22 @@
             border-color: #e08e0b; box-shadow: 0 0 0 3px rgba(224,142,11,0.15);
         }
 
+        /* ── NAVEGACIÓN RÁPIDA DE PUNTOS ── */
+        .puntos-nav {
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .puntos-nav-btn {
+            min-width: 42px; height: 34px; padding: 0 0.6rem;
+            border-radius: 0.5rem; border: 1.5px solid var(--border);
+            background: var(--surface); color: var(--text2);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.78rem; font-weight: 700;
+            cursor: pointer; transition: all 0.14s;
+        }
+        .puntos-nav-btn:hover { background: var(--accent-s); border-color: var(--accent); color: var(--accent-b); }
+        .punto-card.punto-resaltado { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.15); }
+
         /* ── PUNTOS DE ENSAYO ── */
         #puntos-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem; }
 
@@ -196,6 +212,22 @@
             transition: all 0.14s;
         }
         .btn-agregar-punto:hover { background: var(--accent-s); border-color: var(--accent); }
+
+        .btn-volver-inicio {
+            width: 100%;
+            border: 1.5px solid var(--border);
+            border-radius: 0.85rem;
+            background: var(--surface);
+            color: var(--text2);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.85rem; font-weight: 700;
+            padding: 0.75rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            transition: all 0.14s;
+            margin-bottom: 0.85rem;
+        }
+        .btn-volver-inicio:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
 
         /* ── EMPTY STATE ── */
         .empty-puntos {
@@ -305,6 +337,8 @@
                         </div>
                     </div>
 
+                    <div class="puntos-nav" id="puntos-nav"></div>
+
                     {{-- ═══ PUNTOS ENSAYADOS ═══ --}}
                     <div class="panel">
                         <div class="panel-title"><i class="fas fa-bullseye"></i> Puntos ensayados</div>
@@ -314,6 +348,10 @@
                         <div class="empty-puntos" id="empty-puntos" style="display:none">
                             Todavía no agregaste ningún punto de ensayo.
                         </div>
+
+                        <button type="button" class="btn-volver-inicio" id="btn-volver-inicio">
+                            <i class="fas fa-arrow-up"></i> Volver al inicio
+                        </button>
 
                         @if($puedeEditar)
                         <button type="button" class="btn-agregar-punto" id="btn-agregar-punto">
@@ -336,7 +374,27 @@
     const CANTIDAD_IMPACTOS = 14;
     const listaPuntos = document.getElementById('puntos-list');
     const emptyPuntos = document.getElementById('empty-puntos');
+    const puntosNav = document.getElementById('puntos-nav');
     let contadorPuntos = 0;
+
+    function irAPunto(card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        card.classList.add('punto-resaltado');
+        setTimeout(() => card.classList.remove('punto-resaltado'), 1200);
+    }
+
+    function actualizarPuntosNav() {
+        const cards = Array.from(listaPuntos.querySelectorAll('.punto-card'));
+        puntosNav.innerHTML = '';
+        cards.forEach((card, i) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'puntos-nav-btn';
+            btn.textContent = `E${i + 1}`;
+            btn.addEventListener('click', () => irAPunto(card));
+            puntosNav.appendChild(btn);
+        });
+    }
 
     function crearImpactosHTML(idx) {
         let html = '';
@@ -646,6 +704,7 @@
             card.querySelector('.punto-identificacion').textContent = `E${i + 1}`;
         });
         emptyPuntos.style.display = cards.length === 0 ? '' : 'none';
+        actualizarPuntosNav();
     }
 
     function agregarPunto(datos) {
@@ -671,6 +730,10 @@
     document.getElementById('btn-agregar-punto')?.addEventListener('click', function () {
         agregarPunto();
         programarGuardado();
+    });
+
+    document.getElementById('btn-volver-inicio')?.addEventListener('click', function () {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
     /* ─── Autoguardado ────────────────────────────────────────── */
