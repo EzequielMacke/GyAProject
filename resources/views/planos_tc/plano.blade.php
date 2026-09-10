@@ -37,6 +37,12 @@
             display: flex; flex-direction: column; align-items: stretch;
             gap: 0.4rem;
             padding: 0.75rem 0.5rem;
+            /* En horizontal (celular en landscape) la altura disponible
+               es chica y los botones no entran todos: sin esto, los de
+               más abajo quedaban cortados fuera de la pantalla sin forma
+               de llegar a ellos. Con overflow se puede scrollear. */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .tool-btn {
             display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
@@ -114,6 +120,13 @@
         .barra-superior-derecha {
             position: fixed; top: 12px; right: 12px; z-index: 20;
             display: flex; align-items: flex-start; gap: 0.5rem;
+            /* flex-wrap + max-width: en horizontal (celular en landscape)
+               la fila de botones no entra en el ancho angosto disponible;
+               sin esto se estira hacia la izquierda y queda tapando el
+               menú lateral en vez de pasar a una segunda línea. */
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            max-width: calc(100vw - 90px);
         }
         .btn-superior {
             display: inline-flex; align-items: center; gap: 0.4rem;
@@ -356,6 +369,42 @@
         }
         .overlay-foto-accion:hover { background: #3a3a3a; }
         .overlay-foto-accion-borrar:hover { background: #7f1d1d; }
+
+        /* ── CUADRÍCULA DE FOTOGRAFÍAS DEL PIN ── */
+        .overlay-foto-grid {
+            position: fixed; inset: 0; z-index: 55;
+            background: rgba(0,0,0,0.7);
+            display: none; align-items: center; justify-content: center;
+            padding: 2rem;
+        }
+        .overlay-foto-grid.abierto { display: flex; }
+        .overlay-foto-grid-contenido {
+            width: min(480px, 90vw); max-height: 80vh;
+            background: #222; border-radius: 0.6rem; padding: 0.9rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; gap: 0.7rem;
+        }
+        .overlay-foto-grid-cabecera {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .overlay-foto-grid-titulo { color: #fff; font-size: 0.9rem; font-weight: 700; }
+        .overlay-foto-grid-cabecera .overlay-foto-cerrar {
+            position: static; width: 28px; height: 28px;
+        }
+        .overlay-foto-grid-lista {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+            gap: 0.5rem; overflow-y: auto; padding-right: 2px;
+        }
+        .overlay-foto-grid-item {
+            aspect-ratio: 1; border: none; border-radius: 0.4rem; overflow: hidden;
+            cursor: pointer; padding: 0; background: #333;
+        }
+        .overlay-foto-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .overlay-foto-grid-item:hover img { opacity: 0.8; }
+        .overlay-foto-grid-acciones {
+            display: flex; justify-content: flex-end; gap: 0.4rem;
+        }
+        .overlay-foto-accion:disabled { opacity: 0.5; cursor: default; }
 
         /* ── DESCARGA (modal de opciones PDF/PNG) ── */
         .overlay-descarga {
@@ -811,9 +860,24 @@
             <div class="overlay-foto-pie">
                 <span class="overlay-foto-contador" id="overlay-foto-contador"></span>
                 <div class="overlay-foto-acciones">
+                    <button type="button" class="overlay-foto-accion" id="overlay-foto-descargar">Descargar</button>
                     <button type="button" class="overlay-foto-accion" id="overlay-foto-agregar" @if(!$puedeEditar) style="display:none" @endif>Agregar foto</button>
                     <button type="button" class="overlay-foto-accion overlay-foto-accion-borrar" id="overlay-foto-eliminar" @if(!$puedeEliminar) style="display:none" @endif>Eliminar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay-foto-grid" id="overlay-foto-grid">
+        <div class="overlay-foto-grid-contenido">
+            <div class="overlay-foto-grid-cabecera">
+                <span class="overlay-foto-grid-titulo">Fotografías</span>
+                <button type="button" class="overlay-foto-cerrar" id="overlay-foto-grid-cerrar">&times;</button>
+            </div>
+            <div class="overlay-foto-grid-lista" id="overlay-foto-grid-lista"></div>
+            <div class="overlay-foto-grid-acciones">
+                <button type="button" class="overlay-foto-accion" id="overlay-foto-grid-descargar">Descargar todas</button>
+                <button type="button" class="overlay-foto-accion" id="overlay-foto-grid-agregar" @if(!$puedeEditar) style="display:none" @endif>Agregar foto</button>
             </div>
         </div>
     </div>
@@ -3509,6 +3573,17 @@
         const overlayFotoContador = document.getElementById('overlay-foto-contador');
         const overlayFotoAgregar = document.getElementById('overlay-foto-agregar');
         const overlayFotoEliminar = document.getElementById('overlay-foto-eliminar');
+        const overlayFotoDescargar = document.getElementById('overlay-foto-descargar');
+        const overlayFotoGrid = document.getElementById('overlay-foto-grid');
+        const overlayFotoGridLista = document.getElementById('overlay-foto-grid-lista');
+        const overlayFotoGridCerrar = document.getElementById('overlay-foto-grid-cerrar');
+        const overlayFotoGridAgregar = document.getElementById('overlay-foto-grid-agregar');
+        const overlayFotoGridDescargar = document.getElementById('overlay-foto-grid-descargar');
+
+        /* Object URLs de las miniaturas de la cuadrícula (fotos locales
+           aún no subidas), se revocan al cerrar o volver a abrir la
+           cuadrícula para no acumular memoria. */
+        let gridObjectUrls = [];
 
         /* contextoFotoPendiente distingue si el selector de archivos se
            abrió para crear un pin nuevo (modo 'nuevo') o para sumar más
@@ -3716,11 +3791,13 @@
             overlayFotoNext.style.display = multiples ? 'flex' : 'none';
         }
 
+        /* Punto de entrada al hacer click en un pin de foto: siempre
+           abre primero la cuadrícula (aunque haya una sola foto); el
+           visor grande sólo se abre al elegir una miniatura ahí. */
         function mostrarFotoEnGrande(item) {
             fotoAbiertaItem = item;
             fotoAbiertaIndice = 0;
-            actualizarOverlayFoto();
-            overlayFoto.classList.add('abierto');
+            abrirGridFotos();
         }
 
         function cerrarFotoGrande() {
@@ -3731,11 +3808,68 @@
                 URL.revokeObjectURL(overlayObjectUrlActual);
                 overlayObjectUrlActual = null;
             }
+            cerrarGridFotos();
         }
 
         overlayFotoCerrar.addEventListener('click', cerrarFotoGrande);
         overlayFoto.addEventListener('click', e => {
             if (e.target === overlayFoto) cerrarFotoGrande();
+        });
+
+        function limpiarGridObjectUrls() {
+            gridObjectUrls.forEach(url => URL.revokeObjectURL(url));
+            gridObjectUrls = [];
+        }
+
+        async function abrirGridFotos() {
+            if (!fotoAbiertaItem) return;
+            const item = fotoAbiertaItem;
+            const fotos = item.fotos || [];
+            limpiarGridObjectUrls();
+            overlayFotoGridLista.innerHTML = '';
+            fotos.forEach((foto, indice) => {
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.className = 'overlay-foto-grid-item';
+                const img = document.createElement('img');
+                img.alt = 'Fotografía';
+                boton.appendChild(img);
+                boton.addEventListener('click', () => {
+                    if (item !== fotoAbiertaItem) return;
+                    fotoAbiertaIndice = indice;
+                    actualizarOverlayFoto();
+                    overlayFoto.classList.add('abierto');
+                    cerrarGridFotos();
+                });
+                overlayFotoGridLista.appendChild(boton);
+
+                if (foto.startsWith('local:')) {
+                    OfflineAPI?.obtenerBlobFotoPendiente(foto.slice('local:'.length)).then(blob => {
+                        if (!blob || item !== fotoAbiertaItem) return;
+                        const url = URL.createObjectURL(blob);
+                        gridObjectUrls.push(url);
+                        img.src = url;
+                    });
+                } else {
+                    img.src = foto;
+                }
+            });
+            overlayFotoGrid.classList.add('abierto');
+        }
+
+        function cerrarGridFotos() {
+            overlayFotoGrid.classList.remove('abierto');
+            limpiarGridObjectUrls();
+            /* Si el visor grande no está abierto detrás, la cuadrícula
+               era la vista de entrada: al cerrarla se sale del todo. */
+            if (!overlayFoto.classList.contains('abierto')) {
+                fotoAbiertaItem = null;
+            }
+        }
+
+        overlayFotoGridCerrar.addEventListener('click', cerrarGridFotos);
+        overlayFotoGrid.addEventListener('click', e => {
+            if (e.target === overlayFotoGrid) cerrarGridFotos();
         });
 
         overlayFotoPrev.addEventListener('click', () => {
@@ -3751,9 +3885,67 @@
             actualizarOverlayFoto();
         });
 
-        overlayFotoAgregar.addEventListener('click', () => {
+        function solicitarAgregarFotosDesdeVisor() {
             if (!PUEDE_EDITAR) return;
-            if (fotoAbiertaItem) solicitarAgregarFotos(fotoAbiertaItem);
+            if (!fotoAbiertaItem) return;
+            const item = fotoAbiertaItem;
+            cerrarFotoGrande();
+            solicitarAgregarFotos(item);
+        }
+        overlayFotoAgregar.addEventListener('click', solicitarAgregarFotosDesdeVisor);
+        overlayFotoGridAgregar.addEventListener('click', solicitarAgregarFotosDesdeVisor);
+
+        function extensionDesdeTipo(tipo) {
+            if (tipo === 'image/png') return 'png';
+            if (tipo === 'image/webp') return 'webp';
+            return 'jpg';
+        }
+
+        async function obtenerBlobDeFoto(foto) {
+            if (foto.startsWith('local:')) {
+                return await OfflineAPI?.obtenerBlobFotoPendiente(foto.slice('local:'.length));
+            }
+            try {
+                return await (await fetch(foto)).blob();
+            } catch {
+                return null;
+            }
+        }
+
+        async function descargarFotosDePin(item) {
+            const fotos = item.fotos || [];
+            if (!fotos.length) return;
+            overlayFotoGridDescargar.disabled = true;
+            try {
+                for (let i = 0; i < fotos.length; i++) {
+                    const blob = await obtenerBlobDeFoto(fotos[i]);
+                    if (!blob) continue;
+                    descargarBlob(blob, `foto-${i + 1}.${extensionDesdeTipo(blob.type)}`);
+                    /* Un pequeño respiro entre descargas: disparar varias
+                       de golpe hace que el navegador bloquee/omita todas
+                       menos la primera. */
+                    if (i < fotos.length - 1) await new Promise(r => setTimeout(r, 300));
+                }
+            } finally {
+                overlayFotoGridDescargar.disabled = false;
+            }
+        }
+
+        overlayFotoGridDescargar.addEventListener('click', () => {
+            if (fotoAbiertaItem) descargarFotosDePin(fotoAbiertaItem);
+        });
+
+        overlayFotoDescargar.addEventListener('click', async () => {
+            if (!fotoAbiertaItem) return;
+            const foto = fotoAbiertaItem.fotos[fotoAbiertaIndice];
+            if (!foto) return;
+            overlayFotoDescargar.disabled = true;
+            try {
+                const blob = await obtenerBlobDeFoto(foto);
+                if (blob) descargarBlob(blob, `foto-${fotoAbiertaIndice + 1}.${extensionDesdeTipo(blob.type)}`);
+            } finally {
+                overlayFotoDescargar.disabled = false;
+            }
         });
 
         overlayFotoEliminar.addEventListener('click', () => {
