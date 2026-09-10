@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{{ $plano->descripcion ?? 'Plano' }}</title>
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     <meta name="theme-color" content="#2a6fdb">
@@ -27,7 +27,11 @@
         html, body { height: 100%; overscroll-behavior: none; }
         body { font-family: sans-serif; background: #333; overflow: hidden; }
 
-        .app { height: 100vh; display: flex; }
+        /* 100dvh (no 100vh): en Android, 100vh mide el viewport "grande"
+           sin descontar la barra de navegación/gestos del sistema, así
+           que el fondo del menú lateral terminaba quedando tapado por
+           esos botones. dvh sí se ajusta al área realmente visible. */
+        .app { height: 100vh; height: 100dvh; display: flex; }
 
         /* ── BARRA DE HERRAMIENTAS VERTICAL ── */
         .toolbar-vertical {
