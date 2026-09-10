@@ -1554,6 +1554,28 @@
 
         const wrapsSubmenu = document.querySelectorAll('.tool-submenu-wrap');
 
+        /* Los submenús (Daños/Ensayos/Anotaciones) se sacan del menú
+           lateral y se cuelgan directo de <body>: el menú lateral tiene
+           overflow-y:auto para poder scrollearse en pantallas bajas
+           (celular en horizontal), y por una regla del spec de CSS eso
+           fuerza también overflow-x a auto — sin este cambio, el
+           submenú (que se despliega hacia la derecha, fuera del menú)
+           quedaba recortado/invisible ahí adentro. */
+        const mapaSubmenus = new Map();
+        wrapsSubmenu.forEach(wrap => {
+            const submenu = wrap.querySelector('.submenu-lateral');
+            submenu.dataset.wrap = wrap.id;
+            mapaSubmenus.set(wrap, submenu);
+            document.body.appendChild(submenu);
+        });
+
+        function wrapDeBoton(btn) {
+            const wrapDirecto = btn.closest('.tool-submenu-wrap');
+            if (wrapDirecto) return wrapDirecto;
+            const submenuAncestro = btn.closest('.submenu-lateral');
+            return submenuAncestro ? document.getElementById(submenuAncestro.dataset.wrap) : null;
+        }
+
         document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
             btn.addEventListener('click', () => {
                 deseleccionarElemento();
@@ -1562,7 +1584,7 @@
                 btn.classList.add('activo');
                 herramientaActual = btn.dataset.tool;
 
-                const wrapPadre = btn.closest('.tool-submenu-wrap');
+                const wrapPadre = wrapDeBoton(btn);
                 wrapsSubmenu.forEach(w => w.classList.toggle('activo', w === wrapPadre));
 
                 if (wrapPadre) {
@@ -1589,7 +1611,7 @@
                         swatchPrincipal.style.display = '';
                     }
 
-                    wrapPadre.querySelector('.submenu-lateral').classList.remove('abierto');
+                    mapaSubmenus.get(wrapPadre)?.classList.remove('abierto');
                 }
             });
         });
@@ -1597,18 +1619,25 @@
         document.querySelectorAll('.tool-submenu-wrap > .tool-btn').forEach(btnToggle => {
             btnToggle.addEventListener('click', e => {
                 e.stopPropagation();
-                const submenu = btnToggle.parentElement.querySelector('.submenu-lateral');
+                const wrapPadre = btnToggle.parentElement;
+                const submenu = mapaSubmenus.get(wrapPadre);
                 document.querySelectorAll('.submenu-lateral').forEach(s => {
                     if (s !== submenu) s.classList.remove('abierto');
                 });
+                if (!submenu.classList.contains('abierto')) {
+                    const rect = wrapPadre.getBoundingClientRect();
+                    submenu.style.top = rect.top + 'px';
+                    submenu.style.left = (rect.right + 6) + 'px';
+                }
                 submenu.classList.toggle('abierto');
             });
         });
 
         document.addEventListener('click', e => {
             wrapsSubmenu.forEach(wrap => {
-                if (!wrap.contains(e.target)) {
-                    wrap.querySelector('.submenu-lateral').classList.remove('abierto');
+                const submenu = mapaSubmenus.get(wrap);
+                if (!wrap.contains(e.target) && !submenu.contains(e.target)) {
+                    submenu.classList.remove('abierto');
                 }
             });
         });
