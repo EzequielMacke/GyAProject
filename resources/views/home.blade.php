@@ -160,6 +160,11 @@
 
                 <div class="options-grid">
 
+                    <a href="{{ route('novedades.index') }}" class="opcion-card" style="animation-delay:0.01s">
+                        <div class="opcion-icon ic-blue"><i class="fas fa-bullhorn"></i></div>
+                        <span class="opcion-label">Novedades</span>
+                    </a>
+
                     @permiso('obr', 'ver')
                     <a href="{{ route('obras.index') }}" class="opcion-card" style="animation-delay:0.04s">
                         <div class="opcion-icon ic-purple"><i class="fas fa-building"></i></div>
@@ -278,6 +283,8 @@
                         <span class="opcion-label">Trabajo de Campo</span>
                     </a>
                     @endpermiso
+
+                    
 
                 </div>
 

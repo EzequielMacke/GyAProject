@@ -98,6 +98,13 @@ Route::get('/home', function () {
     return view('home');
 })->name('home');
 
+Route::get('/novedades', function () {
+    if (!session('usuario_area_id')) {
+        return redirect()->route('welcome');
+    }
+    return view('novedades.index');
+})->name('novedades.index');
+
 // ── Insumos ──────────────────────────────────────────────────────────────────
 Route::middleware('permiso:ins,ver')->group(function () {
     Route::get('/insumos', [InsumosController::class, 'index'])->name('insumos.index');
