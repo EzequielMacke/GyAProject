@@ -151,6 +151,40 @@
         }
         .punto-delete-btn:hover { color: #c0392b; background: #fff0f0; }
 
+        /* ── MODAL ── */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-overlay.active { display: flex; }
+        .modal-caja {
+            background: #fff; border-radius: 1rem;
+            width: 100%; max-width: 420px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+            overflow: hidden;
+            animation: modalIn 0.2s ease both;
+        }
+        @keyframes modalIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+        .modal-head {
+            padding: 1.4rem 1.75rem 1.2rem;
+            border-bottom: 1.5px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-head-title { font-size: 1rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.5rem; }
+        .modal-head-title.danger i { color: #c0392b; }
+        .modal-close { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; padding: 0.25rem; border-radius: 0.35rem; transition: color 0.14s; }
+        .modal-close:hover { color: var(--text); }
+        .modal-body { padding: 1.25rem 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.6rem; }
+        .modal-body p { font-size: 0.83rem; color: var(--muted); padding: 0 0.5rem; }
+        .modal-body p strong { color: var(--text); }
+        .modal-foot { padding: 1rem 1.75rem 1.4rem; display: flex; justify-content: flex-end; gap: 0.5rem; }
+        .btn-cancel { height: 36px; padding: 0 1rem; border-radius: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; border: 1.5px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.14s; }
+        .btn-cancel:hover { background: var(--surface2); }
+        .btn-confirmar-eliminar {
+            height: 36px; padding: 0 1.1rem; border-radius: 0.5rem;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600;
+            border: 1.5px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.14s;
+        }
+        .btn-confirmar-eliminar:hover { background: #a93226; border-color: #a93226; }
+
         .punto-body { padding: 1.1rem; }
 
         .punto-datos-grid {
@@ -371,6 +405,29 @@
     @include('partials.footer')
 </div>
 
+{{-- ══════════════════════════════════════════════════════
+     MODAL ELIMINAR PUNTO
+══════════════════════════════════════════════════════ --}}
+@if($puedeEditar)
+<div class="modal-overlay" id="modal-eliminar-punto">
+    <div class="modal-caja">
+        <div class="modal-head">
+            <div class="modal-head-title danger"><i class="fas fa-triangle-exclamation"></i> Eliminar punto</div>
+            <button class="modal-close" onclick="cerrarModalEliminarPunto()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p>¿Seguro que querés eliminar el punto <strong id="eliminar-punto-nombre"></strong>? Esta acción no se puede deshacer.</p>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn-cancel" onclick="cerrarModalEliminarPunto()">Cancelar</button>
+            <button type="button" class="btn-confirmar-eliminar" onclick="eliminarPuntoConfirmado()">
+                <i class="fas fa-trash"></i> Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
 <script>
     const PUEDE_EDITAR = @json($puedeEditar);
     const CANTIDAD_IMPACTOS = 14;
@@ -383,6 +440,33 @@
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         card.classList.add('punto-resaltado');
         setTimeout(() => card.classList.remove('punto-resaltado'), 1200);
+    }
+
+    /* ─── Eliminar punto (con confirmación) ─────────────────────── */
+    const modalEliminarPunto = document.getElementById('modal-eliminar-punto');
+    let cardAEliminar = null;
+
+    function abrirModalEliminarPunto(card) {
+        cardAEliminar = card;
+        document.getElementById('eliminar-punto-nombre').textContent = `E${card.dataset.idx}`;
+        modalEliminarPunto?.classList.add('active');
+    }
+
+    function cerrarModalEliminarPunto() {
+        modalEliminarPunto?.classList.remove('active');
+        cardAEliminar = null;
+    }
+    modalEliminarPunto?.addEventListener('click', function (e) {
+        if (e.target === this) cerrarModalEliminarPunto();
+    });
+
+    function eliminarPuntoConfirmado() {
+        if (! cardAEliminar) return;
+        cardAEliminar.remove();
+        cardAEliminar = null;
+        renumerarPuntos();
+        programarGuardado();
+        cerrarModalEliminarPunto();
     }
 
     /* ─── Reordenar puntos arrastrando los "cuadritos" ──────────
@@ -564,9 +648,7 @@
         `;
 
         card.querySelector('.punto-delete-btn')?.addEventListener('click', function () {
-            card.remove();
-            renumerarPuntos();
-            programarGuardado();
+            abrirModalEliminarPunto(card);
         });
 
         card.querySelectorAll('.impacto-input').forEach(function (input) {
