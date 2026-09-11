@@ -385,20 +385,20 @@
     const REPORTES = {
         esclerometria: {
             titulo: datos => `Reporte de Esclerometría — ${datos.obra || ''}`,
-            columnas: ['Elemento', 'Identificación', 'Dirección', 'Índice esclerométrico corregido'],
-            fila: p => [p.elemento, p.identificacion, p.direccion, p.n_final],
+            columnas: ['Nivel', 'Elemento', 'Identificación', 'Dirección', 'Índice esclerométrico corregido'],
+            fila: p => [p.nivel, p.elemento, p.identificacion, p.direccion, p.n_final],
             prefijoArchivo: 'reporte-esclerometria',
         },
         ultrasonido_indirecto: {
             titulo: datos => `Reporte de Ultrasonido Indirecto — ${datos.obra || ''}`,
-            columnas: ['Elemento', 'Identificación', 'Velocidad (m/s)', 'Compactación del hormigón'],
-            fila: p => [p.elemento, p.identificacion, p.velocidad, p.compactacion],
+            columnas: ['Nivel', 'Elemento', 'Identificación', 'Velocidad (m/s)', 'Compactación del hormigón'],
+            fila: p => [p.nivel, p.elemento, p.identificacion, p.velocidad, p.compactacion],
             prefijoArchivo: 'reporte-ultrasonido-indirecto',
         },
         carbonatacion: {
             titulo: datos => `Reporte de Carbonatación — ${datos.obra || ''}`,
-            columnas: ['Elemento', 'Identificación', 'Recubrimiento (mm)', 'Espesor carbonatado (mm)', '% afectado'],
-            fila: p => [p.elemento, p.identificacion, p.recubrimiento, p.espesor_carbonatado, p.porcentaje_afectado],
+            columnas: ['Nivel', 'Elemento', 'Identificación', 'Recubrimiento (mm)', 'Espesor carbonatado (mm)', '% afectado'],
+            fila: p => [p.nivel, p.elemento, p.identificacion, p.recubrimiento, p.espesor_carbonatado, p.porcentaje_afectado],
             prefijoArchivo: 'reporte-carbonatacion',
         },
     };

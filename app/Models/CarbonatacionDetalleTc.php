@@ -14,6 +14,7 @@ class CarbonatacionDetalleTc extends Model
     protected $fillable = [
         'carbonatacion_tc_id',
         'elemento',
+        'nivel_pla_tc_id',
         'recubrimiento',
         'espesor_carbonatado',
         'porcentaje_afectado',
@@ -22,5 +23,10 @@ class CarbonatacionDetalleTc extends Model
     public function carbonatacion()
     {
         return $this->belongsTo(CarbonatacionTc::class, 'carbonatacion_tc_id');
+    }
+
+    public function nivel()
+    {
+        return $this->belongsTo(NivelPlaTc::class, 'nivel_pla_tc_id');
     }
 }

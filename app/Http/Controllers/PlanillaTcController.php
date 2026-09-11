@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CarbonatacionTc;
 use App\Models\DirectorioTc;
 use App\Models\EsclerometriaTc;
+use App\Models\NivelPlaTc;
 use App\Models\ObraTc;
 use App\Models\UltrasonidoIndirectoTc;
 use App\Services\PermisoService;
@@ -90,21 +91,26 @@ class PlanillaTcController extends Controller
 
         $esclerometria = EsclerometriaTc::with(['detalles' => function ($query) {
             $query->orderBy('id');
-        }])->where('obra_tc_id', $obraTc->id)->first();
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
 
         $datosEsclerometria = $esclerometria ? [
             'puntos' => $esclerometria->detalles->map(function ($detalle) {
                 return [
                     'elemento' => $detalle->elemento,
+                    'nivel' => $detalle->nivel?->descripcion,
                     'direccion' => $detalle->direccion,
                     'impactos' => $detalle->impactos,
                 ];
             })->values()->all(),
         ] : null;
 
+        $niveles = NivelPlaTc::where('obra_tc_id', $obraTc->id)
+            ->orderBy('descripcion')
+            ->pluck('descripcion');
+
         $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
 
-        return view('planilla_tc.esclerometria_pla', compact('obraTc', 'esclerometria', 'datosEsclerometria', 'puedeEditar'));
+        return view('planilla_tc.esclerometria_pla', compact('obraTc', 'esclerometria', 'datosEsclerometria', 'niveles', 'puedeEditar'));
     }
 
     public function ultrasonidoIndirecto(ObraTc $obraTc)
@@ -115,20 +121,25 @@ class PlanillaTcController extends Controller
 
         $ultrasonidoIndirecto = UltrasonidoIndirectoTc::with(['detalles' => function ($query) {
             $query->orderBy('id');
-        }])->where('obra_tc_id', $obraTc->id)->first();
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
 
         $datosUltrasonidoIndirecto = $ultrasonidoIndirecto ? [
             'puntos' => $ultrasonidoIndirecto->detalles->map(function ($detalle) {
                 return [
                     'elemento' => $detalle->elemento,
+                    'nivel' => $detalle->nivel?->descripcion,
                     'velocidades' => $detalle->velocidades,
                 ];
             })->values()->all(),
         ] : null;
 
+        $niveles = NivelPlaTc::where('obra_tc_id', $obraTc->id)
+            ->orderBy('descripcion')
+            ->pluck('descripcion');
+
         $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
 
-        return view('planilla_tc.ultrasonido_indirecto_pla', compact('obraTc', 'ultrasonidoIndirecto', 'datosUltrasonidoIndirecto', 'puedeEditar'));
+        return view('planilla_tc.ultrasonido_indirecto_pla', compact('obraTc', 'ultrasonidoIndirecto', 'datosUltrasonidoIndirecto', 'niveles', 'puedeEditar'));
     }
 
     public function carbonatacion(ObraTc $obraTc)
@@ -139,21 +150,26 @@ class PlanillaTcController extends Controller
 
         $carbonatacion = CarbonatacionTc::with(['detalles' => function ($query) {
             $query->orderBy('id');
-        }])->where('obra_tc_id', $obraTc->id)->first();
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
 
         $datosCarbonatacion = $carbonatacion ? [
             'puntos' => $carbonatacion->detalles->map(function ($detalle) {
                 return [
                     'elemento' => $detalle->elemento,
+                    'nivel' => $detalle->nivel?->descripcion,
                     'recubrimiento' => $detalle->recubrimiento,
                     'espesor_carbonatado' => $detalle->espesor_carbonatado,
                 ];
             })->values()->all(),
         ] : null;
 
+        $niveles = NivelPlaTc::where('obra_tc_id', $obraTc->id)
+            ->orderBy('descripcion')
+            ->pluck('descripcion');
+
         $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
 
-        return view('planilla_tc.carbonatacion_pla', compact('obraTc', 'carbonatacion', 'datosCarbonatacion', 'puedeEditar'));
+        return view('planilla_tc.carbonatacion_pla', compact('obraTc', 'carbonatacion', 'datosCarbonatacion', 'niveles', 'puedeEditar'));
     }
 
     public function reporteEsclerometria(ObraTc $obraTc)
@@ -164,11 +180,12 @@ class PlanillaTcController extends Controller
 
         $esclerometria = EsclerometriaTc::with(['detalles' => function ($query) {
             $query->orderBy('id');
-        }])->where('obra_tc_id', $obraTc->id)->first();
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
 
         $puntos = $esclerometria
             ? $esclerometria->detalles->values()->map(function ($detalle, $i) {
                 return [
+                    'nivel' => $detalle->nivel?->descripcion ?: '-',
                     'identificacion' => 'E'.($i + 1),
                     'elemento' => $detalle->elemento ?: '-',
                     'direccion' => $detalle->direccion.'°',
@@ -192,13 +209,14 @@ class PlanillaTcController extends Controller
 
         $ultrasonidoIndirecto = UltrasonidoIndirectoTc::with(['detalles' => function ($query) {
             $query->orderBy('id');
-        }])->where('obra_tc_id', $obraTc->id)->first();
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
 
         $puntos = $ultrasonidoIndirecto
             ? $ultrasonidoIndirecto->detalles->values()->map(function ($detalle, $i) {
                 $velocidad = $detalle->promedio !== null ? round((float) $detalle->promedio) : null;
 
                 return [
+                    'nivel' => $detalle->nivel?->descripcion ?: '-',
                     'identificacion' => 'U'.($i + 1),
                     'elemento' => $detalle->elemento ?: '-',
                     'velocidad' => $velocidad !== null ? number_format($velocidad, 0, '', '.') : '-',
@@ -221,13 +239,14 @@ class PlanillaTcController extends Controller
 
         $carbonatacion = CarbonatacionTc::with(['detalles' => function ($query) {
             $query->orderBy('id');
-        }])->where('obra_tc_id', $obraTc->id)->first();
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
 
         $puntos = $carbonatacion
             ? $carbonatacion->detalles->values()->map(function ($detalle, $i) {
                 $porcentaje = $detalle->porcentaje_afectado !== null ? round((float) $detalle->porcentaje_afectado, 1) : null;
 
                 return [
+                    'nivel' => $detalle->nivel?->descripcion ?: '-',
                     'identificacion' => 'C'.($i + 1),
                     'elemento' => $detalle->elemento ?: '-',
                     'recubrimiento' => $detalle->recubrimiento !== null ? number_format((float) $detalle->recubrimiento, 2, ',', '.') : '-',
@@ -313,6 +332,7 @@ class PlanillaTcController extends Controller
             'lectura_final_yunque' => 'nullable|numeric',
             'puntos' => 'array',
             'puntos.*.elemento' => 'nullable|string|max:255',
+            'puntos.*.nivel' => 'nullable|string|max:255',
             'puntos.*.direccion' => 'nullable|integer',
             'puntos.*.impactos' => 'array',
             'puntos.*.impactos.*' => 'nullable|numeric',
@@ -342,6 +362,7 @@ class PlanillaTcController extends Controller
             foreach ($data['puntos'] ?? [] as $punto) {
                 $esclerometria->detalles()->create([
                     'elemento' => $punto['elemento'] ?? null,
+                    'nivel_pla_tc_id' => $this->resolverNivelId($obraTc, $punto['nivel'] ?? null),
                     'direccion' => $punto['direccion'] ?? 0,
                     'impactos' => $punto['impactos'] ?? [],
                     'promedio_inicial' => $punto['promedio_inicial'] ?? null,
@@ -367,6 +388,7 @@ class PlanillaTcController extends Controller
             'fecha' => 'required|date',
             'puntos' => 'array',
             'puntos.*.elemento' => 'nullable|string|max:255',
+            'puntos.*.nivel' => 'nullable|string|max:255',
             'puntos.*.velocidades' => 'array',
             'puntos.*.velocidades.*' => 'nullable|numeric',
             'puntos.*.promedio' => 'nullable|numeric',
@@ -391,6 +413,7 @@ class PlanillaTcController extends Controller
             foreach ($data['puntos'] ?? [] as $punto) {
                 $ultrasonidoIndirecto->detalles()->create([
                     'elemento' => $punto['elemento'] ?? null,
+                    'nivel_pla_tc_id' => $this->resolverNivelId($obraTc, $punto['nivel'] ?? null),
                     'velocidades' => $punto['velocidades'] ?? [],
                     'promedio' => $punto['promedio'] ?? null,
                     'desviacion_estandar' => $punto['desviacion_estandar'] ?? null,
@@ -413,6 +436,7 @@ class PlanillaTcController extends Controller
             'fecha' => 'required|date',
             'puntos' => 'array',
             'puntos.*.elemento' => 'nullable|string|max:255',
+            'puntos.*.nivel' => 'nullable|string|max:255',
             'puntos.*.recubrimiento' => 'nullable|numeric',
             'puntos.*.espesor_carbonatado' => 'nullable|numeric',
             'puntos.*.porcentaje_afectado' => 'nullable|numeric',
@@ -434,6 +458,7 @@ class PlanillaTcController extends Controller
             foreach ($data['puntos'] ?? [] as $punto) {
                 $carbonatacion->detalles()->create([
                     'elemento' => $punto['elemento'] ?? null,
+                    'nivel_pla_tc_id' => $this->resolverNivelId($obraTc, $punto['nivel'] ?? null),
                     'recubrimiento' => $punto['recubrimiento'] ?? null,
                     'espesor_carbonatado' => $punto['espesor_carbonatado'] ?? null,
                     'porcentaje_afectado' => $punto['porcentaje_afectado'] ?? null,
@@ -482,5 +507,18 @@ class PlanillaTcController extends Controller
         return DirectorioTc::where('obra_tc_id', $obraTc->id)
             ->where('usuario_id', session('usuario_id'))
             ->exists();
+    }
+
+    private function resolverNivelId(ObraTc $obraTc, ?string $nivel): ?int
+    {
+        $descripcion = trim((string) $nivel);
+
+        if ($descripcion === '') {
+            return null;
+        }
+
+        return NivelPlaTc::firstOrCreate(
+            ['obra_tc_id' => $obraTc->id, 'descripcion' => $descripcion]
+        )->id;
     }
 }

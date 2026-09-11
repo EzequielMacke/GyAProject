@@ -14,6 +14,7 @@ class EsclerometriaDetalleTc extends Model
     protected $fillable = [
         'esclerometria_tc_id',
         'elemento',
+        'nivel_pla_tc_id',
         'direccion',
         'impactos',
         'promedio_inicial',
@@ -31,5 +32,10 @@ class EsclerometriaDetalleTc extends Model
     public function esclerometria()
     {
         return $this->belongsTo(EsclerometriaTc::class, 'esclerometria_tc_id');
+    }
+
+    public function nivel()
+    {
+        return $this->belongsTo(NivelPlaTc::class, 'nivel_pla_tc_id');
     }
 }

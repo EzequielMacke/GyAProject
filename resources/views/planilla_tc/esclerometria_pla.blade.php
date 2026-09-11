@@ -118,6 +118,7 @@
         .puntos-nav-btn:hover { background: var(--accent-s); border-color: var(--accent); color: var(--accent-b); }
         .puntos-nav-btn[draggable="true"] { cursor: grab; }
         .puntos-nav-btn.dragging { opacity: 0.35; border-style: dashed; cursor: grabbing; }
+        .puntos-nav-btn.drag-over { border-color: var(--accent); background: var(--accent-s); color: var(--accent-b); }
         .punto-card.punto-resaltado { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.15); }
 
         /* ── PUNTOS DE ENSAYO ── */
@@ -189,10 +190,27 @@
 
         .punto-datos-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1.6fr 1fr 1fr;
             gap: 1rem;
             margin-bottom: 1.1rem;
         }
+
+        /* ── AUTOCOMPLETADO DE NIVEL ── */
+        .autocomplete-dropdown {
+            display: none;
+            position: fixed;
+            background: #fff; border: 1.5px solid var(--border); border-radius: 0.55rem;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.14);
+            max-height: 190px; overflow-y: auto; z-index: 5000;
+        }
+        .autocomplete-dropdown.active { display: block; }
+        .autocomplete-opcion {
+            padding: 0.5rem 0.85rem; font-size: 0.83rem; color: var(--text);
+            cursor: pointer; transition: background 0.1s;
+        }
+        .autocomplete-opcion:hover,
+        .autocomplete-opcion.resaltada { background: var(--accent-s); color: var(--accent-b); }
+        .autocomplete-opcion-nueva { color: var(--muted); font-size: 0.76rem; padding: 0.45rem 0.85rem 0.6rem; border-top: 1px solid var(--border); }
 
         .impactos-label {
             font-size: 0.72rem; font-weight: 700; color: var(--text2);
@@ -435,6 +453,112 @@
     const emptyPuntos = document.getElementById('empty-puntos');
     const puntosNav = document.getElementById('puntos-nav');
     let chipArrastrado = null;
+    let nivelesDisponibles = @json($niveles ?? []);
+
+    /* ─── Autocompletado de nivel ────────────────────────────────
+       El nivel se guarda en una tabla compartida por obra, así que
+       una vez cargado un nivel queda disponible para elegirlo en
+       cualquier otro punto (de esta planilla y, a futuro, de las
+       demás). El campo permite escribir libremente: si no coincide
+       con ninguno existente, se crea uno nuevo al guardar.
+
+       El desplegable es UN SOLO elemento flotante (fuera de las
+       tarjetas de punto, que tienen overflow:hidden por sus bordes
+       redondeados) y se reposiciona con JS sobre el input activo,
+       para que no quede recortado ni tapado por el siguiente punto. */
+    const dropdownNivel = document.createElement('div');
+    dropdownNivel.className = 'autocomplete-dropdown';
+    document.body.appendChild(dropdownNivel);
+    let inputNivelActivo = null;
+
+    function posicionarDropdownNivel(input) {
+        const rect = input.getBoundingClientRect();
+        dropdownNivel.style.left = `${rect.left}px`;
+        dropdownNivel.style.top = `${rect.bottom + 4}px`;
+        dropdownNivel.style.width = `${rect.width}px`;
+    }
+
+    window.addEventListener('scroll', function () {
+        if (inputNivelActivo && dropdownNivel.classList.contains('active')) {
+            posicionarDropdownNivel(inputNivelActivo);
+        }
+    }, true);
+
+    function configurarAutocompletadoNivel(card) {
+        const input = card.querySelector('.punto-nivel-input');
+        if (! input || ! PUEDE_EDITAR) return;
+
+        function mostrarOpciones() {
+            inputNivelActivo = input;
+            const texto = input.value.trim().toLowerCase();
+            const coincidencias = texto === ''
+                ? nivelesDisponibles
+                : nivelesDisponibles.filter(n => n.toLowerCase().includes(texto));
+
+            dropdownNivel.innerHTML = '';
+
+            coincidencias.slice(0, 8).forEach(function (nivel) {
+                const opcion = document.createElement('div');
+                opcion.className = 'autocomplete-opcion';
+                opcion.textContent = nivel;
+                opcion.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    input.value = nivel;
+                    dropdownNivel.classList.remove('active');
+                    actualizarNivelIncompleto(card);
+                    programarGuardado();
+                });
+                dropdownNivel.appendChild(opcion);
+            });
+
+            if (texto !== '' && ! nivelesDisponibles.some(n => n.toLowerCase() === texto)) {
+                const aviso = document.createElement('div');
+                aviso.className = 'autocomplete-opcion-nueva';
+                aviso.textContent = `Se va a crear el nivel "${input.value.trim()}"`;
+                dropdownNivel.appendChild(aviso);
+            }
+
+            if (dropdownNivel.children.length > 0) {
+                posicionarDropdownNivel(input);
+                dropdownNivel.classList.add('active');
+            } else {
+                dropdownNivel.classList.remove('active');
+            }
+        }
+
+        // El guardado del nivel no se dispara con cada letra (eso crearía
+        // niveles a medio escribir, como "Plant" antes de "Planta Baja").
+        // Se guarda recién al confirmar: Enter, elegir una opción del
+        // desplegable, o al salir del campo (blur/change, que también
+        // cubre el cierre del teclado en celulares).
+        input.addEventListener('input', function () {
+            mostrarOpciones();
+            actualizarNivelIncompleto(card);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                input.blur();
+            }
+        });
+        input.addEventListener('focus', mostrarOpciones);
+        input.addEventListener('blur', function () {
+            setTimeout(() => {
+                if (inputNivelActivo === input) {
+                    dropdownNivel.classList.remove('active');
+                    inputNivelActivo = null;
+                }
+            }, 150);
+            const valor = input.value.trim();
+            if (valor && ! nivelesDisponibles.some(n => n.toLowerCase() === valor.toLowerCase())) {
+                nivelesDisponibles.push(valor);
+            }
+        });
+        input.addEventListener('change', function () {
+            actualizarNivelIncompleto(card);
+            programarGuardado();
+        });
+    }
 
     function irAPunto(card) {
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -469,12 +593,12 @@
         cerrarModalEliminarPunto();
     }
 
-    /* ─── Reordenar puntos arrastrando los "cuadritos" ──────────
+    /* ─── Intercambiar puntos arrastrando los "cuadritos" ───────
        Cada chip de la navegación rápida representa un punto y se
-       puede arrastrar sobre otro para reordenarlo. Mientras se
-       arrastra, los chips se van corriendo en vivo (vista previa);
-       al soltar se aplica ese mismo orden a las tarjetas y se
-       renumeran todos los puntos de forma secuencial. */
+       puede arrastrar sobre otro para intercambiar sus lugares:
+       si soltás E3 sobre E1, esos dos cambian de identificación
+       entre sí (E3 pasa a ser E1 y viceversa) y el resto de los
+       puntos queda exactamente igual, sin renumerarse. */
     function actualizarPuntosNav() {
         const cards = Array.from(listaPuntos.querySelectorAll('.punto-card'));
         puntosNav.innerHTML = '';
@@ -495,21 +619,23 @@
                 });
                 btn.addEventListener('dragend', function () {
                     btn.classList.remove('dragging');
+                    puntosNav.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
                     chipArrastrado = null;
                 });
                 btn.addEventListener('dragover', function (e) {
                     e.preventDefault();
                     if (! chipArrastrado || chipArrastrado === btn) return;
-                    const chips = Array.from(puntosNav.children);
-                    if (chips.indexOf(chipArrastrado) < chips.indexOf(btn)) {
-                        btn.after(chipArrastrado);
-                    } else {
-                        btn.before(chipArrastrado);
-                    }
+                    btn.classList.add('drag-over');
+                });
+                btn.addEventListener('dragleave', function () {
+                    btn.classList.remove('drag-over');
                 });
                 btn.addEventListener('drop', function (e) {
                     e.preventDefault();
-                    aplicarOrdenDeNav();
+                    btn.classList.remove('drag-over');
+                    if (chipArrastrado && chipArrastrado !== btn) {
+                        intercambiarPuntos(chipArrastrado._card, btn._card);
+                    }
                 });
             }
 
@@ -518,22 +644,20 @@
             });
             puntosNav.appendChild(btn);
         });
-
-        if (PUEDE_EDITAR) {
-            puntosNav.ondragover = function (e) { e.preventDefault(); };
-            puntosNav.ondrop = function (e) {
-                e.preventDefault();
-                if (chipArrastrado) aplicarOrdenDeNav();
-            };
-        }
     }
 
-    function aplicarOrdenDeNav() {
-        const nuevoOrden = Array.from(puntosNav.children).map(btn => btn._card);
-        nuevoOrden.forEach(function (card, i) {
-            card.dataset.idx = i + 1;
-            listaPuntos.appendChild(card);
-        });
+    function intercambiarPuntos(cardA, cardB) {
+        if (! cardA || ! cardB || cardA === cardB) return;
+
+        const idxA = cardA.dataset.idx;
+        const idxB = cardB.dataset.idx;
+        cardA.dataset.idx = idxB;
+        cardB.dataset.idx = idxA;
+
+        Array.from(listaPuntos.querySelectorAll('.punto-card'))
+            .sort((a, b) => parseInt(a.dataset.idx, 10) - parseInt(b.dataset.idx, 10))
+            .forEach(card => listaPuntos.appendChild(card));
+
         renumerarPuntos();
         programarGuardado();
     }
@@ -602,6 +726,10 @@
                         <input type="text" class="form-control punto-elemento-input" name="puntos[${idx}][elemento]" placeholder="Ej: Columna, Viga, Losa..." ${soloLectura}>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Nivel</label>
+                        <input type="text" class="form-control punto-nivel-input" name="puntos[${idx}][nivel]" placeholder="Ej: PB, 1° piso..." autocomplete="off" ${soloLectura}>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Dirección de ensayo</label>
                         <select class="form-control punto-direccion-select" name="puntos[${idx}][direccion]" ${deshabilitado}>
                             <option value="0">0°</option>
@@ -668,11 +796,18 @@
             programarGuardado();
         });
 
+        configurarAutocompletadoNivel(card);
+
         return card;
     }
 
     function actualizarElementoIncompleto(card) {
         const input = card.querySelector('.punto-elemento-input');
+        input.classList.toggle('incompleto', input.value.trim() === '');
+    }
+
+    function actualizarNivelIncompleto(card) {
+        const input = card.querySelector('.punto-nivel-input');
         input.classList.toggle('incompleto', input.value.trim() === '');
     }
 
@@ -877,6 +1012,7 @@
         const card = crearPuntoHTML(idx);
         if (datos) {
             card.querySelector('.punto-elemento-input').value = datos.elemento || '';
+            card.querySelector('.punto-nivel-input').value = datos.nivel || '';
             card.querySelector('.punto-direccion-select').value = String(datos.direccion ?? 0);
             const impactoInputs = card.querySelectorAll('.impacto-input');
             (datos.impactos || []).forEach((valor, i) => {
@@ -888,6 +1024,7 @@
         insertarPuntoOrdenado(card);
         recalcularPunto(card);
         actualizarElementoIncompleto(card);
+        actualizarNivelIncompleto(card);
         renumerarPuntos();
         return card;
     }
@@ -936,6 +1073,7 @@
             });
             return {
                 elemento: card.querySelector('.punto-elemento-input').value || null,
+                nivel: card.querySelector('.punto-nivel-input').value || null,
                 direccion: parseInt(card.querySelector('.punto-direccion-select').value, 10),
                 impactos: impactos,
                 promedio_inicial: card.dataset.promedioInicial || null,

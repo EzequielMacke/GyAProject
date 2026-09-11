@@ -14,6 +14,7 @@ class UltrasonidoIndirectoDetalleTc extends Model
     protected $fillable = [
         'ultrasonido_indirecto_tc_id',
         'elemento',
+        'nivel_pla_tc_id',
         'velocidades',
         'promedio',
         'desviacion_estandar',
@@ -29,5 +30,10 @@ class UltrasonidoIndirectoDetalleTc extends Model
     public function ultrasonidoIndirecto()
     {
         return $this->belongsTo(UltrasonidoIndirectoTc::class, 'ultrasonido_indirecto_tc_id');
+    }
+
+    public function nivel()
+    {
+        return $this->belongsTo(NivelPlaTc::class, 'nivel_pla_tc_id');
     }
 }
