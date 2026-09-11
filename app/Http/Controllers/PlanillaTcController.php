@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CarbonatacionTc;
 use App\Models\DirectorioTc;
 use App\Models\EsclerometriaTc;
 use App\Models\ObraTc;
@@ -23,6 +24,10 @@ class PlanillaTcController extends Controller
             ->first();
 
         $ultrasonidoIndirecto = UltrasonidoIndirectoTc::withCount('detalles')
+            ->where('obra_tc_id', $obraTc->id)
+            ->first();
+
+        $carbonatacion = CarbonatacionTc::withCount('detalles')
             ->where('obra_tc_id', $obraTc->id)
             ->first();
 
@@ -54,6 +59,21 @@ class PlanillaTcController extends Controller
                 'resumen' => $ultrasonidoIndirecto
                     ? ($ultrasonidoIndirecto->fecha
                         ? $ultrasonidoIndirecto->detalles_count.' '.($ultrasonidoIndirecto->detalles_count === 1 ? 'punto ensayado' : 'puntos ensayados').' · '.$ultrasonidoIndirecto->fecha->format('d/m/Y')
+                        : 'Todavía sin datos cargados')
+                    : null,
+            ],
+            [
+                'codigo' => 'carbonatacion',
+                'nombre' => 'Carbonatación',
+                'icono' => 'fa-flask',
+                'ruta' => route('planilla_tc.carbonatacion', $obraTc->id),
+                'ruta_crear' => route('planilla_tc.carbonatacion.crear', $obraTc->id),
+                'ruta_eliminar' => route('planilla_tc.carbonatacion.eliminar', $obraTc->id),
+                'ruta_reporte' => route('planilla_tc.carbonatacion.reporte', $obraTc->id),
+                'cargada' => (bool) $carbonatacion,
+                'resumen' => $carbonatacion
+                    ? ($carbonatacion->fecha
+                        ? $carbonatacion->detalles_count.' '.($carbonatacion->detalles_count === 1 ? 'punto ensayado' : 'puntos ensayados').' · '.$carbonatacion->fecha->format('d/m/Y')
                         : 'Todavía sin datos cargados')
                     : null,
             ],
@@ -109,6 +129,31 @@ class PlanillaTcController extends Controller
         $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
 
         return view('planilla_tc.ultrasonido_indirecto_pla', compact('obraTc', 'ultrasonidoIndirecto', 'datosUltrasonidoIndirecto', 'puedeEditar'));
+    }
+
+    public function carbonatacion(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return redirect()->route('home')->with('error', 'No tenés acceso a esta obra.');
+        }
+
+        $carbonatacion = CarbonatacionTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }])->where('obra_tc_id', $obraTc->id)->first();
+
+        $datosCarbonatacion = $carbonatacion ? [
+            'puntos' => $carbonatacion->detalles->map(function ($detalle) {
+                return [
+                    'elemento' => $detalle->elemento,
+                    'recubrimiento' => $detalle->recubrimiento,
+                    'espesor_carbonatado' => $detalle->espesor_carbonatado,
+                ];
+            })->values()->all(),
+        ] : null;
+
+        $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
+
+        return view('planilla_tc.carbonatacion_pla', compact('obraTc', 'carbonatacion', 'datosCarbonatacion', 'puedeEditar'));
     }
 
     public function reporteEsclerometria(ObraTc $obraTc)
@@ -168,6 +213,37 @@ class PlanillaTcController extends Controller
         ]);
     }
 
+    public function reporteCarbonatacion(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $carbonatacion = CarbonatacionTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }])->where('obra_tc_id', $obraTc->id)->first();
+
+        $puntos = $carbonatacion
+            ? $carbonatacion->detalles->values()->map(function ($detalle, $i) {
+                $porcentaje = $detalle->porcentaje_afectado !== null ? round((float) $detalle->porcentaje_afectado, 1) : null;
+
+                return [
+                    'identificacion' => 'C'.($i + 1),
+                    'elemento' => $detalle->elemento ?: '-',
+                    'recubrimiento' => $detalle->recubrimiento !== null ? number_format((float) $detalle->recubrimiento, 2, ',', '.') : '-',
+                    'espesor_carbonatado' => $detalle->espesor_carbonatado !== null ? number_format((float) $detalle->espesor_carbonatado, 2, ',', '.') : '-',
+                    'porcentaje_afectado' => $porcentaje !== null ? number_format($porcentaje, 1, ',', '.').'%' : '-',
+                ];
+            })
+            : collect();
+
+        return response()->json([
+            'obra' => $obraTc->descripcion,
+            'fecha' => $carbonatacion?->fecha?->format('d/m/Y'),
+            'puntos' => $puntos,
+        ]);
+    }
+
     private function compactacionHormigon(?float $velocidad): string
     {
         if ($velocidad === null) {
@@ -209,6 +285,20 @@ class PlanillaTcController extends Controller
         );
 
         return response()->json(['ok' => true, 'id' => $ultrasonidoIndirecto->id]);
+    }
+
+    public function crearCarbonatacion(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $carbonatacion = CarbonatacionTc::firstOrCreate(
+            ['obra_tc_id' => $obraTc->id],
+            ['usuario_id' => session('usuario_id')]
+        );
+
+        return response()->json(['ok' => true, 'id' => $carbonatacion->id]);
     }
 
     public function guardarEsclerometria(Request $request, ObraTc $obraTc)
@@ -313,6 +403,47 @@ class PlanillaTcController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function guardarCarbonatacion(Request $request, ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $data = $request->validate([
+            'fecha' => 'required|date',
+            'puntos' => 'array',
+            'puntos.*.elemento' => 'nullable|string|max:255',
+            'puntos.*.recubrimiento' => 'nullable|numeric',
+            'puntos.*.espesor_carbonatado' => 'nullable|numeric',
+            'puntos.*.porcentaje_afectado' => 'nullable|numeric',
+        ]);
+
+        $usuarioId = session('usuario_id');
+
+        DB::transaction(function () use ($data, $obraTc, $usuarioId) {
+            $carbonatacion = CarbonatacionTc::updateOrCreate(
+                ['obra_tc_id' => $obraTc->id],
+                [
+                    'usuario_id' => $usuarioId,
+                    'fecha' => $data['fecha'],
+                ]
+            );
+
+            $carbonatacion->detalles()->delete();
+
+            foreach ($data['puntos'] ?? [] as $punto) {
+                $carbonatacion->detalles()->create([
+                    'elemento' => $punto['elemento'] ?? null,
+                    'recubrimiento' => $punto['recubrimiento'] ?? null,
+                    'espesor_carbonatado' => $punto['espesor_carbonatado'] ?? null,
+                    'porcentaje_afectado' => $punto['porcentaje_afectado'] ?? null,
+                ]);
+            }
+        });
+
+        return response()->json(['ok' => true]);
+    }
+
     public function eliminarEsclerometria(ObraTc $obraTc)
     {
         if (! $this->tieneAccesoAObra($obraTc)) {
@@ -331,6 +462,17 @@ class PlanillaTcController extends Controller
         }
 
         UltrasonidoIndirectoTc::where('obra_tc_id', $obraTc->id)->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function eliminarCarbonatacion(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        CarbonatacionTc::where('obra_tc_id', $obraTc->id)->delete();
 
         return response()->json(['ok' => true]);
     }

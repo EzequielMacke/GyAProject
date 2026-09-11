@@ -116,6 +116,8 @@
             cursor: pointer; transition: all 0.14s;
         }
         .puntos-nav-btn:hover { background: var(--accent-s); border-color: var(--accent); color: var(--accent-b); }
+        .puntos-nav-btn[draggable="true"] { cursor: grab; }
+        .puntos-nav-btn.dragging { opacity: 0.35; border-style: dashed; cursor: grabbing; }
         .punto-card.punto-resaltado { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.15); }
 
         /* ── PUNTOS DE ENSAYO ── */
@@ -373,7 +375,7 @@
     const listaPuntos = document.getElementById('puntos-list');
     const emptyPuntos = document.getElementById('empty-puntos');
     const puntosNav = document.getElementById('puntos-nav');
-    let contadorPuntos = 0;
+    let chipArrastrado = null;
 
     function irAPunto(card) {
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -381,17 +383,98 @@
         setTimeout(() => card.classList.remove('punto-resaltado'), 1200);
     }
 
+    /* ─── Reordenar puntos arrastrando los "cuadritos" ──────────
+       Cada chip de la navegación rápida representa un punto y se
+       puede arrastrar sobre otro para reordenarlo. Mientras se
+       arrastra, los chips se van corriendo en vivo (vista previa);
+       al soltar se aplica ese mismo orden a las tarjetas y se
+       renumeran todos los puntos de forma secuencial. */
     function actualizarPuntosNav() {
         const cards = Array.from(listaPuntos.querySelectorAll('.punto-card'));
         puntosNav.innerHTML = '';
-        cards.forEach((card, i) => {
+        cards.forEach((card) => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'puntos-nav-btn';
-            btn.textContent = `U${i + 1}`;
-            btn.addEventListener('click', () => irAPunto(card));
+            btn.textContent = `U${card.dataset.idx}`;
+            btn._card = card;
+
+            if (PUEDE_EDITAR && cards.length > 1) {
+                btn.draggable = true;
+                btn.addEventListener('dragstart', function (e) {
+                    chipArrastrado = btn;
+                    btn.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', '');
+                });
+                btn.addEventListener('dragend', function () {
+                    btn.classList.remove('dragging');
+                    chipArrastrado = null;
+                });
+                btn.addEventListener('dragover', function (e) {
+                    e.preventDefault();
+                    if (! chipArrastrado || chipArrastrado === btn) return;
+                    const chips = Array.from(puntosNav.children);
+                    if (chips.indexOf(chipArrastrado) < chips.indexOf(btn)) {
+                        btn.after(chipArrastrado);
+                    } else {
+                        btn.before(chipArrastrado);
+                    }
+                });
+                btn.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    aplicarOrdenDeNav();
+                });
+            }
+
+            btn.addEventListener('click', function () {
+                if (! chipArrastrado) irAPunto(card);
+            });
             puntosNav.appendChild(btn);
         });
+
+        if (PUEDE_EDITAR) {
+            puntosNav.ondragover = function (e) { e.preventDefault(); };
+            puntosNav.ondrop = function (e) {
+                e.preventDefault();
+                if (chipArrastrado) aplicarOrdenDeNav();
+            };
+        }
+    }
+
+    function aplicarOrdenDeNav() {
+        const nuevoOrden = Array.from(puntosNav.children).map(btn => btn._card);
+        nuevoOrden.forEach(function (card, i) {
+            card.dataset.idx = i + 1;
+            listaPuntos.appendChild(card);
+        });
+        renumerarPuntos();
+        programarGuardado();
+    }
+
+    /* ─── Numeración de puntos ────────────────────────────────
+       La identificación de cada punto (U1, U2...) se asigna una
+       sola vez al crearlo y no cambia si se eliminan otros puntos.
+       Al agregar uno nuevo, se le asigna el primer número libre
+       (llenando huecos) y se inserta en la posición que le
+       corresponde según ese número, no al final de la lista. */
+    function obtenerSiguienteIdx() {
+        const usados = Array.from(listaPuntos.querySelectorAll('.punto-card'))
+            .map(card => parseInt(card.dataset.idx, 10));
+        let idx = 1;
+        while (usados.includes(idx)) idx++;
+        return idx;
+    }
+
+    function insertarPuntoOrdenado(card) {
+        const idx = parseInt(card.dataset.idx, 10);
+        const siguiente = Array.from(listaPuntos.querySelectorAll('.punto-card'))
+            .find(c => parseInt(c.dataset.idx, 10) > idx);
+        if (siguiente) {
+            listaPuntos.insertBefore(card, siguiente);
+        } else {
+            listaPuntos.appendChild(card);
+        }
     }
 
     function crearVelocidadesHTML(idx) {
@@ -578,16 +661,16 @@
 
     function renumerarPuntos() {
         const cards = listaPuntos.querySelectorAll('.punto-card');
-        cards.forEach((card, i) => {
-            card.querySelector('.punto-identificacion').textContent = `U${i + 1}`;
+        cards.forEach((card) => {
+            card.querySelector('.punto-identificacion').textContent = `U${card.dataset.idx}`;
         });
         emptyPuntos.style.display = cards.length === 0 ? '' : 'none';
         actualizarPuntosNav();
     }
 
     function agregarPunto(datos) {
-        contadorPuntos++;
-        const card = crearPuntoHTML(contadorPuntos);
+        const idx = obtenerSiguienteIdx();
+        const card = crearPuntoHTML(idx);
         if (datos) {
             card.querySelector('.punto-elemento-input').value = datos.elemento || '';
             const velocidadInputs = card.querySelectorAll('.velocidad-input');
@@ -597,7 +680,7 @@
                 }
             });
         }
-        listaPuntos.appendChild(card);
+        insertarPuntoOrdenado(card);
         recalcularPunto(card);
         actualizarElementoIncompleto(card);
         renumerarPuntos();

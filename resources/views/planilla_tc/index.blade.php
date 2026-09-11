@@ -395,6 +395,12 @@
             fila: p => [p.elemento, p.identificacion, p.velocidad, p.compactacion],
             prefijoArchivo: 'reporte-ultrasonido-indirecto',
         },
+        carbonatacion: {
+            titulo: datos => `Reporte de Carbonatación — ${datos.obra || ''}`,
+            columnas: ['Elemento', 'Identificación', 'Recubrimiento (mm)', 'Espesor carbonatado (mm)', '% afectado'],
+            fila: p => [p.elemento, p.identificacion, p.recubrimiento, p.espesor_carbonatado, p.porcentaje_afectado],
+            prefijoArchivo: 'reporte-carbonatacion',
+        },
     };
 
     async function generarReporte(boton) {

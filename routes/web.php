@@ -509,20 +509,25 @@ Route::middleware('permiso:ens_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planillas', [PlanillaTcController::class, 'index'])->name('planilla_tc.index');
     Route::get('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'esclerometria'])->name('planilla_tc.esclerometria');
     Route::get('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto', [PlanillaTcController::class, 'ultrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto');
+    Route::get('/trabajo-campo/{obraTc}/planillas/carbonatacion', [PlanillaTcController::class, 'carbonatacion'])->name('planilla_tc.carbonatacion');
     Route::get('/trabajo-campo/{obraTc}/planillas/esclerometria/reporte', [PlanillaTcController::class, 'reporteEsclerometria'])->name('planilla_tc.esclerometria.reporte');
     Route::get('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto/reporte', [PlanillaTcController::class, 'reporteUltrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto.reporte');
+    Route::get('/trabajo-campo/{obraTc}/planillas/carbonatacion/reporte', [PlanillaTcController::class, 'reporteCarbonatacion'])->name('planilla_tc.carbonatacion.reporte');
 });
 Route::middleware('permiso:ens_tc,agregar')->group(function () {
     Route::post('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'crearEsclerometria'])->name('planilla_tc.esclerometria.crear');
     Route::post('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto', [PlanillaTcController::class, 'crearUltrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto.crear');
+    Route::post('/trabajo-campo/{obraTc}/planillas/carbonatacion', [PlanillaTcController::class, 'crearCarbonatacion'])->name('planilla_tc.carbonatacion.crear');
 });
 Route::middleware('permiso:ens_tc,editar')->group(function () {
     Route::patch('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'guardarEsclerometria'])->name('planilla_tc.esclerometria.guardar');
     Route::patch('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto', [PlanillaTcController::class, 'guardarUltrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto.guardar');
+    Route::patch('/trabajo-campo/{obraTc}/planillas/carbonatacion', [PlanillaTcController::class, 'guardarCarbonatacion'])->name('planilla_tc.carbonatacion.guardar');
 });
 Route::middleware('permiso:ens_tc,eliminar')->group(function () {
     Route::delete('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'eliminarEsclerometria'])->name('planilla_tc.esclerometria.eliminar');
     Route::delete('/trabajo-campo/{obraTc}/planillas/ultrasonido-indirecto', [PlanillaTcController::class, 'eliminarUltrasonidoIndirecto'])->name('planilla_tc.ultrasonido_indirecto.eliminar');
+    Route::delete('/trabajo-campo/{obraTc}/planillas/carbonatacion', [PlanillaTcController::class, 'eliminarCarbonatacion'])->name('planilla_tc.carbonatacion.eliminar');
 });
 Route::middleware(['permiso:pla_tc,ver', 'permiso:ano_pla,ver'])->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planos/{plano}', [PlanoController::class, 'show'])
