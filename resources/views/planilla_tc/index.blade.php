@@ -401,6 +401,12 @@
             fila: p => [p.nivel, p.elemento, p.identificacion, p.recubrimiento, p.espesor_carbonatado, p.porcentaje_afectado],
             prefijoArchivo: 'reporte-carbonatacion',
         },
+        medicion_fisura: {
+            titulo: datos => `Reporte de Medición de Fisuras — ${datos.obra || ''}`,
+            columnas: ['Nivel', 'Identificación', 'Espesor promedio (mm)', 'Profundidad promedio (mm)', 'Ancho del elemento', 'Sección afectada'],
+            fila: p => [p.nivel, p.identificacion, p.promedio_espesor, p.promedio_profundidad, p.ancho, p.porcentaje_afectado],
+            prefijoArchivo: 'reporte-medicion-fisura',
+        },
     };
 
     async function generarReporte(boton) {

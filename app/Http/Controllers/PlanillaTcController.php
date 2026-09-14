@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CarbonatacionTc;
 use App\Models\DirectorioTc;
 use App\Models\EsclerometriaTc;
+use App\Models\MedicionFisuraTc;
 use App\Models\NivelPlaTc;
 use App\Models\ObraTc;
 use App\Models\UltrasonidoIndirectoTc;
@@ -29,6 +30,10 @@ class PlanillaTcController extends Controller
             ->first();
 
         $carbonatacion = CarbonatacionTc::withCount('detalles')
+            ->where('obra_tc_id', $obraTc->id)
+            ->first();
+
+        $medicionFisura = MedicionFisuraTc::withCount('detalles')
             ->where('obra_tc_id', $obraTc->id)
             ->first();
 
@@ -75,6 +80,21 @@ class PlanillaTcController extends Controller
                 'resumen' => $carbonatacion
                     ? ($carbonatacion->fecha
                         ? $carbonatacion->detalles_count.' '.($carbonatacion->detalles_count === 1 ? 'punto ensayado' : 'puntos ensayados').' · '.$carbonatacion->fecha->format('d/m/Y')
+                        : 'Todavía sin datos cargados')
+                    : null,
+            ],
+            [
+                'codigo' => 'medicion_fisura',
+                'nombre' => 'Medición de Fisuras',
+                'icono' => 'fa-bolt',
+                'ruta' => route('planilla_tc.medicion_fisura', $obraTc->id),
+                'ruta_crear' => route('planilla_tc.medicion_fisura.crear', $obraTc->id),
+                'ruta_eliminar' => route('planilla_tc.medicion_fisura.eliminar', $obraTc->id),
+                'ruta_reporte' => route('planilla_tc.medicion_fisura.reporte', $obraTc->id),
+                'cargada' => (bool) $medicionFisura,
+                'resumen' => $medicionFisura
+                    ? ($medicionFisura->fecha
+                        ? $medicionFisura->detalles_count.' '.($medicionFisura->detalles_count === 1 ? 'fisura registrada' : 'fisuras registradas').' · '.$medicionFisura->fecha->format('d/m/Y')
                         : 'Todavía sin datos cargados')
                     : null,
             ],
@@ -172,6 +192,39 @@ class PlanillaTcController extends Controller
         return view('planilla_tc.carbonatacion_pla', compact('obraTc', 'carbonatacion', 'datosCarbonatacion', 'niveles', 'puedeEditar'));
     }
 
+    public function medicionFisura(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return redirect()->route('home')->with('error', 'No tenés acceso a esta obra.');
+        }
+
+        $medicionFisura = MedicionFisuraTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
+
+        $datosMedicionFisura = $medicionFisura ? [
+            'fecha' => optional($medicionFisura->fecha)->format('Y-m-d'),
+            'puntos' => $medicionFisura->detalles->map(function ($detalle) {
+                return [
+                    'elemento' => $detalle->elemento,
+                    'nivel' => $detalle->nivel?->descripcion,
+                    'ancho' => $detalle->ancho,
+                    'espesores' => $detalle->espesores,
+                    'profundidades' => $detalle->profundidades,
+                    'pasante' => $detalle->pasante,
+                ];
+            })->values()->all(),
+        ] : null;
+
+        $niveles = NivelPlaTc::where('obra_tc_id', $obraTc->id)
+            ->orderBy('descripcion')
+            ->pluck('descripcion');
+
+        $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
+
+        return view('planilla_tc.medicion_fisura_pla', compact('obraTc', 'medicionFisura', 'datosMedicionFisura', 'niveles', 'puedeEditar'));
+    }
+
     public function reporteEsclerometria(ObraTc $obraTc)
     {
         if (! $this->tieneAccesoAObra($obraTc)) {
@@ -263,6 +316,38 @@ class PlanillaTcController extends Controller
         ]);
     }
 
+    public function reporteMedicionFisura(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $medicionFisura = MedicionFisuraTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
+
+        $puntos = $medicionFisura
+            ? $medicionFisura->detalles->values()->map(function ($detalle, $i) {
+                return [
+                    'nivel' => $detalle->nivel?->descripcion ?: '-',
+                    'identificacion' => 'F'.($i + 1),
+                    'elemento' => $detalle->elemento ?: '-',
+                    'ancho' => $detalle->ancho !== null ? number_format((float) $detalle->ancho, 2, ',', '.') : '-',
+                    'promedio_espesor' => $detalle->promedio_espesor !== null ? number_format((float) $detalle->promedio_espesor, 2, ',', '.') : '-',
+                    'promedio_profundidad' => $detalle->promedio_profundidad !== null ? number_format((float) $detalle->promedio_profundidad, 2, ',', '.') : '-',
+                    'pasante' => $detalle->pasante ? 'Sí' : 'No',
+                    'porcentaje_afectado' => $detalle->porcentaje_afectado !== null ? number_format(round((float) $detalle->porcentaje_afectado), 0, '', '.').'%' : '-',
+                ];
+            })
+            : collect();
+
+        return response()->json([
+            'obra' => $obraTc->descripcion,
+            'fecha' => $medicionFisura?->fecha?->format('d/m/Y'),
+            'puntos' => $puntos,
+        ]);
+    }
+
     private function compactacionHormigon(?float $velocidad): string
     {
         if ($velocidad === null) {
@@ -318,6 +403,20 @@ class PlanillaTcController extends Controller
         );
 
         return response()->json(['ok' => true, 'id' => $carbonatacion->id]);
+    }
+
+    public function crearMedicionFisura(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $medicionFisura = MedicionFisuraTc::firstOrCreate(
+            ['obra_tc_id' => $obraTc->id],
+            ['usuario_id' => session('usuario_id')]
+        );
+
+        return response()->json(['ok' => true, 'id' => $medicionFisura->id]);
     }
 
     public function guardarEsclerometria(Request $request, ObraTc $obraTc)
@@ -469,6 +568,59 @@ class PlanillaTcController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function guardarMedicionFisura(Request $request, ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $data = $request->validate([
+            'fecha' => 'nullable|date',
+            'puntos' => 'array',
+            'puntos.*.elemento' => 'nullable|string|max:255',
+            'puntos.*.nivel' => 'nullable|string|max:255',
+            'puntos.*.ancho' => 'nullable|numeric',
+            'puntos.*.espesores' => 'array',
+            'puntos.*.espesores.*' => 'nullable|numeric',
+            'puntos.*.profundidades' => 'array',
+            'puntos.*.profundidades.*' => 'nullable|numeric',
+            'puntos.*.pasante' => 'nullable|boolean',
+            'puntos.*.promedio_espesor' => 'nullable|numeric',
+            'puntos.*.promedio_profundidad' => 'nullable|numeric',
+            'puntos.*.porcentaje_afectado' => 'nullable|numeric',
+        ]);
+
+        $usuarioId = session('usuario_id');
+
+        DB::transaction(function () use ($data, $obraTc, $usuarioId) {
+            $medicionFisura = MedicionFisuraTc::updateOrCreate(
+                ['obra_tc_id' => $obraTc->id],
+                [
+                    'usuario_id' => $usuarioId,
+                    'fecha' => $data['fecha'] ?? null,
+                ]
+            );
+
+            $medicionFisura->detalles()->delete();
+
+            foreach ($data['puntos'] ?? [] as $punto) {
+                $medicionFisura->detalles()->create([
+                    'elemento' => $punto['elemento'] ?? null,
+                    'nivel_pla_tc_id' => $this->resolverNivelId($obraTc, $punto['nivel'] ?? null),
+                    'ancho' => $punto['ancho'] ?? null,
+                    'espesores' => $punto['espesores'] ?? [],
+                    'profundidades' => $punto['profundidades'] ?? [],
+                    'pasante' => $punto['pasante'] ?? false,
+                    'promedio_espesor' => $punto['promedio_espesor'] ?? null,
+                    'promedio_profundidad' => $punto['promedio_profundidad'] ?? null,
+                    'porcentaje_afectado' => $punto['porcentaje_afectado'] ?? null,
+                ]);
+            }
+        });
+
+        return response()->json(['ok' => true]);
+    }
+
     public function eliminarEsclerometria(ObraTc $obraTc)
     {
         if (! $this->tieneAccesoAObra($obraTc)) {
@@ -498,6 +650,17 @@ class PlanillaTcController extends Controller
         }
 
         CarbonatacionTc::where('obra_tc_id', $obraTc->id)->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function eliminarMedicionFisura(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        MedicionFisuraTc::where('obra_tc_id', $obraTc->id)->delete();
 
         return response()->json(['ok' => true]);
     }

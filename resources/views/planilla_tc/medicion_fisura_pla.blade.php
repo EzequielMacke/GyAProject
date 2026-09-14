@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planilla de Esclerometría</title>
+    <title>Planilla de Medición de Fisuras</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
@@ -56,12 +56,21 @@
             transition: all 0.14s; white-space: nowrap;
         }
         .btn:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
-        .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-        .btn-primary:hover { background: var(--accent-b); border-color: var(--accent-b); color: #fff; }
 
         /* ── ALERTS ── */
         .alert { padding: 0.75rem 1rem; border-radius: 0.55rem; font-size: 0.83rem; font-weight: 500; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
         .alert-info { background: var(--accent-s); color: var(--accent-b); border: 1px solid #b9d3f5; }
+
+        /* ── ESTADO DE GUARDADO ── */
+        .estado-guardado {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            font-size: 0.78rem; font-weight: 600; color: var(--muted);
+        }
+        .estado-guardado i { font-size: 0.72rem; }
+        .estado-guardado.pendiente { color: var(--muted); }
+        .estado-guardado.guardando { color: var(--accent-b); }
+        .estado-guardado.guardado { color: var(--green); }
+        .estado-guardado.error { color: #c0392b; }
 
         /* ── PANEL GENERAL ── */
         .panel {
@@ -94,19 +103,16 @@
 
         /* ── CAMPOS INCOMPLETOS ── */
         .form-control.incompleto,
-        .impacto-input.incompleto {
+        .medida-input.incompleto {
             border-color: #e08e0b; background: #fff8ec;
         }
         .form-control.incompleto:focus,
-        .impacto-input.incompleto:focus {
+        .medida-input.incompleto:focus {
             border-color: #e08e0b; box-shadow: 0 0 0 3px rgba(224,142,11,0.15);
         }
 
-        /* ── NAVEGACIÓN RÁPIDA DE PUNTOS ── */
-        .puntos-nav {
-            display: flex; flex-wrap: wrap; gap: 0.5rem;
-            margin-bottom: 1.25rem;
-        }
+        /* ── NAVEGACIÓN RÁPIDA DE FISURAS ── */
+        .puntos-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
         .puntos-nav-btn {
             min-width: 42px; height: 34px; padding: 0 0.6rem;
             border-radius: 0.5rem; border: 1.5px solid var(--border);
@@ -121,7 +127,7 @@
         .puntos-nav-btn.drag-over { border-color: var(--accent); background: var(--accent-s); color: var(--accent-b); }
         .punto-card.punto-resaltado { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.15); }
 
-        /* ── PUNTOS DE ENSAYO ── */
+        /* ── FISURAS ── */
         #puntos-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem; }
 
         .punto-card {
@@ -130,15 +136,6 @@
             animation: cardIn 0.18s ease both;
         }
         @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-        .punto-card.alerta { border-color: #e74c3c; }
-
-        .punto-alerta-mensaje {
-            display: flex; align-items: center; gap: 0.5rem;
-            padding: 0.75rem 1.1rem;
-            background: #fff0f0; color: #c0392b;
-            font-size: 0.78rem; font-weight: 600;
-            border-bottom: 1px solid #f5c2c2;
-        }
 
         .punto-head {
             display: flex; align-items: center; gap: 0.7rem;
@@ -199,7 +196,7 @@
 
         .punto-datos-grid {
             display: grid;
-            grid-template-columns: 1.6fr 1fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
             margin-bottom: 1.1rem;
         }
@@ -221,45 +218,53 @@
         .autocomplete-opcion.resaltada { background: var(--accent-s); color: var(--accent-b); }
         .autocomplete-opcion-nueva { color: var(--muted); font-size: 0.76rem; padding: 0.45rem 0.85rem 0.6rem; border-top: 1px solid var(--border); }
 
-        .impactos-label {
+        /* ── MEDIDAS (espesor / profundidad) ── */
+        .medidas-bloque { margin-bottom: 1.1rem; }
+        .medidas-label {
             font-size: 0.72rem; font-weight: 700; color: var(--text2);
             text-transform: uppercase; letter-spacing: 0.04em;
             margin-bottom: 0.5rem; display: block;
         }
-        .impactos-grid {
+        .medidas-grid {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0.5rem;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
         }
-        .impacto-item { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
-        .impacto-num { font-size: 0.66rem; font-weight: 700; color: var(--muted); }
-        .impacto-input {
+        .medida-item { display: flex; flex-direction: column; gap: 0.3rem; }
+        .medida-num { font-size: 0.66rem; font-weight: 700; color: var(--muted); }
+        .medida-input {
             width: 100%; text-align: center;
             font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem;
             background: #fff; border: 1.5px solid var(--border);
-            border-radius: 0.5rem; padding: 0.45rem 0.25rem; color: var(--text);
+            border-radius: 0.5rem; padding: 0.5rem 0.4rem; color: var(--text);
             outline: none; transition: border-color 0.15s, box-shadow 0.15s;
             -moz-appearance: textfield;
         }
-        .impacto-input::-webkit-outer-spin-button,
-        .impacto-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .impacto-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
-        .impacto-input.impacto-descartado {
-            border-color: #e74c3c; background: #fff0f0; color: #c0392b; text-decoration: line-through;
+        .medida-input::-webkit-outer-spin-button,
+        .medida-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .medida-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
+
+        /* ── FISURA PASANTE ── */
+        .pasante-row {
+            display: flex; align-items: center; gap: 0.55rem;
+            padding: 0.7rem 0.9rem;
+            background: var(--surface2); border: 1.5px solid var(--border); border-radius: 0.6rem;
+            margin-bottom: 1.1rem;
         }
+        .pasante-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
+        .pasante-row label { font-size: 0.82rem; font-weight: 600; color: var(--text2); cursor: pointer; }
+        .pasante-row .pasante-hint { font-size: 0.72rem; color: var(--muted); margin-left: auto; }
 
         /* ── RESULTADOS DEL PUNTO ── */
         .punto-resultados {
             display: flex; flex-wrap: wrap; gap: 1.5rem;
-            margin-top: 1.1rem; padding-top: 1.1rem;
+            padding-top: 1.1rem;
             border-top: 1px solid var(--border);
         }
         .resultado-item { display: flex; flex-direction: column; gap: 0.2rem; }
         .resultado-label { font-size: 0.66rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
         .resultado-valor { font-size: 1rem; font-weight: 700; color: var(--text); }
-        .resultado-final .resultado-valor { color: var(--green); }
-        .resultado-n-corregido .resultado-valor { color: var(--accent-b); }
-        .resultado-n-final .resultado-valor { color: var(--green); font-size: 1.1rem; }
+        .resultado-final .resultado-valor { color: var(--green); font-size: 1.1rem; }
 
         .btn-agregar-punto {
             width: 100%;
@@ -300,29 +305,17 @@
             margin-bottom: 1rem;
         }
 
-        /* ── ESTADO DE GUARDADO ── */
-        .estado-guardado {
-            display: inline-flex; align-items: center; gap: 0.4rem;
-            font-size: 0.78rem; font-weight: 600; color: var(--muted);
-        }
-        .estado-guardado i { font-size: 0.72rem; }
-        .estado-guardado.pendiente { color: var(--muted); }
-        .estado-guardado.guardando { color: var(--accent-b); }
-        .estado-guardado.guardado { color: var(--green); }
-        .estado-guardado.error { color: #c0392b; }
-
         /* ── MOBILE ── */
         @media (max-width: 900px) {
             .form-grid { grid-template-columns: repeat(2, 1fr); }
             .punto-datos-grid { grid-template-columns: 1fr; }
-            .impactos-grid { grid-template-columns: repeat(4, 1fr); }
         }
         @media (max-width: 640px) {
             .ph { padding: 1rem 0 0.75rem; gap: 0.75rem; margin-bottom: 1rem; }
             .ph-title { font-size: 1.3rem; }
             .ph-right { width: 100%; }
             .form-grid { grid-template-columns: 1fr; }
-            .impactos-grid { grid-template-columns: repeat(3, 1fr); }
+            .medidas-grid { grid-template-columns: repeat(3, 1fr); }
         }
     </style>
 </head>
@@ -344,9 +337,9 @@
                             <i class="fas fa-chevron-right"></i>
                             <a href="{{ route('obras_tc.index', $obraTc->id) }}">{{ $obraTc->descripcion ?? '-' }}</a>
                             <i class="fas fa-chevron-right"></i>
-                            Esclerometría
+                            Medición de Fisuras
                         </div>
-                        <h1 class="ph-title"><em>Planilla de Esclerometría</em></h1>
+                        <h1 class="ph-title"><em>Planilla de Medición de Fisuras</em></h1>
                         <p class="ph-sub">{{ $obraTc->descripcion ?? '-' }}</p>
                     </div>
                     <div class="ph-right">
@@ -375,7 +368,7 @@
                     @endif
                 </div>
 
-                <form id="form-esclerometria">
+                <form id="form-medicion-fisura">
 
                     {{-- ═══ DATOS GENERALES ═══ --}}
                     <div class="panel">
@@ -387,29 +380,21 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="input-fecha">Fecha</label>
-                                <input type="date" id="input-fecha" name="fecha" class="form-control" value="{{ $esclerometria?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d') }}" @if(! $puedeEditar) readonly @endif>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="input-lectura-inicial">Lectura inicial yunque</label>
-                                <input type="number" step="any" id="input-lectura-inicial" name="lectura_inicial_yunque" class="form-control" placeholder="0" value="{{ $esclerometria?->lectura_inicial_yunque ?? 80 }}" @if(! $puedeEditar) readonly @endif>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="input-lectura-final">Lectura final yunque</label>
-                                <input type="number" step="any" id="input-lectura-final" name="lectura_final_yunque" class="form-control" placeholder="0" value="{{ $esclerometria?->lectura_final_yunque ?? 80 }}" @if(! $puedeEditar) readonly @endif>
+                                <input type="date" id="input-fecha" name="fecha" class="form-control" value="{{ $datosMedicionFisura['fecha'] ?? now()->format('Y-m-d') }}" @if(! $puedeEditar) readonly @endif>
                             </div>
                         </div>
                     </div>
 
                     <div class="puntos-nav" id="puntos-nav"></div>
 
-                    {{-- ═══ PUNTOS ENSAYADOS ═══ --}}
+                    {{-- ═══ FISURAS REGISTRADAS ═══ --}}
                     <div class="panel">
-                        <div class="panel-title"><i class="fas fa-bullseye"></i> Puntos ensayados</div>
+                        <div class="panel-title"><i class="fas fa-bolt"></i> Fisuras registradas</div>
 
                         <div id="puntos-list"></div>
 
                         <div class="empty-puntos" id="empty-puntos" style="display:none">
-                            Todavía no agregaste ningún punto de ensayo.
+                            Todavía no agregaste ninguna fisura.
                         </div>
 
                         <button type="button" class="btn-volver-inicio" id="btn-volver-inicio">
@@ -418,7 +403,7 @@
 
                         @if($puedeEditar)
                         <button type="button" class="btn-agregar-punto" id="btn-agregar-punto">
-                            <i class="fas fa-plus"></i> Agregar punto de ensayo
+                            <i class="fas fa-plus"></i> Agregar fisura
                         </button>
                         @endif
                     </div>
@@ -433,17 +418,17 @@
 </div>
 
 {{-- ══════════════════════════════════════════════════════
-     MODAL ELIMINAR PUNTO
+     MODAL ELIMINAR FISURA
 ══════════════════════════════════════════════════════ --}}
 @if($puedeEditar)
 <div class="modal-overlay" id="modal-eliminar-punto">
     <div class="modal-caja">
         <div class="modal-head">
-            <div class="modal-head-title danger"><i class="fas fa-triangle-exclamation"></i> Eliminar punto</div>
+            <div class="modal-head-title danger"><i class="fas fa-triangle-exclamation"></i> Eliminar fisura</div>
             <button class="modal-close" onclick="cerrarModalEliminarPunto()" title="Cerrar"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <p>¿Seguro que querés eliminar el punto <strong id="eliminar-punto-nombre"></strong>? Esta acción no se puede deshacer.</p>
+            <p>¿Seguro que querés eliminar la fisura <strong id="eliminar-punto-nombre"></strong>? Esta acción no se puede deshacer.</p>
         </div>
         <div class="modal-foot">
             <button type="button" class="btn-cancel" onclick="cerrarModalEliminarPunto()">Cancelar</button>
@@ -457,24 +442,13 @@
 
 <script>
     const PUEDE_EDITAR = @json($puedeEditar);
-    const CANTIDAD_IMPACTOS = 14;
     const listaPuntos = document.getElementById('puntos-list');
     const emptyPuntos = document.getElementById('empty-puntos');
     const puntosNav = document.getElementById('puntos-nav');
     let chipArrastrado = null;
     let nivelesDisponibles = @json($niveles ?? []);
 
-    /* ─── Autocompletado de nivel ────────────────────────────────
-       El nivel se guarda en una tabla compartida por obra, así que
-       una vez cargado un nivel queda disponible para elegirlo en
-       cualquier otro punto (de esta planilla y, a futuro, de las
-       demás). El campo permite escribir libremente: si no coincide
-       con ninguno existente, se crea uno nuevo al guardar.
-
-       El desplegable es UN SOLO elemento flotante (fuera de las
-       tarjetas de punto, que tienen overflow:hidden por sus bordes
-       redondeados) y se reposiciona con JS sobre el input activo,
-       para que no quede recortado ni tapado por el siguiente punto. */
+    /* ─── Autocompletado de nivel ─── (igual que en las demás planillas) */
     const dropdownNivel = document.createElement('div');
     dropdownNivel.className = 'autocomplete-dropdown';
     document.body.appendChild(dropdownNivel);
@@ -514,7 +488,7 @@
                     e.preventDefault();
                     input.value = nivel;
                     dropdownNivel.classList.remove('active');
-                    actualizarNivelIncompleto(card);
+                    actualizarIncompletos(card);
                     programarGuardado();
                 });
                 dropdownNivel.appendChild(opcion);
@@ -535,14 +509,9 @@
             }
         }
 
-        // El guardado del nivel no se dispara con cada letra (eso crearía
-        // niveles a medio escribir, como "Plant" antes de "Planta Baja").
-        // Se guarda recién al confirmar: Enter, elegir una opción del
-        // desplegable, o al salir del campo (blur/change, que también
-        // cubre el cierre del teclado en celulares).
         input.addEventListener('input', function () {
             mostrarOpciones();
-            actualizarNivelIncompleto(card);
+            actualizarIncompletos(card);
         });
         input.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
@@ -564,7 +533,7 @@
             }
         });
         input.addEventListener('change', function () {
-            actualizarNivelIncompleto(card);
+            actualizarIncompletos(card);
             programarGuardado();
         });
     }
@@ -575,13 +544,13 @@
         setTimeout(() => card.classList.remove('punto-resaltado'), 1200);
     }
 
-    /* ─── Eliminar punto (con confirmación) ─────────────────────── */
+    /* ─── Eliminar fisura (con confirmación) ─── */
     const modalEliminarPunto = document.getElementById('modal-eliminar-punto');
     let cardAEliminar = null;
 
     function abrirModalEliminarPunto(card) {
         cardAEliminar = card;
-        document.getElementById('eliminar-punto-nombre').textContent = `E${card.dataset.idx}`;
+        document.getElementById('eliminar-punto-nombre').textContent = `F${card.dataset.idx}`;
         modalEliminarPunto?.classList.add('active');
     }
 
@@ -602,12 +571,7 @@
         cerrarModalEliminarPunto();
     }
 
-    /* ─── Intercambiar puntos arrastrando los "cuadritos" ───────
-       Cada chip de la navegación rápida representa un punto y se
-       puede arrastrar sobre otro para intercambiar sus lugares:
-       si soltás E3 sobre E1, esos dos cambian de identificación
-       entre sí (E3 pasa a ser E1 y viceversa) y el resto de los
-       puntos queda exactamente igual, sin renumerarse. */
+    /* ─── Intercambiar fisuras arrastrando los chips ─── */
     function actualizarPuntosNav() {
         const cards = Array.from(listaPuntos.querySelectorAll('.punto-card'));
         puntosNav.innerHTML = '';
@@ -615,7 +579,7 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'puntos-nav-btn';
-            btn.textContent = `E${card.dataset.idx}`;
+            btn.textContent = `F${card.dataset.idx}`;
             btn._card = card;
 
             if (PUEDE_EDITAR && cards.length > 1) {
@@ -671,12 +635,7 @@
         programarGuardado();
     }
 
-    /* ─── Numeración de puntos ────────────────────────────────
-       La identificación de cada punto (E1, E2...) se asigna una
-       sola vez al crearlo y no cambia si se eliminan otros puntos.
-       Al agregar uno nuevo, se le asigna el primer número libre
-       (llenando huecos) y se inserta en la posición que le
-       corresponde según ese número, no al final de la lista. */
+    /* ─── Numeración de fisuras ─── */
     function obtenerSiguienteIdx() {
         const usados = Array.from(listaPuntos.querySelectorAll('.punto-card'))
             .map(card => parseInt(card.dataset.idx, 10));
@@ -696,14 +655,14 @@
         }
     }
 
-    function crearImpactosHTML(idx) {
+    function crearMedidasHTML(idx, grupo, cantidad) {
         let html = '';
         const soloLectura = PUEDE_EDITAR ? '' : 'readonly';
-        for (let i = 1; i <= CANTIDAD_IMPACTOS; i++) {
+        for (let i = 1; i <= cantidad; i++) {
             html += `
-                <div class="impacto-item">
-                    <span class="impacto-num">${i}</span>
-                    <input type="number" step="any" class="impacto-input" name="puntos[${idx}][impactos][]" inputmode="decimal" ${soloLectura}>
+                <div class="medida-item">
+                    <span class="medida-num">${i}</span>
+                    <input type="number" step="any" class="medida-input ${grupo}-input" name="puntos[${idx}][${grupo}][]" inputmode="decimal" ${soloLectura}>
                 </div>
             `;
         }
@@ -717,20 +676,16 @@
         const soloLectura = PUEDE_EDITAR ? '' : 'readonly';
         const deshabilitado = PUEDE_EDITAR ? '' : 'disabled';
         const botonEliminar = PUEDE_EDITAR
-            ? `<button type="button" class="punto-delete-btn" title="Eliminar punto"><i class="fas fa-trash"></i></button>`
+            ? `<button type="button" class="punto-delete-btn" title="Eliminar fisura"><i class="fas fa-trash"></i></button>`
             : '';
         card.innerHTML = `
             <div class="punto-head">
-                <div class="punto-badge punto-identificacion">E?</div>
+                <div class="punto-badge punto-identificacion">F?</div>
                 <div>
-                    <div class="punto-head-title">Punto de ensayo</div>
+                    <div class="punto-head-title">Fisura</div>
                     <div class="punto-head-sub">Identificación automática</div>
                 </div>
                 ${botonEliminar}
-            </div>
-            <div class="punto-alerta-mensaje" style="display:none">
-                <i class="fas fa-triangle-exclamation"></i>
-                <span class="punto-alerta-texto">Repetir ensayo</span>
             </div>
             <div class="punto-body">
                 <div class="punto-datos-grid">
@@ -743,46 +698,43 @@
                         <input type="text" class="form-control punto-nivel-input" name="puntos[${idx}][nivel]" placeholder="Ej: PB, 1° piso..." autocomplete="off" ${soloLectura}>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Dirección de ensayo</label>
-                        <select class="form-control punto-direccion-select" name="puntos[${idx}][direccion]" ${deshabilitado}>
-                            <option value="0">0°</option>
-                            <option value="45">45°</option>
-                            <option value="-45">-45°</option>
-                            <option value="90">90°</option>
-                            <option value="-90">-90°</option>
-                        </select>
+                        <label class="form-label">Ancho del elemento</label>
+                        <input type="number" step="any" class="form-control punto-ancho-input" name="puntos[${idx}][ancho]" placeholder="0" ${soloLectura}>
                     </div>
                 </div>
-                <div>
-                    <span class="impactos-label">14 impactos</span>
-                    <div class="impactos-grid">
-                        ${crearImpactosHTML(idx)}
+
+                <div class="medidas-bloque">
+                    <span class="medidas-label">Espesor (3 medidas)</span>
+                    <div class="medidas-grid">
+                        ${crearMedidasHTML(idx, 'espesor', 3)}
                     </div>
                 </div>
+
+                <div class="medidas-bloque">
+                    <span class="medidas-label">Profundidad (3 medidas)</span>
+                    <div class="medidas-grid">
+                        ${crearMedidasHTML(idx, 'profundidad', 3)}
+                    </div>
+                </div>
+
+                <div class="pasante-row">
+                    <input type="checkbox" class="punto-pasante-input" id="pasante-${idx}" name="puntos[${idx}][pasante]" ${deshabilitado}>
+                    <label for="pasante-${idx}">Fisura pasante</label>
+                    <span class="pasante-hint">Cambia la fórmula del % de sección afectada</span>
+                </div>
+
                 <div class="punto-resultados">
                     <div class="resultado-item">
-                        <span class="resultado-label">Promedio inicial</span>
-                        <span class="resultado-valor resultado-promedio-inicial">—</span>
+                        <span class="resultado-label">Promedio espesor</span>
+                        <span class="resultado-valor resultado-promedio-espesor">—</span>
                     </div>
                     <div class="resultado-item">
-                        <span class="resultado-label">Válidos</span>
-                        <span class="resultado-valor resultado-validos">—</span>
+                        <span class="resultado-label">Promedio profundidad</span>
+                        <span class="resultado-valor resultado-promedio-profundidad">—</span>
                     </div>
                     <div class="resultado-item resultado-final">
-                        <span class="resultado-label">Promedio final</span>
-                        <span class="resultado-valor resultado-promedio-final">—</span>
-                    </div>
-                    <div class="resultado-item resultado-n-corregido">
-                        <span class="resultado-label">N corregido</span>
-                        <span class="resultado-valor resultado-n-corregido-valor">—</span>
-                    </div>
-                    <div class="resultado-item">
-                        <span class="resultado-label">Corrección ángulo</span>
-                        <span class="resultado-valor resultado-correccion-angulo">—</span>
-                    </div>
-                    <div class="resultado-item resultado-n-final">
-                        <span class="resultado-label">N final</span>
-                        <span class="resultado-valor resultado-n-final-valor">—</span>
+                        <span class="resultado-label">% sección afectada</span>
+                        <span class="resultado-valor resultado-porcentaje-afectada">—</span>
                     </div>
                 </div>
             </div>
@@ -792,20 +744,21 @@
             abrirModalEliminarPunto(card);
         });
 
-        card.querySelectorAll('.impacto-input').forEach(function (input) {
+        card.querySelectorAll('.espesor-input, .profundidad-input, .punto-ancho-input').forEach(function (input) {
             input.addEventListener('input', function () {
+                actualizarIncompletos(card);
                 recalcularPunto(card);
                 programarGuardado();
             });
         });
 
-        card.querySelector('.punto-direccion-select').addEventListener('change', function () {
+        card.querySelector('.punto-pasante-input').addEventListener('change', function () {
             recalcularPunto(card);
             programarGuardado();
         });
 
         card.querySelector('.punto-elemento-input').addEventListener('input', function () {
-            actualizarElementoIncompleto(card);
+            actualizarIncompletos(card);
             programarGuardado();
         });
 
@@ -814,221 +767,68 @@
         return card;
     }
 
-    function actualizarElementoIncompleto(card) {
-        const input = card.querySelector('.punto-elemento-input');
-        input.classList.toggle('incompleto', input.value.trim() === '');
+    /* ─── Campos incompletos ───────────────────────────────────
+       Se marcan en naranja los campos vacíos: elemento, nivel,
+       ancho del elemento y cada medida de espesor/profundidad. */
+    function actualizarIncompletos(card) {
+        card.querySelectorAll(
+            '.punto-elemento-input, .punto-nivel-input, .punto-ancho-input, .espesor-input, .profundidad-input'
+        ).forEach(function (input) {
+            input.classList.toggle('incompleto', input.value.trim() === '');
+        });
     }
 
-    function actualizarNivelIncompleto(card) {
-        const input = card.querySelector('.punto-nivel-input');
-        input.classList.toggle('incompleto', input.value.trim() === '');
-    }
-
-    /* ─── Tabla de corrección por ángulo de ensayo ──────────────
-       Clave = índice esclerométrico (N corregido, redondeado al
-       entero más cercano), valor = corrección a sumar según el
-       ángulo. A 0° no se aplica ninguna corrección. */
-    const CORRECCION_ANGULO = {
-        10: { '90': 0, '45': 0, '-45': 2.4, '-90': 3.2 },
-        11: { '90': 0, '45': 0, '-45': 2.41, '-90': 3.22 },
-        12: { '90': 0, '45': 0, '-45': 2.42, '-90': 3.24 },
-        13: { '90': 0, '45': 0, '-45': 2.43, '-90': 3.26 },
-        14: { '90': 0, '45': 0, '-45': 2.44, '-90': 3.28 },
-        15: { '90': 0, '45': 0, '-45': 2.45, '-90': 3.3 },
-        16: { '90': 0, '45': 0, '-45': 2.46, '-90': 3.32 },
-        17: { '90': 0, '45': 0, '-45': 2.47, '-90': 3.34 },
-        18: { '90': 0, '45': 0, '-45': 2.48, '-90': 3.36 },
-        19: { '90': 0, '45': 0, '-45': 2.49, '-90': 3.38 },
-        20: { '90': -5.4, '45': -3.5, '-45': 2.5, '-90': 3.4 },
-        21: { '90': -5.33, '45': -3.46, '-45': 2.48, '-90': 3.37 },
-        22: { '90': -5.26, '45': -3.42, '-45': 2.46, '-90': 3.34 },
-        23: { '90': -5.19, '45': -3.38, '-45': 2.44, '-90': 3.31 },
-        24: { '90': -5.12, '45': -3.34, '-45': 2.42, '-90': 3.28 },
-        25: { '90': -5.05, '45': -3.3, '-45': 2.4, '-90': 3.25 },
-        26: { '90': -4.98, '45': -3.26, '-45': 2.38, '-90': 3.22 },
-        27: { '90': -4.91, '45': -3.22, '-45': 2.36, '-90': 3.19 },
-        28: { '90': -4.84, '45': -3.18, '-45': 2.34, '-90': 3.16 },
-        29: { '90': -4.77, '45': -3.14, '-45': 2.32, '-90': 3.13 },
-        30: { '90': -4.7, '45': -3.1, '-45': 2.3, '-90': 3.1 },
-        31: { '90': -4.62, '45': -3.05, '-45': 2.3, '-90': 3.06 },
-        32: { '90': -4.54, '45': -3, '-45': 2.3, '-90': 3.02 },
-        33: { '90': -4.46, '45': -2.95, '-45': 2.3, '-90': 2.98 },
-        34: { '90': -4.38, '45': -2.9, '-45': 2.3, '-90': 2.94 },
-        35: { '90': -4.3, '45': -2.85, '-45': 2.3, '-90': 2.9 },
-        36: { '90': -4.22, '45': -2.8, '-45': 2.3, '-90': 2.86 },
-        37: { '90': -4.14, '45': -2.75, '-45': 2.3, '-90': 2.82 },
-        38: { '90': -4.06, '45': -2.7, '-45': 2.3, '-90': 2.78 },
-        39: { '90': -3.98, '45': -2.65, '-45': 2.3, '-90': 2.74 },
-        40: { '90': -3.9, '45': -2.6, '-45': 2.3, '-90': 2.7 },
-        41: { '90': -3.82, '45': -2.55, '-45': 2.23, '-90': 2.65 },
-        42: { '90': -3.74, '45': -2.5, '-45': 2.16, '-90': 2.6 },
-        43: { '90': -3.66, '45': -2.45, '-45': 2.09, '-90': 2.55 },
-        44: { '90': -3.58, '45': -2.4, '-45': 2.02, '-90': 2.5 },
-        45: { '90': -3.5, '45': -2.35, '-45': 1.95, '-90': 2.45 },
-        46: { '90': -3.42, '45': -2.3, '-45': 1.88, '-90': 2.4 },
-        47: { '90': -3.34, '45': -2.25, '-45': 1.81, '-90': 2.35 },
-        48: { '90': -3.26, '45': -2.2, '-45': 1.74, '-90': 2.3 },
-        49: { '90': -3.18, '45': -2.15, '-45': 1.67, '-90': 2.25 },
-        50: { '90': -3.1, '45': -2.1, '-45': 1.6, '-90': 2.2 },
-        51: { '90': -3.02, '45': -2.05, '-45': 1.57, '-90': 2.15 },
-        52: { '90': -2.94, '45': -2, '-45': 1.54, '-90': 2.1 },
-        53: { '90': -2.86, '45': -1.95, '-45': 1.51, '-90': 2.05 },
-        54: { '90': -2.78, '45': -1.9, '-45': 1.48, '-90': 2 },
-        55: { '90': -2.7, '45': -1.85, '-45': 1.45, '-90': 1.95 },
-        56: { '90': -2.62, '45': -1.8, '-45': 1.42, '-90': 1.9 },
-        57: { '90': -2.54, '45': -1.75, '-45': 1.39, '-90': 1.85 },
-        58: { '90': -2.46, '45': -1.7, '-45': 1.36, '-90': 1.8 },
-        59: { '90': -2.38, '45': -1.65, '-45': 1.33, '-90': 1.75 },
-        60: { '90': -2.3, '45': -1.6, '-45': 1.3, '-90': 1.7 },
-    };
-
-    /* ─── Cálculo del promedio esclerométrico ──────────────────
-       1) Promedio de los 14 impactos cargados.
-       2) Se descartan los que quedan fuera de ±6 de ese promedio.
-       3) Se promedian los restantes y se vuelve a descartar ±6
-          de ese nuevo promedio (sobre lo que quedó del paso 2).
-       4) El promedio de lo que sobrevive a ambas rondas es el final.
-       5) N corregido = (sumatoria final × yunque inicial) /
-                        (cantidad de válidos × yunque final). */
+    /* ─── Cálculo de la fisura ────────────────────────────────
+       1) Promedio de espesor: media de las 3 medidas cargadas.
+       2) Promedio de profundidad: media de las 3 medidas cargadas.
+       3) % sección afectada (siempre contra el ancho del elemento):
+          - Si NO es pasante: promedio profundidad / ancho del elemento.
+          - Si es pasante: (promedio profundidad × 2) / ancho del elemento. */
     function promediar(valores) {
         return valores.reduce((s, v) => s + v, 0) / valores.length;
     }
 
-    function obtenerYunques() {
-        const inicial = parseFloat(document.getElementById('input-lectura-inicial').value);
-        const final = parseFloat(document.getElementById('input-lectura-final').value);
-        return {
-            inicial: isNaN(inicial) ? null : inicial,
-            final: isNaN(final) ? null : final,
-        };
+    function leerValores(card, selector) {
+        return Array.from(card.querySelectorAll(selector))
+            .map(input => parseFloat(input.value))
+            .filter(v => !isNaN(v));
     }
 
     function recalcularPunto(card) {
-        const inputs = Array.from(card.querySelectorAll('.impacto-input'));
-        inputs.forEach(inp => {
-            inp.classList.remove('impacto-descartado');
-            inp.classList.toggle('incompleto', inp.value.trim() === '');
-        });
+        const espesores = leerValores(card, '.espesor-input');
+        const profundidades = leerValores(card, '.profundidad-input');
+        const ancho = parseFloat(card.querySelector('.punto-ancho-input').value);
+        const pasante = card.querySelector('.punto-pasante-input').checked;
 
-        const cargados = inputs
-            .map(input => ({ input, valor: parseFloat(input.value) }))
-            .filter(d => d.input.value.trim() !== '' && !isNaN(d.valor));
+        const elEspesor = card.querySelector('.resultado-promedio-espesor');
+        const elProfundidad = card.querySelector('.resultado-promedio-profundidad');
+        const elPorcentaje = card.querySelector('.resultado-porcentaje-afectada');
 
-        const elInicial = card.querySelector('.resultado-promedio-inicial');
-        const elValidos = card.querySelector('.resultado-validos');
-        const elFinal = card.querySelector('.resultado-promedio-final');
-        const elNCorregido = card.querySelector('.resultado-n-corregido-valor');
-        const elCorreccion = card.querySelector('.resultado-correccion-angulo');
-        const elNFinal = card.querySelector('.resultado-n-final-valor');
-        const elAlertaBox = card.querySelector('.punto-alerta-mensaje');
-        const elAlertaTexto = card.querySelector('.punto-alerta-texto');
+        const promedioEspesor = espesores.length > 0 ? promediar(espesores) : null;
+        const promedioProfundidad = profundidades.length > 0 ? promediar(profundidades) : null;
 
-        if (cargados.length === 0) {
-            elInicial.textContent = '—';
-            elValidos.textContent = '—';
-            elFinal.textContent = '—';
-            elNCorregido.textContent = '—';
-            elCorreccion.textContent = '—';
-            elNFinal.textContent = '—';
-            card.classList.remove('alerta');
-            elAlertaBox.style.display = 'none';
-            Object.assign(card.dataset, {
-                promedioInicial: '', validos: '', promedioFinal: '',
-                nCorregido: '', correccionAngulo: '', nFinal: '',
-            });
-            return;
+        elEspesor.textContent = promedioEspesor !== null ? promedioEspesor.toFixed(2) : '—';
+        elProfundidad.textContent = promedioProfundidad !== null ? promedioProfundidad.toFixed(2) : '—';
+
+        let porcentaje = null;
+        if (promedioProfundidad !== null && ! isNaN(ancho) && ancho > 0) {
+            porcentaje = pasante
+                ? (promedioProfundidad * 2 / ancho) * 100
+                : (promedioProfundidad / ancho) * 100;
         }
-
-        const promedio1 = promediar(cargados.map(d => d.valor));
-        const rondaUno = cargados.filter(d => Math.abs(d.valor - promedio1) <= 6);
-        const descartadosUno = cargados.filter(d => Math.abs(d.valor - promedio1) > 6);
-
-        let rondaDos = [];
-        let descartadosDos = [];
-        let sumaFinal = null;
-        let promedioFinal = null;
-
-        if (rondaUno.length > 0) {
-            const promedio2 = promediar(rondaUno.map(d => d.valor));
-            rondaDos = rondaUno.filter(d => Math.abs(d.valor - promedio2) <= 6);
-            descartadosDos = rondaUno.filter(d => Math.abs(d.valor - promedio2) > 6);
-
-            if (rondaDos.length > 0) {
-                sumaFinal = rondaDos.reduce((s, d) => s + d.valor, 0);
-                promedioFinal = sumaFinal / rondaDos.length;
-            }
-        }
-
-        [...descartadosUno, ...descartadosDos].forEach(d => d.input.classList.add('impacto-descartado'));
-
-        const totalDescartados = descartadosUno.length + descartadosDos.length;
-        if (totalDescartados > 2) {
-            card.classList.add('alerta');
-            elAlertaTexto.textContent = `Repetir ensayo: se descartaron ${totalDescartados} lecturas`;
-            elAlertaBox.style.display = 'flex';
-        } else {
-            card.classList.remove('alerta');
-            elAlertaBox.style.display = 'none';
-        }
-
-        elInicial.textContent = promedio1.toFixed(2);
-        elValidos.textContent = `${rondaDos.length} / ${cargados.length}`;
-        elFinal.textContent = promedioFinal !== null ? promedioFinal.toFixed(2) : '—';
-
-        const yunques = obtenerYunques();
-        let nCorregido = null;
-        if (sumaFinal !== null && rondaDos.length > 0 && yunques.inicial !== null && yunques.final) {
-            nCorregido = (sumaFinal * yunques.inicial) / (rondaDos.length * yunques.final);
-        }
-        elNCorregido.textContent = nCorregido !== null ? nCorregido.toFixed(2) : '—';
-
-        let correccion = null;
-        let nFinal = null;
-        if (nCorregido !== null) {
-            const direccion = card.querySelector('.punto-direccion-select').value;
-            if (direccion === '0') {
-                correccion = 0;
-                nFinal = nCorregido;
-            } else {
-                const indice = Math.round(nCorregido);
-                const fila = CORRECCION_ANGULO[indice];
-                if (fila && direccion in fila) {
-                    correccion = fila[direccion];
-                    nFinal = nCorregido + correccion;
-                }
-            }
-        }
-        elCorreccion.textContent = correccion !== null ? correccion.toFixed(2) : '—';
-        elNFinal.textContent = nFinal !== null ? nFinal.toFixed(2) : '—';
+        elPorcentaje.textContent = porcentaje !== null ? porcentaje.toFixed(2) + ' %' : '—';
 
         Object.assign(card.dataset, {
-            promedioInicial: promedio1,
-            validos: rondaDos.length,
-            promedioFinal: promedioFinal !== null ? promedioFinal : '',
-            nCorregido: nCorregido !== null ? nCorregido : '',
-            correccionAngulo: correccion !== null ? correccion : '',
-            nFinal: nFinal !== null ? nFinal : '',
+            promedioEspesor: promedioEspesor !== null ? promedioEspesor : '',
+            promedioProfundidad: promedioProfundidad !== null ? promedioProfundidad : '',
+            porcentajeAfectada: porcentaje !== null ? porcentaje : '',
         });
     }
-
-    function recalcularTodosPuntos() {
-        listaPuntos.querySelectorAll('.punto-card').forEach(recalcularPunto);
-    }
-
-    document.getElementById('input-lectura-inicial').addEventListener('input', function () {
-        recalcularTodosPuntos();
-        programarGuardado();
-    });
-    document.getElementById('input-lectura-final').addEventListener('input', function () {
-        recalcularTodosPuntos();
-        programarGuardado();
-    });
-    document.getElementById('input-fecha').addEventListener('input', programarGuardado);
 
     function renumerarPuntos() {
         const cards = listaPuntos.querySelectorAll('.punto-card');
         cards.forEach((card) => {
-            card.querySelector('.punto-identificacion').textContent = `E${card.dataset.idx}`;
+            card.querySelector('.punto-identificacion').textContent = `F${card.dataset.idx}`;
         });
         emptyPuntos.style.display = cards.length === 0 ? '' : 'none';
         actualizarPuntosNav();
@@ -1040,18 +840,24 @@
         if (datos) {
             card.querySelector('.punto-elemento-input').value = datos.elemento || '';
             card.querySelector('.punto-nivel-input').value = datos.nivel || '';
-            card.querySelector('.punto-direccion-select').value = String(datos.direccion ?? 0);
-            const impactoInputs = card.querySelectorAll('.impacto-input');
-            (datos.impactos || []).forEach((valor, i) => {
-                if (impactoInputs[i] && valor !== null && valor !== undefined) {
-                    impactoInputs[i].value = valor;
+            card.querySelector('.punto-ancho-input').value = datos.ancho ?? '';
+            card.querySelector('.punto-pasante-input').checked = !! datos.pasante;
+            const espesorInputs = card.querySelectorAll('.espesor-input');
+            (datos.espesores || []).forEach((valor, i) => {
+                if (espesorInputs[i] && valor !== null && valor !== undefined) {
+                    espesorInputs[i].value = valor;
+                }
+            });
+            const profundidadInputs = card.querySelectorAll('.profundidad-input');
+            (datos.profundidades || []).forEach((valor, i) => {
+                if (profundidadInputs[i] && valor !== null && valor !== undefined) {
+                    profundidadInputs[i].value = valor;
                 }
             });
         }
         insertarPuntoOrdenado(card);
         recalcularPunto(card);
-        actualizarElementoIncompleto(card);
-        actualizarNivelIncompleto(card);
+        actualizarIncompletos(card);
         renumerarPuntos();
         return card;
     }
@@ -1065,9 +871,11 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
+    document.getElementById('input-fecha').addEventListener('input', programarGuardado);
+
     /* ─── Autoguardado ────────────────────────────────────────── */
     const CSRF_TOKEN = @json(csrf_token());
-    const URL_GUARDAR = @json(route('planilla_tc.esclerometria.guardar', $obraTc->id));
+    const URL_GUARDAR = @json(route('planilla_tc.medicion_fisura.guardar', $obraTc->id));
     const DEMORA_GUARDADO_MS = 900;
 
     const elEstadoGuardado = document.getElementById('estado-guardado');
@@ -1094,21 +902,24 @@
 
     function recolectarPuntos() {
         return Array.from(listaPuntos.querySelectorAll('.punto-card')).map(function (card) {
-            const impactos = Array.from(card.querySelectorAll('.impacto-input')).map(function (input) {
+            const espesores = Array.from(card.querySelectorAll('.espesor-input')).map(function (input) {
+                const valor = parseFloat(input.value);
+                return input.value.trim() === '' || isNaN(valor) ? null : valor;
+            });
+            const profundidades = Array.from(card.querySelectorAll('.profundidad-input')).map(function (input) {
                 const valor = parseFloat(input.value);
                 return input.value.trim() === '' || isNaN(valor) ? null : valor;
             });
             return {
                 elemento: card.querySelector('.punto-elemento-input').value || null,
                 nivel: card.querySelector('.punto-nivel-input').value || null,
-                direccion: parseInt(card.querySelector('.punto-direccion-select').value, 10),
-                impactos: impactos,
-                promedio_inicial: card.dataset.promedioInicial || null,
-                validos: card.dataset.validos || null,
-                promedio_final: card.dataset.promedioFinal || null,
-                n_corregido: card.dataset.nCorregido || null,
-                correccion_angulo: card.dataset.correccionAngulo || null,
-                n_final: card.dataset.nFinal || null,
+                ancho: card.querySelector('.punto-ancho-input').value || null,
+                espesores: espesores,
+                profundidades: profundidades,
+                pasante: card.querySelector('.punto-pasante-input').checked,
+                promedio_espesor: card.dataset.promedioEspesor || null,
+                promedio_profundidad: card.dataset.promedioProfundidad || null,
+                porcentaje_afectado: card.dataset.porcentajeAfectada || null,
             };
         });
     }
@@ -1126,9 +937,7 @@
         fijarEstadoGuardado('guardando');
 
         const payload = {
-            fecha: document.getElementById('input-fecha').value,
-            lectura_inicial_yunque: document.getElementById('input-lectura-inicial').value,
-            lectura_final_yunque: document.getElementById('input-lectura-final').value,
+            fecha: document.getElementById('input-fecha').value || null,
             puntos: recolectarPuntos(),
         };
 
@@ -1162,8 +971,8 @@
         temporizadorGuardado = setTimeout(guardar, DEMORA_GUARDADO_MS);
     }
 
-    // Precarga la planilla existente, o arranca con un primer punto vacío.
-    const datosIniciales = @json($datosEsclerometria);
+    // Precarga la planilla existente, o arranca con una primera fisura vacía.
+    const datosIniciales = @json($datosMedicionFisura);
 
     if (datosIniciales && datosIniciales.puntos.length > 0) {
         datosIniciales.puntos.forEach(function (punto) {
@@ -1174,7 +983,7 @@
     }
     fijarEstadoGuardado('guardado');
 
-    document.getElementById('form-esclerometria').addEventListener('submit', function (e) {
+    document.getElementById('form-medicion-fisura').addEventListener('submit', function (e) {
         e.preventDefault();
     });
 </script>

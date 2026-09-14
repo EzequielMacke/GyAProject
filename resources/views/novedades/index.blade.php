@@ -218,6 +218,31 @@
                     </details>
                 </details>
 
+                {{-- Version 7.0 - 2026-09-13
+                Se agrego la herramienta planilla
+                Las planillas disponibles hasta la fecha son ultrasonido indirecto, esclerometria, carbonatacion, medicion de fisuras
+
+                En cuanto a la planilla de ultrasonido indirecto, permite cargar 8 lecturas, y se calcula el promedio,
+                la desviación estándar y el coeficiente de variación. Se marca el punto para repetir el ensayo cuando
+                la desviación estándar es mayor a 200 o el coeficiente de variación es mayor al 5%.
+
+                En cuanto a la planilla de esclerometria, permite cargar 14 lecturas (impactos). Se calcula el promedio
+                y se descartan las lecturas que quedan fuera de ±6 de ese promedio, en dos rondas sucesivas (primero
+                contra el promedio inicial, y luego contra el promedio de lo que sobrevivió a la primera ronda). Con
+                las lecturas finales se calcula el N corregido, usando la lectura inicial y final del yunque, y luego
+                se le aplica una corrección según el ángulo de ensayo (0°, ±45°, ±90°) para obtener el N final. Si en
+                total se descartan más de 2 lecturas, se marca el punto para repetir el ensayo.
+
+                En cuanto a la planilla de carbonatacion, permite cargar el recubrimiento y el espesor carbonatado de
+                cada punto, y se calcula el % de sección afectada.
+
+                En cuanto a la planilla de medicion de fisuras permite cargar  3 medidas de espesor y 3 medidas de profundidad
+                de cada fisura y el ancho del elemento. 
+                Se calcula el promedio de espesor y el promedio de profundidad, y el % de sección afectada. Si la fisura se 
+                marca como pasante, ese % se multiplica por 2.
+                --}}
+
+
             </div>
         </section>
     </div>
