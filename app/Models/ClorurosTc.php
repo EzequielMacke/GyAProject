@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class ClorurosTc extends Model
+{
+    use HasFactory;
+
+    protected $table = 'cloruros_tc';
+
+    protected $fillable = [
+        'obra_tc_id',
+        'usuario_id',
+        'fecha',
+    ];
+
+    protected $casts = [
+        'fecha' => 'date',
+    ];
+
+    public function obra()
+    {
+        return $this->belongsTo(ObraTc::class, 'obra_tc_id');
+    }
+
+    public function usuario()
+    {
+        return $this->belongsTo(Usuarios::class);
+    }
+
+    public function detalles()
+    {
+        return $this->hasMany(ClorurosDetalleTc::class, 'cloruros_tc_id');
+    }
+}

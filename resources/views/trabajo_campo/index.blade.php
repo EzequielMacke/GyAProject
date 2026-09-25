@@ -158,7 +158,7 @@
         .list-wrap { background: var(--surface); border: 1.5px solid var(--border); border-radius: 0.85rem; overflow: hidden; }
         .list-header {
             display: grid;
-            grid-template-columns: 48px 1fr 140px;
+            grid-template-columns: 48px 1fr 110px 140px;
             padding: 0.65rem 1.25rem;
             background: var(--surface2);
             border-bottom: 1.5px solid var(--border);
@@ -167,7 +167,7 @@
         }
         .tc-row {
             display: grid;
-            grid-template-columns: 48px 1fr 140px;
+            grid-template-columns: 48px 1fr 110px 140px;
             align-items: center;
             padding: 1rem 1.25rem;
             border-bottom: 1px solid var(--border);
@@ -180,6 +180,7 @@
         .tc-row:hover { background: var(--surface2); color: inherit; }
         .tc-num  { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
         .tc-desc { font-size: 0.875rem; font-weight: 600; color: var(--text); }
+        .tc-fecha { font-size: 0.8rem; font-weight: 500; color: var(--text2); }
 
         .badge {
             display: inline-flex; align-items: center; gap: 0.35rem;
@@ -206,6 +207,7 @@
             .list-header { display: none; }
             .tc-row { grid-template-columns: 1fr auto; }
             .tc-num { display: none; }
+            .tc-fecha { display: none; }
         }
     </style>
 </head>
@@ -278,6 +280,7 @@
                         <div class="list-header">
                             <div>#</div>
                             <div>Descripción</div>
+                            <div>Creado</div>
                             <div>Estado</div>
                         </div>
                         <div id="lista-obras-tc">
@@ -285,6 +288,7 @@
                             <a href="{{ route('obras_tc.index', $obraTc->id) }}" class="tc-row" data-search="{{ strtolower($obraTc->descripcion) }}">
                                 <div class="tc-num">{{ $i + 1 }}</div>
                                 <div class="tc-desc">{{ $obraTc->descripcion }}</div>
+                                <div class="tc-fecha">{{ $obraTc->created_at?->format('d/m/y') }}</div>
                                 <div>
                                     @if($obraTc->estado)
                                         <span class="badge badge-activo"><i class="fas fa-circle" style="font-size:0.5rem;"></i> Activo</span>

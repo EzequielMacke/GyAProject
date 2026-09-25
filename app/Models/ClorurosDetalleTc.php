@@ -5,19 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class CarbonatacionDetalleTc extends Model
+class ClorurosDetalleTc extends Model
 {
     use HasFactory;
 
-    protected $table = 'carbonatacion_detalles_tc';
+    protected $table = 'cloruros_detalles_tc';
 
     protected $fillable = [
-        'carbonatacion_tc_id',
+        'cloruros_tc_id',
         'elemento',
         'nivel_pla_tc_id',
         'recubrimiento',
         'espesores',
-        'espesor_carbonatado',
+        'espesor_cloruros',
         'porcentaje_afectado',
     ];
 
@@ -25,9 +25,9 @@ class CarbonatacionDetalleTc extends Model
         'espesores' => 'array',
     ];
 
-    public function carbonatacion()
+    public function cloruros()
     {
-        return $this->belongsTo(CarbonatacionTc::class, 'carbonatacion_tc_id');
+        return $this->belongsTo(ClorurosTc::class, 'cloruros_tc_id');
     }
 
     public function nivel()

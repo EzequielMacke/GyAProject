@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planilla de Carbonatación</title>
+    <title>Planilla de Cloruros</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
@@ -137,7 +137,7 @@
             border-bottom: 1px solid var(--border);
         }
         .punto-badge {
-            width: 34px; height: 34px; border-radius: 0.55rem;
+            min-width: 34px; height: 34px; padding: 0 0.4rem; border-radius: 0.55rem;
             background: var(--accent-s); color: var(--accent-b);
             display: flex; align-items: center; justify-content: center;
             font-size: 0.85rem; font-weight: 700; flex-shrink: 0;
@@ -331,9 +331,9 @@
                             <i class="fas fa-chevron-right"></i>
                             <a href="{{ route('obras_tc.index', $obraTc->id) }}">{{ $obraTc->descripcion ?? '-' }}</a>
                             <i class="fas fa-chevron-right"></i>
-                            Carbonatación
+                            Cloruros
                         </div>
-                        <h1 class="ph-title"><em>Planilla de Carbonatación</em></h1>
+                        <h1 class="ph-title"><em>Planilla de Cloruros</em></h1>
                         <p class="ph-sub">{{ $obraTc->descripcion ?? '-' }}</p>
                     </div>
                     <div class="ph-right">
@@ -362,7 +362,7 @@
                     @endif
                 </div>
 
-                <form id="form-carbonatacion">
+                <form id="form-cloruros">
 
                     {{-- ═══ DATOS GENERALES ═══ --}}
                     <div class="panel">
@@ -378,7 +378,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="input-fecha">Fecha</label>
-                                <input type="date" id="input-fecha" name="fecha" class="form-control" value="{{ $carbonatacion?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d') }}" @if(! $puedeEditar) readonly @endif>
+                                <input type="date" id="input-fecha" name="fecha" class="form-control" value="{{ $cloruros?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d') }}" @if(! $puedeEditar) readonly @endif>
                             </div>
                         </div>
                     </div>
@@ -559,7 +559,7 @@
 
     function abrirModalEliminarPunto(card) {
         cardAEliminar = card;
-        document.getElementById('eliminar-punto-nombre').textContent = `C${card.dataset.idx}`;
+        document.getElementById('eliminar-punto-nombre').textContent = `CL${card.dataset.idx}`;
         modalEliminarPunto?.classList.add('active');
     }
 
@@ -593,7 +593,7 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'puntos-nav-btn';
-            btn.textContent = `C${card.dataset.idx}`;
+            btn.textContent = `CL${card.dataset.idx}`;
             btn._card = card;
 
             if (PUEDE_EDITAR && cards.length > 1) {
@@ -698,7 +698,7 @@
             : '';
         card.innerHTML = `
             <div class="punto-head">
-                <div class="punto-badge punto-identificacion">C?</div>
+                <div class="punto-badge punto-identificacion">CL?</div>
                 <div>
                     <div class="punto-head-title">Punto de ensayo</div>
                     <div class="punto-head-sub">Identificación automática</div>
@@ -721,18 +721,18 @@
                     </div>
                 </div>
                 <div>
-                    <span class="mediciones-label">Espesor carbonatado — ${CANTIDAD_MEDICIONES} mediciones (mm)</span>
+                    <span class="mediciones-label">Espesor afectado por cloruros — ${CANTIDAD_MEDICIONES} mediciones (mm)</span>
                     <div class="mediciones-grid">
                         ${crearMedicionesHTML(idx)}
                     </div>
                 </div>
                 <div class="punto-resultados">
                     <div class="resultado-item">
-                        <span class="resultado-label">Espesor carbonatado promedio</span>
+                        <span class="resultado-label">Espesor afectado por cloruros promedio</span>
                         <span class="resultado-valor resultado-espesor-promedio">—</span>
                     </div>
                     <div class="resultado-item resultado-final">
-                        <span class="resultado-label">% afectado por carbonatación</span>
+                        <span class="resultado-label">% afectado por cloruros</span>
                         <span class="resultado-valor resultado-porcentaje-afectado">—</span>
                     </div>
                 </div>
@@ -775,8 +775,8 @@
         input.classList.toggle('incompleto', input.value.trim() === '');
     }
 
-    /* ─── Cálculo del porcentaje afectado por carbonatación ─────
-       1) Espesor carbonatado = promedio de las 4 mediciones cargadas.
+    /* ─── Cálculo del porcentaje afectado por cloruros ─────
+       1) Espesor afectado por cloruros = promedio de las 4 mediciones cargadas.
        2) % afectado = (espesor promedio / recubrimiento) × 100. */
     function recalcularPunto(card) {
         const inputRecubrimiento = card.querySelector('.punto-recubrimiento-input');
@@ -817,7 +817,7 @@
     function renumerarPuntos() {
         const cards = listaPuntos.querySelectorAll('.punto-card');
         cards.forEach((card) => {
-            card.querySelector('.punto-identificacion').textContent = `C${card.dataset.idx}`;
+            card.querySelector('.punto-identificacion').textContent = `CL${card.dataset.idx}`;
         });
         emptyPuntos.style.display = cards.length === 0 ? '' : 'none';
         actualizarPuntosNav();
@@ -856,7 +856,7 @@
 
     /* ─── Autoguardado ────────────────────────────────────────── */
     const CSRF_TOKEN = @json(csrf_token());
-    const URL_GUARDAR = @json(route('planilla_tc.carbonatacion.guardar', $obraTc->id));
+    const URL_GUARDAR = @json(route('planilla_tc.cloruros.guardar', $obraTc->id));
     const DEMORA_GUARDADO_MS = 900;
 
     const elEstadoGuardado = document.getElementById('estado-guardado');
@@ -891,7 +891,7 @@
                     const valor = parseFloat(input.value);
                     return input.value.trim() === '' || isNaN(valor) ? null : valor;
                 }),
-                espesor_carbonatado: card.dataset.espesorPromedio || null,
+                espesor_cloruros: card.dataset.espesorPromedio || null,
                 porcentaje_afectado: card.dataset.porcentajeAfectado || null,
             };
         });
@@ -945,7 +945,7 @@
     }
 
     // Precarga la planilla existente, o arranca con un primer punto vacío.
-    const datosIniciales = @json($datosCarbonatacion ?? null);
+    const datosIniciales = @json($datosCloruros ?? null);
 
     if (datosIniciales && datosIniciales.puntos && datosIniciales.puntos.length > 0) {
         datosIniciales.puntos.forEach(function (punto) {
@@ -956,7 +956,7 @@
     }
     fijarEstadoGuardado('guardado');
 
-    document.getElementById('form-carbonatacion').addEventListener('submit', function (e) {
+    document.getElementById('form-cloruros').addEventListener('submit', function (e) {
         e.preventDefault();
     });
 </script>

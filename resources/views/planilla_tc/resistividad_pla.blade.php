@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planilla de Carbonatación</title>
+    <title>Planilla de Resistividad</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
@@ -77,7 +77,7 @@
 
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
         }
         .form-group { display: flex; flex-direction: column; }
@@ -93,12 +93,25 @@
         .form-control:disabled { background: var(--surface2); color: var(--text2); opacity: 1; cursor: default; }
 
         /* ── CAMPOS INCOMPLETOS ── */
-        .form-control.incompleto {
+        .form-control.incompleto,
+        .lectura-input.incompleto {
             border-color: #e08e0b; background: #fff8ec;
         }
-        .form-control.incompleto:focus {
+        .form-control.incompleto:focus,
+        .lectura-input.incompleto:focus {
             border-color: #e08e0b; box-shadow: 0 0 0 3px rgba(224,142,11,0.15);
         }
+
+        /* ── CHIPS DE CLASIFICACIÓN ── */
+        .riesgo-chip {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.2rem 0.6rem; border-radius: 999px;
+            font-size: 0.74rem; font-weight: 700; white-space: nowrap;
+        }
+        .riesgo-despreciable { background: #e5f5ee; color: #1e9166; }
+        .riesgo-baja         { background: #e8f0fc; color: #1f5bbf; }
+        .riesgo-moderada     { background: #fff4e0; color: #b86e00; }
+        .riesgo-muy-alta     { background: #fdecec; color: #c0392b; }
 
         /* ── NAVEGACIÓN RÁPIDA DE PUNTOS ── */
         .puntos-nav {
@@ -126,7 +139,6 @@
             background: var(--surface); border: 1.5px solid var(--border); border-radius: 0.85rem;
             overflow: hidden;
             animation: cardIn 0.18s ease both;
-            transition: border-color 0.14s;
         }
         @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
@@ -194,33 +206,6 @@
             margin-bottom: 1.1rem;
         }
 
-        /* ── MEDICIONES DE ESPESOR ── */
-        .mediciones-label {
-            font-size: 0.72rem; font-weight: 700; color: var(--text2);
-            text-transform: uppercase; letter-spacing: 0.04em;
-            margin-bottom: 0.5rem; display: block;
-        }
-        .mediciones-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.5rem;
-        }
-        .medicion-item { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
-        .medicion-num { font-size: 0.66rem; font-weight: 700; color: var(--muted); }
-        .medicion-input {
-            width: 100%; text-align: center;
-            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem;
-            background: #fff; border: 1.5px solid var(--border);
-            border-radius: 0.5rem; padding: 0.45rem 0.25rem; color: var(--text);
-            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
-            -moz-appearance: textfield;
-        }
-        .medicion-input::-webkit-outer-spin-button,
-        .medicion-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .medicion-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
-        .medicion-input.incompleto { border-color: #e08e0b; background: #fff8ec; }
-        .medicion-input.incompleto:focus { border-color: #e08e0b; box-shadow: 0 0 0 3px rgba(224,142,11,0.15); }
-
         /* ── AUTOCOMPLETADO DE NIVEL ── */
         .autocomplete-dropdown {
             display: none;
@@ -238,6 +223,31 @@
         .autocomplete-opcion.resaltada { background: var(--accent-s); color: var(--accent-b); }
         .autocomplete-opcion-nueva { color: var(--muted); font-size: 0.76rem; padding: 0.45rem 0.85rem 0.6rem; border-top: 1px solid var(--border); }
 
+        /* ── LECTURAS ── */
+        .lecturas-label {
+            font-size: 0.72rem; font-weight: 700; color: var(--text2);
+            text-transform: uppercase; letter-spacing: 0.04em;
+            margin-bottom: 0.5rem; display: block;
+        }
+        .lecturas-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+        .lectura-item { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+        .lectura-num { font-size: 0.66rem; font-weight: 700; color: var(--muted); }
+        .lectura-input {
+            width: 100%; text-align: center;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem;
+            background: #fff; border: 1.5px solid var(--border);
+            border-radius: 0.5rem; padding: 0.45rem 0.25rem; color: var(--text);
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+            -moz-appearance: textfield;
+        }
+        .lectura-input::-webkit-outer-spin-button,
+        .lectura-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .lectura-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
+
         /* ── RESULTADOS DEL PUNTO ── */
         .punto-resultados {
             display: flex; flex-wrap: wrap; gap: 1.5rem;
@@ -247,7 +257,16 @@
         .resultado-item { display: flex; flex-direction: column; gap: 0.2rem; }
         .resultado-label { font-size: 0.66rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
         .resultado-valor { font-size: 1rem; font-weight: 700; color: var(--text); }
+        .resultado-correccion .resultado-valor { color: var(--accent-b); }
         .resultado-final .resultado-valor { color: var(--green); font-size: 1.1rem; }
+
+        .punto-clasificacion {
+            display: none; align-items: center; flex-wrap: wrap; gap: 0.6rem;
+            margin-top: 0.9rem; padding: 0.7rem 0.85rem;
+            border-radius: 0.6rem; background: var(--surface2);
+            font-size: 0.8rem; color: var(--text2);
+        }
+        .punto-clasificacion.visible { display: flex; }
 
         .btn-agregar-punto {
             width: 100%;
@@ -309,7 +328,7 @@
             .ph-title { font-size: 1.3rem; }
             .ph-right { width: 100%; }
             .form-grid { grid-template-columns: 1fr; }
-            .mediciones-grid { grid-template-columns: repeat(2, 1fr); }
+            .lecturas-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -331,9 +350,9 @@
                             <i class="fas fa-chevron-right"></i>
                             <a href="{{ route('obras_tc.index', $obraTc->id) }}">{{ $obraTc->descripcion ?? '-' }}</a>
                             <i class="fas fa-chevron-right"></i>
-                            Carbonatación
+                            Resistividad
                         </div>
-                        <h1 class="ph-title"><em>Planilla de Carbonatación</em></h1>
+                        <h1 class="ph-title"><em>Planilla de Resistividad</em></h1>
                         <p class="ph-sub">{{ $obraTc->descripcion ?? '-' }}</p>
                     </div>
                     <div class="ph-right">
@@ -362,7 +381,7 @@
                     @endif
                 </div>
 
-                <form id="form-carbonatacion">
+                <form id="form-resistividad">
 
                     {{-- ═══ DATOS GENERALES ═══ --}}
                     <div class="panel">
@@ -370,7 +389,7 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label class="form-label" for="input-norma">Norma</label>
-                                <input type="text" id="input-norma" class="form-control" value="RILEM CPC-18" readonly>
+                                <input type="text" id="input-norma" class="form-control" value="RILEM TC 154-EMC" readonly>
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="input-obra">Obra</label>
@@ -378,7 +397,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="input-fecha">Fecha</label>
-                                <input type="date" id="input-fecha" name="fecha" class="form-control" value="{{ $carbonatacion?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d') }}" @if(! $puedeEditar) readonly @endif>
+                                <input type="date" id="input-fecha" name="fecha" class="form-control" value="{{ $resistividad?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d') }}" @if(! $puedeEditar) readonly @endif>
                             </div>
                         </div>
                     </div>
@@ -440,7 +459,9 @@
 
 <script>
     const PUEDE_EDITAR = @json($puedeEditar);
-    const CANTIDAD_MEDICIONES = 4;
+    const CANTIDAD_LECTURAS = 4;
+    const TEMPERATURA_REFERENCIA = 20;
+    const CORRECCION_POR_GRADO = 0.03;
     const listaPuntos = document.getElementById('puntos-list');
     const emptyPuntos = document.getElementById('empty-puntos');
     const puntosNav = document.getElementById('puntos-nav');
@@ -448,11 +469,9 @@
     let nivelesDisponibles = @json($niveles ?? []);
 
     /* ─── Autocompletado de nivel ────────────────────────────────
-       El nivel se guarda en una tabla compartida por obra, así que
-       una vez cargado un nivel queda disponible para elegirlo en
-       cualquier otro punto (de esta planilla y de las demás). El
-       campo permite escribir libremente: si no coincide con ninguno
-       existente, se crea uno nuevo al guardar. */
+       Mismo comportamiento que en las demás planillas: un único
+       desplegable flotante que se reposiciona sobre el input activo
+       y que permite elegir un nivel existente o escribir uno nuevo. */
     const dropdownNivel = document.createElement('div');
     dropdownNivel.className = 'autocomplete-dropdown';
     document.body.appendChild(dropdownNivel);
@@ -513,11 +532,6 @@
             }
         }
 
-        // El guardado del nivel no se dispara con cada letra (eso crearía
-        // niveles a medio escribir, como "Plant" antes de "Planta Baja").
-        // Se guarda recién al confirmar: Enter, elegir una opción del
-        // desplegable, o al salir del campo (blur/change, que también
-        // cubre el cierre del teclado en celulares).
         input.addEventListener('input', function () {
             mostrarOpciones();
             actualizarNivelIncompleto(card);
@@ -559,7 +573,7 @@
 
     function abrirModalEliminarPunto(card) {
         cardAEliminar = card;
-        document.getElementById('eliminar-punto-nombre').textContent = `C${card.dataset.idx}`;
+        document.getElementById('eliminar-punto-nombre').textContent = `E${card.dataset.idx}`;
         modalEliminarPunto?.classList.add('active');
     }
 
@@ -580,12 +594,7 @@
         cerrarModalEliminarPunto();
     }
 
-    /* ─── Intercambiar puntos arrastrando los "cuadritos" ───────
-       Cada chip de la navegación rápida representa un punto y se
-       puede arrastrar sobre otro para intercambiar sus lugares:
-       si soltás C3 sobre C1, esos dos cambian de identificación
-       entre sí (C3 pasa a ser C1 y viceversa) y el resto de los
-       puntos queda exactamente igual, sin renumerarse. */
+    /* ─── Intercambiar puntos arrastrando los "cuadritos" ─────── */
     function actualizarPuntosNav() {
         const cards = Array.from(listaPuntos.querySelectorAll('.punto-card'));
         puntosNav.innerHTML = '';
@@ -593,7 +602,7 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'puntos-nav-btn';
-            btn.textContent = `C${card.dataset.idx}`;
+            btn.textContent = `E${card.dataset.idx}`;
             btn._card = card;
 
             if (PUEDE_EDITAR && cards.length > 1) {
@@ -649,12 +658,7 @@
         programarGuardado();
     }
 
-    /* ─── Numeración de puntos ────────────────────────────────
-       La identificación de cada punto (C1, C2...) se asigna una
-       sola vez al crearlo y no cambia si se eliminan otros puntos.
-       Al agregar uno nuevo, se le asigna el primer número libre
-       (llenando huecos) y se inserta en la posición que le
-       corresponde según ese número, no al final de la lista. */
+    /* ─── Numeración de puntos ──────────────────────────────── */
     function obtenerSiguienteIdx() {
         const usados = Array.from(listaPuntos.querySelectorAll('.punto-card'))
             .map(card => parseInt(card.dataset.idx, 10));
@@ -674,14 +678,14 @@
         }
     }
 
-    function crearMedicionesHTML(idx) {
+    function crearLecturasHTML(idx) {
         let html = '';
         const soloLectura = PUEDE_EDITAR ? '' : 'readonly';
-        for (let i = 1; i <= CANTIDAD_MEDICIONES; i++) {
+        for (let i = 1; i <= CANTIDAD_LECTURAS; i++) {
             html += `
-                <div class="medicion-item">
-                    <span class="medicion-num">Medición ${i}</span>
-                    <input type="number" step="any" min="0" class="medicion-input punto-espesor-input" name="puntos[${idx}][espesores][]" inputmode="decimal" ${soloLectura}>
+                <div class="lectura-item">
+                    <span class="lectura-num">Lectura ${i}</span>
+                    <input type="number" step="any" class="lectura-input punto-lectura-input" name="puntos[${idx}][lecturas][]" inputmode="decimal" ${soloLectura}>
                 </div>
             `;
         }
@@ -698,7 +702,7 @@
             : '';
         card.innerHTML = `
             <div class="punto-head">
-                <div class="punto-badge punto-identificacion">C?</div>
+                <div class="punto-badge punto-identificacion">E?</div>
                 <div>
                     <div class="punto-head-title">Punto de ensayo</div>
                     <div class="punto-head-sub">Identificación automática</div>
@@ -716,25 +720,37 @@
                         <input type="text" class="form-control punto-nivel-input" name="puntos[${idx}][nivel]" placeholder="Ej: PB, 1° piso..." autocomplete="off" ${soloLectura}>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Recubrimiento (mm)</label>
-                        <input type="number" step="any" min="0" class="form-control punto-recubrimiento-input" name="puntos[${idx}][recubrimiento]" inputmode="decimal" ${soloLectura}>
+                        <label class="form-label">Temperatura del hormigón (°C)</label>
+                        <input type="number" step="any" class="form-control punto-temperatura-input" name="puntos[${idx}][temperatura]" placeholder="Ej: 20" inputmode="decimal" ${soloLectura}>
                     </div>
                 </div>
                 <div>
-                    <span class="mediciones-label">Espesor carbonatado — ${CANTIDAD_MEDICIONES} mediciones (mm)</span>
-                    <div class="mediciones-grid">
-                        ${crearMedicionesHTML(idx)}
+                    <span class="lecturas-label">Lecturas del equipo (kΩ·cm)</span>
+                    <div class="lecturas-grid">
+                        ${crearLecturasHTML(idx)}
                     </div>
                 </div>
                 <div class="punto-resultados">
                     <div class="resultado-item">
-                        <span class="resultado-label">Espesor carbonatado promedio</span>
-                        <span class="resultado-valor resultado-espesor-promedio">—</span>
+                        <span class="resultado-label">Promedio lecturas</span>
+                        <span class="resultado-valor resultado-promedio">—</span>
+                    </div>
+                    <div class="resultado-item">
+                        <span class="resultado-label">Δ Temperatura</span>
+                        <span class="resultado-valor resultado-delta-temperatura">—</span>
+                    </div>
+                    <div class="resultado-item resultado-correccion">
+                        <span class="resultado-label">Corrección</span>
+                        <span class="resultado-valor resultado-correccion-valor">—</span>
                     </div>
                     <div class="resultado-item resultado-final">
-                        <span class="resultado-label">% afectado por carbonatación</span>
-                        <span class="resultado-valor resultado-porcentaje-afectado">—</span>
+                        <span class="resultado-label">Resistividad corregida</span>
+                        <span class="resultado-valor resultado-resistividad-final">—</span>
                     </div>
+                </div>
+                <div class="punto-clasificacion">
+                    <span class="riesgo-chip punto-clasificacion-chip"></span>
+                    <span class="punto-clasificacion-riesgo"></span>
                 </div>
             </div>
         `;
@@ -743,21 +759,16 @@
             abrirModalEliminarPunto(card);
         });
 
-        card.querySelector('.punto-elemento-input').addEventListener('input', function () {
-            actualizarElementoIncompleto(card);
-            programarGuardado();
-        });
-
-        card.querySelector('.punto-recubrimiento-input').addEventListener('input', function () {
-            recalcularPunto(card);
-            programarGuardado();
-        });
-
-        card.querySelectorAll('.punto-espesor-input').forEach(function (input) {
+        card.querySelectorAll('.punto-lectura-input, .punto-temperatura-input').forEach(function (input) {
             input.addEventListener('input', function () {
                 recalcularPunto(card);
                 programarGuardado();
             });
+        });
+
+        card.querySelector('.punto-elemento-input').addEventListener('input', function () {
+            actualizarElementoIncompleto(card);
+            programarGuardado();
         });
 
         configurarAutocompletadoNivel(card);
@@ -775,41 +786,89 @@
         input.classList.toggle('incompleto', input.value.trim() === '');
     }
 
-    /* ─── Cálculo del porcentaje afectado por carbonatación ─────
-       1) Espesor carbonatado = promedio de las 4 mediciones cargadas.
-       2) % afectado = (espesor promedio / recubrimiento) × 100. */
+    /* ─── Clasificación según resistividad (kΩ·cm) ─────────────
+       > 20      → Despreciable
+       10 a 20   → Baja
+       5 a 10    → Moderada a Alta
+       < 5       → Muy Alta */
+    const CLASIFICACIONES = [
+        { min: 20, excluyeMin: true, clase: 'riesgo-despreciable', velocidad: 'Despreciable',    riesgo: 'Concreto muy seco o denso. Corrosión casi nula.' },
+        { min: 10,                   clase: 'riesgo-baja',         velocidad: 'Baja',            riesgo: 'Velocidad de corrosión lenta.' },
+        { min: 5,                    clase: 'riesgo-moderada',     velocidad: 'Moderada a Alta', riesgo: 'Corrosión activa probable si hay humedad y oxígeno.' },
+        { min: -Infinity,            clase: 'riesgo-muy-alta',     velocidad: 'Muy Alta',        riesgo: 'Corrosión severa y rápida en las armaduras.' },
+    ];
+
+    function clasificarResistividad(valor) {
+        return CLASIFICACIONES.find(c => c.excluyeMin ? valor > c.min : valor >= c.min);
+    }
+
+    /* ─── Cálculo de la resistividad corregida ──────────────────
+       1) Promedio de las 4 lecturas del equipo.
+       2) Δ = temperatura del hormigón − 20 °C.
+       3) Corrección = promedio × 3% × Δ (positiva si hace más de
+          20 °C, negativa si hace menos).
+       4) Resistividad corregida = promedio + corrección. */
+    function formatearSigno(valor, decimales) {
+        const texto = valor.toFixed(decimales);
+        return valor > 0 ? `+${texto}` : texto;
+    }
+
     function recalcularPunto(card) {
-        const inputRecubrimiento = card.querySelector('.punto-recubrimiento-input');
-        const inputsEspesor = Array.from(card.querySelectorAll('.punto-espesor-input'));
-        const elPromedio = card.querySelector('.resultado-espesor-promedio');
-        const elPorcentaje = card.querySelector('.resultado-porcentaje-afectado');
+        const inputsLectura = Array.from(card.querySelectorAll('.punto-lectura-input'));
+        const inputTemperatura = card.querySelector('.punto-temperatura-input');
 
-        inputRecubrimiento.classList.toggle('incompleto', inputRecubrimiento.value.trim() === '');
-        inputsEspesor.forEach(inp => inp.classList.toggle('incompleto', inp.value.trim() === ''));
+        [...inputsLectura, inputTemperatura].forEach(inp => {
+            inp.classList.toggle('incompleto', inp.value.trim() === '');
+        });
 
-        const recubrimiento = parseFloat(inputRecubrimiento.value);
-        const espesores = inputsEspesor
-            .map(inp => parseFloat(inp.value))
+        const lecturas = inputsLectura
+            .map(input => parseFloat(input.value))
             .filter(v => ! isNaN(v));
-        const promedio = espesores.length > 0
-            ? espesores.reduce((s, v) => s + v, 0) / espesores.length
+        const temperatura = parseFloat(inputTemperatura.value);
+
+        const elPromedio = card.querySelector('.resultado-promedio');
+        const elDelta = card.querySelector('.resultado-delta-temperatura');
+        const elCorreccion = card.querySelector('.resultado-correccion-valor');
+        const elFinal = card.querySelector('.resultado-resistividad-final');
+        const elClasificacion = card.querySelector('.punto-clasificacion');
+        const elChip = card.querySelector('.punto-clasificacion-chip');
+        const elRiesgo = card.querySelector('.punto-clasificacion-riesgo');
+
+        const promedio = lecturas.length > 0
+            ? lecturas.reduce((s, v) => s + v, 0) / lecturas.length
             : null;
+        const delta = isNaN(temperatura) ? null : temperatura - TEMPERATURA_REFERENCIA;
 
-        elPromedio.textContent = promedio !== null ? promedio.toFixed(2) + ' mm' : '—';
-
-        if (isNaN(recubrimiento) || recubrimiento <= 0 || promedio === null) {
-            elPorcentaje.textContent = '—';
-            Object.assign(card.dataset, {
-                espesorPromedio: promedio !== null ? promedio : '',
-                porcentajeAfectado: '',
-            });
-            return;
+        let correccion = null;
+        let resistividadFinal = null;
+        if (promedio !== null && delta !== null) {
+            correccion = promedio * CORRECCION_POR_GRADO * delta;
+            resistividadFinal = promedio + correccion;
         }
 
-        const porcentaje = (promedio / recubrimiento) * 100;
-        elPorcentaje.textContent = porcentaje.toFixed(1) + '%';
+        elPromedio.textContent = promedio !== null ? promedio.toFixed(2) : '—';
+        elDelta.textContent = delta !== null ? `${formatearSigno(delta, 1)} °C` : '—';
+        elCorreccion.textContent = correccion !== null
+            ? `${formatearSigno(correccion, 2)} (${formatearSigno(delta * CORRECCION_POR_GRADO * 100, 0)}%)`
+            : '—';
+        elFinal.textContent = resistividadFinal !== null ? `${resistividadFinal.toFixed(2)} kΩ·cm` : '—';
 
-        Object.assign(card.dataset, { espesorPromedio: promedio, porcentajeAfectado: porcentaje });
+        const clasificacion = resistividadFinal !== null ? clasificarResistividad(resistividadFinal) : null;
+        if (clasificacion) {
+            elChip.className = `riesgo-chip punto-clasificacion-chip ${clasificacion.clase}`;
+            elChip.textContent = `Corrosión: ${clasificacion.velocidad}`;
+            elRiesgo.textContent = clasificacion.riesgo;
+            elClasificacion.classList.add('visible');
+        } else {
+            elClasificacion.classList.remove('visible');
+        }
+
+        Object.assign(card.dataset, {
+            promedio: promedio !== null ? promedio : '',
+            correccion: correccion !== null ? correccion : '',
+            resistividadFinal: resistividadFinal !== null ? resistividadFinal : '',
+            velocidadCorrosion: clasificacion ? clasificacion.velocidad : '',
+        });
     }
 
     document.getElementById('input-fecha').addEventListener('input', programarGuardado);
@@ -817,7 +876,7 @@
     function renumerarPuntos() {
         const cards = listaPuntos.querySelectorAll('.punto-card');
         cards.forEach((card) => {
-            card.querySelector('.punto-identificacion').textContent = `C${card.dataset.idx}`;
+            card.querySelector('.punto-identificacion').textContent = `E${card.dataset.idx}`;
         });
         emptyPuntos.style.display = cards.length === 0 ? '' : 'none';
         actualizarPuntosNav();
@@ -829,13 +888,15 @@
         if (datos) {
             card.querySelector('.punto-elemento-input').value = datos.elemento || '';
             card.querySelector('.punto-nivel-input').value = datos.nivel || '';
-            card.querySelector('.punto-recubrimiento-input').value = datos.recubrimiento ?? '';
-            const espesorInputs = card.querySelectorAll('.punto-espesor-input');
-            (datos.espesores || []).forEach((valor, i) => {
-                if (espesorInputs[i] && valor !== null && valor !== undefined) {
-                    espesorInputs[i].value = valor;
+            const lecturaInputs = card.querySelectorAll('.punto-lectura-input');
+            (datos.lecturas || []).forEach((valor, i) => {
+                if (lecturaInputs[i] && valor !== null && valor !== undefined) {
+                    lecturaInputs[i].value = valor;
                 }
             });
+            if (datos.temperatura !== null && datos.temperatura !== undefined) {
+                card.querySelector('.punto-temperatura-input').value = datos.temperatura;
+            }
         }
         insertarPuntoOrdenado(card);
         recalcularPunto(card);
@@ -856,7 +917,7 @@
 
     /* ─── Autoguardado ────────────────────────────────────────── */
     const CSRF_TOKEN = @json(csrf_token());
-    const URL_GUARDAR = @json(route('planilla_tc.carbonatacion.guardar', $obraTc->id));
+    const URL_GUARDAR = @json(route('planilla_tc.resistividad.guardar', $obraTc->id));
     const DEMORA_GUARDADO_MS = 900;
 
     const elEstadoGuardado = document.getElementById('estado-guardado');
@@ -883,16 +944,20 @@
 
     function recolectarPuntos() {
         return Array.from(listaPuntos.querySelectorAll('.punto-card')).map(function (card) {
+            const lecturas = Array.from(card.querySelectorAll('.punto-lectura-input')).map(function (input) {
+                const valor = parseFloat(input.value);
+                return input.value.trim() === '' || isNaN(valor) ? null : valor;
+            });
+            const temperatura = parseFloat(card.querySelector('.punto-temperatura-input').value);
             return {
                 elemento: card.querySelector('.punto-elemento-input').value || null,
                 nivel: card.querySelector('.punto-nivel-input').value || null,
-                recubrimiento: card.querySelector('.punto-recubrimiento-input').value || null,
-                espesores: Array.from(card.querySelectorAll('.punto-espesor-input')).map(function (input) {
-                    const valor = parseFloat(input.value);
-                    return input.value.trim() === '' || isNaN(valor) ? null : valor;
-                }),
-                espesor_carbonatado: card.dataset.espesorPromedio || null,
-                porcentaje_afectado: card.dataset.porcentajeAfectado || null,
+                lecturas: lecturas,
+                temperatura: isNaN(temperatura) ? null : temperatura,
+                promedio: card.dataset.promedio || null,
+                correccion: card.dataset.correccion || null,
+                resistividad_final: card.dataset.resistividadFinal || null,
+                velocidad_corrosion: card.dataset.velocidadCorrosion || null,
             };
         });
     }
@@ -945,7 +1010,7 @@
     }
 
     // Precarga la planilla existente, o arranca con un primer punto vacío.
-    const datosIniciales = @json($datosCarbonatacion ?? null);
+    const datosIniciales = @json($datosResistividad);
 
     if (datosIniciales && datosIniciales.puntos && datosIniciales.puntos.length > 0) {
         datosIniciales.puntos.forEach(function (punto) {
@@ -956,7 +1021,7 @@
     }
     fijarEstadoGuardado('guardado');
 
-    document.getElementById('form-carbonatacion').addEventListener('submit', function (e) {
+    document.getElementById('form-resistividad').addEventListener('submit', function (e) {
         e.preventDefault();
     });
 </script>

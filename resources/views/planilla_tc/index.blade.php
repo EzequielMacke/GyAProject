@@ -391,7 +391,7 @@
         },
         ultrasonido_indirecto: {
             titulo: datos => `Reporte de Ultrasonido Indirecto — ${datos.obra || ''}`,
-            columnas: ['Nivel', 'Elemento', 'Identificación', 'Velocidad (m/s)', 'Compactación del hormigón'],
+            columnas: ['Nivel', 'Elemento', 'Identificación', 'Velocidad (m/s)', 'Calidad del hormigón'],
             fila: p => [p.nivel, p.elemento, p.identificacion, p.velocidad, p.compactacion],
             prefijoArchivo: 'reporte-ultrasonido-indirecto',
         },
@@ -401,11 +401,23 @@
             fila: p => [p.nivel, p.elemento, p.identificacion, p.recubrimiento, p.espesor_carbonatado, p.porcentaje_afectado],
             prefijoArchivo: 'reporte-carbonatacion',
         },
+        cloruros: {
+            titulo: datos => `Reporte de Cloruros — ${datos.obra || ''}`,
+            columnas: ['Nivel', 'Elemento', 'Identificación', 'Recubrimiento (mm)', 'Espesor afectado por cloruros (mm)', '% afectado'],
+            fila: p => [p.nivel, p.elemento, p.identificacion, p.recubrimiento, p.espesor_cloruros, p.porcentaje_afectado],
+            prefijoArchivo: 'reporte-cloruros',
+        },
         medicion_fisura: {
             titulo: datos => `Reporte de Medición de Fisuras — ${datos.obra || ''}`,
             columnas: ['Nivel', 'Identificación', 'Espesor promedio (mm)', 'Profundidad promedio (mm)', 'Ancho del elemento', 'Sección afectada'],
             fila: p => [p.nivel, p.identificacion, p.promedio_espesor, p.promedio_profundidad, p.ancho, p.porcentaje_afectado],
             prefijoArchivo: 'reporte-medicion-fisura',
+        },
+        resistividad: {
+            titulo: datos => `Reporte de Resistividad — ${datos.obra || ''}`,
+            columnas: ['Nivel', 'Elemento', 'Identificación', 'Resistividad (kΩ·cm)'],
+            fila: p => [p.nivel, p.elemento, p.identificacion, p.resistividad],
+            prefijoArchivo: 'reporte-resistividad',
         },
     };
 

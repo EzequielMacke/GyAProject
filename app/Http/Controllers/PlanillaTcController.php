@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\CarbonatacionTc;
+use App\Models\ClorurosTc;
 use App\Models\DirectorioTc;
 use App\Models\EsclerometriaTc;
 use App\Models\MedicionFisuraTc;
 use App\Models\NivelPlaTc;
 use App\Models\ObraTc;
+use App\Models\ResistividadTc;
 use App\Models\UltrasonidoIndirectoTc;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
@@ -33,7 +35,15 @@ class PlanillaTcController extends Controller
             ->where('obra_tc_id', $obraTc->id)
             ->first();
 
+        $cloruros = ClorurosTc::withCount('detalles')
+            ->where('obra_tc_id', $obraTc->id)
+            ->first();
+
         $medicionFisura = MedicionFisuraTc::withCount('detalles')
+            ->where('obra_tc_id', $obraTc->id)
+            ->first();
+
+        $resistividad = ResistividadTc::withCount('detalles')
             ->where('obra_tc_id', $obraTc->id)
             ->first();
 
@@ -84,6 +94,21 @@ class PlanillaTcController extends Controller
                     : null,
             ],
             [
+                'codigo' => 'cloruros',
+                'nombre' => 'Cloruros',
+                'icono' => 'fa-vial',
+                'ruta' => route('planilla_tc.cloruros', $obraTc->id),
+                'ruta_crear' => route('planilla_tc.cloruros.crear', $obraTc->id),
+                'ruta_eliminar' => route('planilla_tc.cloruros.eliminar', $obraTc->id),
+                'ruta_reporte' => route('planilla_tc.cloruros.reporte', $obraTc->id),
+                'cargada' => (bool) $cloruros,
+                'resumen' => $cloruros
+                    ? ($cloruros->fecha
+                        ? $cloruros->detalles_count.' '.($cloruros->detalles_count === 1 ? 'punto ensayado' : 'puntos ensayados').' · '.$cloruros->fecha->format('d/m/Y')
+                        : 'Todavía sin datos cargados')
+                    : null,
+            ],
+            [
                 'codigo' => 'medicion_fisura',
                 'nombre' => 'Medición de Fisuras',
                 'icono' => 'fa-bolt',
@@ -95,6 +120,21 @@ class PlanillaTcController extends Controller
                 'resumen' => $medicionFisura
                     ? ($medicionFisura->fecha
                         ? $medicionFisura->detalles_count.' '.($medicionFisura->detalles_count === 1 ? 'fisura registrada' : 'fisuras registradas').' · '.$medicionFisura->fecha->format('d/m/Y')
+                        : 'Todavía sin datos cargados')
+                    : null,
+            ],
+            [
+                'codigo' => 'resistividad',
+                'nombre' => 'Resistividad',
+                'icono' => 'fa-plug',
+                'ruta' => route('planilla_tc.resistividad', $obraTc->id),
+                'ruta_crear' => route('planilla_tc.resistividad.crear', $obraTc->id),
+                'ruta_eliminar' => route('planilla_tc.resistividad.eliminar', $obraTc->id),
+                'ruta_reporte' => route('planilla_tc.resistividad.reporte', $obraTc->id),
+                'cargada' => (bool) $resistividad,
+                'resumen' => $resistividad
+                    ? ($resistividad->fecha
+                        ? $resistividad->detalles_count.' '.($resistividad->detalles_count === 1 ? 'punto ensayado' : 'puntos ensayados').' · '.$resistividad->fecha->format('d/m/Y')
                         : 'Todavía sin datos cargados')
                     : null,
             ],
@@ -131,6 +171,36 @@ class PlanillaTcController extends Controller
         $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
 
         return view('planilla_tc.esclerometria_pla', compact('obraTc', 'esclerometria', 'datosEsclerometria', 'niveles', 'puedeEditar'));
+    }
+
+    public function resistividad(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return redirect()->route('home')->with('error', 'No tenés acceso a esta obra.');
+        }
+
+        $resistividad = ResistividadTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
+
+        $datosResistividad = $resistividad ? [
+            'puntos' => $resistividad->detalles->map(function ($detalle) {
+                return [
+                    'elemento' => $detalle->elemento,
+                    'nivel' => $detalle->nivel?->descripcion,
+                    'lecturas' => $detalle->lecturas,
+                    'temperatura' => $detalle->temperatura,
+                ];
+            })->values()->all(),
+        ] : null;
+
+        $niveles = NivelPlaTc::where('obra_tc_id', $obraTc->id)
+            ->orderBy('descripcion')
+            ->pluck('descripcion');
+
+        $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
+
+        return view('planilla_tc.resistividad_pla', compact('obraTc', 'resistividad', 'datosResistividad', 'niveles', 'puedeEditar'));
     }
 
     public function ultrasonidoIndirecto(ObraTc $obraTc)
@@ -178,7 +248,7 @@ class PlanillaTcController extends Controller
                     'elemento' => $detalle->elemento,
                     'nivel' => $detalle->nivel?->descripcion,
                     'recubrimiento' => $detalle->recubrimiento,
-                    'espesor_carbonatado' => $detalle->espesor_carbonatado,
+                    'espesores' => $detalle->espesores,
                 ];
             })->values()->all(),
         ] : null;
@@ -190,6 +260,36 @@ class PlanillaTcController extends Controller
         $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
 
         return view('planilla_tc.carbonatacion_pla', compact('obraTc', 'carbonatacion', 'datosCarbonatacion', 'niveles', 'puedeEditar'));
+    }
+
+    public function cloruros(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return redirect()->route('home')->with('error', 'No tenés acceso a esta obra.');
+        }
+
+        $cloruros = ClorurosTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
+
+        $datosCloruros = $cloruros ? [
+            'puntos' => $cloruros->detalles->map(function ($detalle) {
+                return [
+                    'elemento' => $detalle->elemento,
+                    'nivel' => $detalle->nivel?->descripcion,
+                    'recubrimiento' => $detalle->recubrimiento,
+                    'espesores' => $detalle->espesores,
+                ];
+            })->values()->all(),
+        ] : null;
+
+        $niveles = NivelPlaTc::where('obra_tc_id', $obraTc->id)
+            ->orderBy('descripcion')
+            ->pluck('descripcion');
+
+        $puedeEditar = app(PermisoService::class)->puede('ens_tc', 'editar');
+
+        return view('planilla_tc.cloruros_pla', compact('obraTc', 'cloruros', 'datosCloruros', 'niveles', 'puedeEditar'));
     }
 
     public function medicionFisura(ObraTc $obraTc)
@@ -316,6 +416,38 @@ class PlanillaTcController extends Controller
         ]);
     }
 
+    public function reporteCloruros(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $cloruros = ClorurosTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
+
+        $puntos = $cloruros
+            ? $cloruros->detalles->values()->map(function ($detalle, $i) {
+                $porcentaje = $detalle->porcentaje_afectado !== null ? round((float) $detalle->porcentaje_afectado, 1) : null;
+
+                return [
+                    'nivel' => $detalle->nivel?->descripcion ?: '-',
+                    'identificacion' => 'CL'.($i + 1),
+                    'elemento' => $detalle->elemento ?: '-',
+                    'recubrimiento' => $detalle->recubrimiento !== null ? number_format((float) $detalle->recubrimiento, 2, ',', '.') : '-',
+                    'espesor_cloruros' => $detalle->espesor_cloruros !== null ? number_format((float) $detalle->espesor_cloruros, 2, ',', '.') : '-',
+                    'porcentaje_afectado' => $porcentaje !== null ? number_format($porcentaje, 1, ',', '.').'%' : '-',
+                ];
+            })
+            : collect();
+
+        return response()->json([
+            'obra' => $obraTc->descripcion,
+            'fecha' => $cloruros?->fecha?->format('d/m/Y'),
+            'puntos' => $puntos,
+        ]);
+    }
+
     public function reporteMedicionFisura(ObraTc $obraTc)
     {
         if (! $this->tieneAccesoAObra($obraTc)) {
@@ -348,6 +480,34 @@ class PlanillaTcController extends Controller
         ]);
     }
 
+    public function reporteResistividad(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $resistividad = ResistividadTc::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
+
+        $puntos = $resistividad
+            ? $resistividad->detalles->values()->map(function ($detalle, $i) {
+                return [
+                    'nivel' => $detalle->nivel?->descripcion ?: '-',
+                    'identificacion' => 'R'.($i + 1),
+                    'elemento' => $detalle->elemento ?: '-',
+                    'resistividad' => $detalle->resistividad_final !== null ? number_format((float) $detalle->resistividad_final, 2, ',', '.') : '-',
+                ];
+            })
+            : collect();
+
+        return response()->json([
+            'obra' => $obraTc->descripcion,
+            'fecha' => $resistividad?->fecha?->format('d/m/Y'),
+            'puntos' => $puntos,
+        ]);
+    }
+
     private function compactacionHormigon(?float $velocidad): string
     {
         if ($velocidad === null) {
@@ -356,10 +516,10 @@ class PlanillaTcController extends Controller
 
         return match (true) {
             $velocidad > 4500 => 'Excelente',
-            $velocidad > 3600 => 'Buena',
-            $velocidad > 3000 => 'Aceptable',
-            $velocidad >= 2100 => 'Mala',
-            default => 'Muy mala',
+            $velocidad >= 3500 => 'Buena',
+            $velocidad >= 3000 => 'Dudosa',
+            $velocidad >= 2000 => 'Pobre',
+            default => 'Muy pobre',
         };
     }
 
@@ -405,6 +565,20 @@ class PlanillaTcController extends Controller
         return response()->json(['ok' => true, 'id' => $carbonatacion->id]);
     }
 
+    public function crearCloruros(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $cloruros = ClorurosTc::firstOrCreate(
+            ['obra_tc_id' => $obraTc->id],
+            ['usuario_id' => session('usuario_id')]
+        );
+
+        return response()->json(['ok' => true, 'id' => $cloruros->id]);
+    }
+
     public function crearMedicionFisura(ObraTc $obraTc)
     {
         if (! $this->tieneAccesoAObra($obraTc)) {
@@ -417,6 +591,20 @@ class PlanillaTcController extends Controller
         );
 
         return response()->json(['ok' => true, 'id' => $medicionFisura->id]);
+    }
+
+    public function crearResistividad(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $resistividad = ResistividadTc::firstOrCreate(
+            ['obra_tc_id' => $obraTc->id],
+            ['usuario_id' => session('usuario_id')]
+        );
+
+        return response()->json(['ok' => true, 'id' => $resistividad->id]);
     }
 
     public function guardarEsclerometria(Request $request, ObraTc $obraTc)
@@ -537,6 +725,8 @@ class PlanillaTcController extends Controller
             'puntos.*.elemento' => 'nullable|string|max:255',
             'puntos.*.nivel' => 'nullable|string|max:255',
             'puntos.*.recubrimiento' => 'nullable|numeric',
+            'puntos.*.espesores' => 'array',
+            'puntos.*.espesores.*' => 'nullable|numeric',
             'puntos.*.espesor_carbonatado' => 'nullable|numeric',
             'puntos.*.porcentaje_afectado' => 'nullable|numeric',
         ]);
@@ -559,7 +749,54 @@ class PlanillaTcController extends Controller
                     'elemento' => $punto['elemento'] ?? null,
                     'nivel_pla_tc_id' => $this->resolverNivelId($obraTc, $punto['nivel'] ?? null),
                     'recubrimiento' => $punto['recubrimiento'] ?? null,
+                    'espesores' => $punto['espesores'] ?? [],
                     'espesor_carbonatado' => $punto['espesor_carbonatado'] ?? null,
+                    'porcentaje_afectado' => $punto['porcentaje_afectado'] ?? null,
+                ]);
+            }
+        });
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function guardarCloruros(Request $request, ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $data = $request->validate([
+            'fecha' => 'required|date',
+            'puntos' => 'array',
+            'puntos.*.elemento' => 'nullable|string|max:255',
+            'puntos.*.nivel' => 'nullable|string|max:255',
+            'puntos.*.recubrimiento' => 'nullable|numeric',
+            'puntos.*.espesores' => 'array',
+            'puntos.*.espesores.*' => 'nullable|numeric',
+            'puntos.*.espesor_cloruros' => 'nullable|numeric',
+            'puntos.*.porcentaje_afectado' => 'nullable|numeric',
+        ]);
+
+        $usuarioId = session('usuario_id');
+
+        DB::transaction(function () use ($data, $obraTc, $usuarioId) {
+            $cloruros = ClorurosTc::updateOrCreate(
+                ['obra_tc_id' => $obraTc->id],
+                [
+                    'usuario_id' => $usuarioId,
+                    'fecha' => $data['fecha'],
+                ]
+            );
+
+            $cloruros->detalles()->delete();
+
+            foreach ($data['puntos'] ?? [] as $punto) {
+                $cloruros->detalles()->create([
+                    'elemento' => $punto['elemento'] ?? null,
+                    'nivel_pla_tc_id' => $this->resolverNivelId($obraTc, $punto['nivel'] ?? null),
+                    'recubrimiento' => $punto['recubrimiento'] ?? null,
+                    'espesores' => $punto['espesores'] ?? [],
+                    'espesor_cloruros' => $punto['espesor_cloruros'] ?? null,
                     'porcentaje_afectado' => $punto['porcentaje_afectado'] ?? null,
                 ]);
             }
@@ -621,6 +858,56 @@ class PlanillaTcController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function guardarResistividad(Request $request, ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $data = $request->validate([
+            'fecha' => 'required|date',
+            'puntos' => 'array',
+            'puntos.*.elemento' => 'nullable|string|max:255',
+            'puntos.*.nivel' => 'nullable|string|max:255',
+            'puntos.*.lecturas' => 'array',
+            'puntos.*.lecturas.*' => 'nullable|numeric',
+            'puntos.*.temperatura' => 'nullable|numeric',
+            'puntos.*.promedio' => 'nullable|numeric',
+            'puntos.*.correccion' => 'nullable|numeric',
+            'puntos.*.resistividad_final' => 'nullable|numeric',
+            'puntos.*.velocidad_corrosion' => 'nullable|string|max:255',
+        ]);
+
+        $usuarioId = session('usuario_id');
+
+        DB::transaction(function () use ($data, $obraTc, $usuarioId) {
+            $resistividad = ResistividadTc::updateOrCreate(
+                ['obra_tc_id' => $obraTc->id],
+                [
+                    'usuario_id' => $usuarioId,
+                    'fecha' => $data['fecha'],
+                ]
+            );
+
+            $resistividad->detalles()->delete();
+
+            foreach ($data['puntos'] ?? [] as $punto) {
+                $resistividad->detalles()->create([
+                    'elemento' => $punto['elemento'] ?? null,
+                    'nivel_pla_tc_id' => $this->resolverNivelId($obraTc, $punto['nivel'] ?? null),
+                    'lecturas' => $punto['lecturas'] ?? [],
+                    'temperatura' => $punto['temperatura'] ?? null,
+                    'promedio' => $punto['promedio'] ?? null,
+                    'correccion' => $punto['correccion'] ?? null,
+                    'resistividad_final' => $punto['resistividad_final'] ?? null,
+                    'velocidad_corrosion' => $punto['velocidad_corrosion'] ?? null,
+                ]);
+            }
+        });
+
+        return response()->json(['ok' => true]);
+    }
+
     public function eliminarEsclerometria(ObraTc $obraTc)
     {
         if (! $this->tieneAccesoAObra($obraTc)) {
@@ -654,6 +941,17 @@ class PlanillaTcController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function eliminarCloruros(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        ClorurosTc::where('obra_tc_id', $obraTc->id)->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
     public function eliminarMedicionFisura(ObraTc $obraTc)
     {
         if (! $this->tieneAccesoAObra($obraTc)) {
@@ -661,6 +959,17 @@ class PlanillaTcController extends Controller
         }
 
         MedicionFisuraTc::where('obra_tc_id', $obraTc->id)->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function eliminarResistividad(ObraTc $obraTc)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        ResistividadTc::where('obra_tc_id', $obraTc->id)->delete();
 
         return response()->json(['ok' => true]);
     }

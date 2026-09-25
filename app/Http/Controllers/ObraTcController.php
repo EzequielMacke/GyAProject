@@ -20,7 +20,7 @@ class ObraTcController extends Controller
                 $query->where('usuario_id', $usuarioId);
             })
             ->where('estado', '!=', 2)
-            ->orderBy('descripcion')
+            ->orderByDesc('id')
             ->get();
 
         $puedeGestionarAutomatico = app(PermisoService::class)->puede('tra_cam', 'eliminar');

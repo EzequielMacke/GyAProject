@@ -382,6 +382,10 @@
                         <div class="panel-title"><i class="fas fa-clipboard-list"></i> Datos generales</div>
                         <div class="form-grid">
                             <div class="form-group">
+                                <label class="form-label" for="input-norma">Norma</label>
+                                <input type="text" id="input-norma" class="form-control" value="ASTM C805/C805-25" readonly>
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label" for="input-obra">Obra</label>
                                 <input type="text" id="input-obra" class="form-control" value="{{ $obraTc->descripcion }}" readonly>
                             </div>
