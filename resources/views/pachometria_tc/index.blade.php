@@ -186,6 +186,8 @@
         .pach-parametros:empty { display: none; }
         .forma-opciones { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-top: 0.4rem; }
         .forma-opciones .tipo-btn { justify-content: center; padding: 0 0.5rem; }
+        .forma-opciones.losa-opciones { grid-template-columns: repeat(4, 1fr); }
+        .losa-opciones + .medidas-grid { margin-top: 0.75rem; }
         .medidas-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 0.75rem; margin-top: 0.4rem; }
         .medidas-grid.tres { grid-template-columns: repeat(3, minmax(0, 160px)); }
         .sub-label { font-size: 0.72rem; font-weight: 700; color: var(--text2); margin-top: 0.85rem; display: block; }
@@ -267,6 +269,7 @@
             .ph-right { width: 100%; }
             .pach-grid { grid-template-columns: 1fr; }
             .pach-card, .pach-agregar { min-height: 300px; }
+            .forma-opciones.losa-opciones { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 900px) {
             .pach-card.expandida .pach-body { flex-direction: column; }
@@ -335,7 +338,8 @@
     };
 
     /* ─── Dibujo de la sección ────────────────────────────────
-       Viga: rectángulo (más ancho que alto).
+       Viga: rectángulo base × altura, en proporción real (sin
+             medidas, una viga genérica vertical de 20×40).
        Pilar: rectangular (lado × ancho, en proporción real) o
               circular (diámetro). Sin medidas cargadas se dibuja
               un cuadrado / círculo genérico.
@@ -434,6 +438,8 @@
             esquina: leerMedida(d.esquina),     // pilar rectangular: Ø de las 4 esquinas
             caraX: leerBarras(card.barrasX),    // pilar rectangular: por cara X (arriba = abajo)
             caraY: leerBarras(card.barrasY),    // pilar rectangular: por cara Y (izquierda = derecha)
+            inferior: leerBarras(card.barrasInferior), // viga: a lo largo de la cara de abajo
+            piel: leerPiel(card.barrasPiel),           // viga: una por cara lateral, a cierta altura
         };
     }
 
@@ -445,6 +451,15 @@
             .map(b => ({ cantidad: parseInt(b.cantidad, 10), diametro: leerMedida(b.diametro) }))
             .filter(b => b.cantidad > 0 && b.diametro !== null)
             .sort((a, b) => b.diametro - a.diametro);
+    }
+
+    // Armadura de piel: [{ diametro (mm), altura (cm desde abajo) }],
+    // solo las filas completas, de abajo hacia arriba.
+    function leerPiel(lista) {
+        return (lista || [])
+            .map(b => ({ diametro: leerMedida(b.diametro), altura: leerMedida(b.altura) }))
+            .filter(b => b.diametro !== null && b.altura !== null)
+            .sort((a, b) => a.altura - b.altura);
     }
 
     // Reparte "total" lugares entre los grupos según sus cantidades,
@@ -528,6 +543,60 @@
         }).filter(b => b.r > 0);
     }
 
+    /* Viga: todas las barras en la cara inferior, apoyadas sobre el
+       estribo. Las de los extremos van en las esquinas y el resto
+       queda equiespaciado entre ellas (intercalando diámetros). Con
+       una sola barra, va al centro. */
+    function ordenBarrasInferior(armadura) {
+        const grupos = armadura.inferior;
+        return intercalar(grupos.map(g => g.cantidad)).map(i => grupos[i].diametro);
+    }
+
+    function posicionesBarrasViga(armadura, x, y, w, h, escala) {
+        const orden = ordenBarrasInferior(armadura);
+        if (! orden.length) return [];
+        const inset = diametro => insetBarra(armadura, diametro) * escala;
+        const desde = x + inset(orden[0]);
+        const hasta = x + w - inset(orden[orden.length - 1]);
+        return orden.map((diametro, j) => ({
+            x: orden.length === 1 ? x + w / 2 : desde + j * (hasta - desde) / (orden.length - 1),
+            y: y + h - inset(diametro),
+            r: (diametro / 20) * escala,
+        }));
+    }
+
+    // Piel: una barra en cada cara lateral, apoyada en el estribo, con
+    // el centro a la altura cargada. Se descartan las que caen fuera
+    // de la viga.
+    function posicionesBarrasPiel(armadura, x, y, w, h, escala) {
+        return armadura.piel
+            .filter(b => b.altura * escala < h)
+            .flatMap(b => {
+                const inset = insetBarra(armadura, b.diametro) * escala;
+                const cy = y + h - b.altura * escala;
+                const r = (b.diametro / 20) * escala;
+                return [{ x: x + inset, y: cy, r }, { x: x + w - inset, y: cy, r }];
+            });
+    }
+
+    /* Cotas de altura de la piel, a la izquierda de la viga: una
+       línea vertical desde la cara inferior, con una marca y el valor
+       en cada nivel (todas medidas desde abajo). */
+    function cotasPiel(armadura, { x, y, w, h, escala }) {
+        const niveles = armadura.piel.filter(b => b.altura * escala < h);
+        if (! niveles.length) return '';
+        const xc = x - 12;
+        const yNivel = b => y + h - b.altura * escala;
+        return `
+            <line x1="${xc}" y1="${y + h}" x2="${xc}" y2="${yNivel(niveles[niveles.length - 1])}" ${ESTILO_COTA}></line>
+            <line x1="${xc - 5}" y1="${y + h}" x2="${x - 2}" y2="${y + h}" ${ESTILO_COTA}></line>
+            ${niveles.map(b => `
+                <line x1="${xc - 5}" y1="${yNivel(b)}" x2="${x - 2}" y2="${yNivel(b)}" ${ESTILO_COTA}></line>
+                <text x="${xc - 8}" y="${yNivel(b) + 3.5}" text-anchor="end" ${ESTILO_TEXTO_LOSA}>${formatearMedida(b.altura)}</text>
+            `).join('')}
+        `;
+    }
+
     function dibujarBarras(barras) {
         return barras.map(b =>
             `<circle cx="${b.x}" cy="${b.y}" r="${Math.max(1.8, b.r)}" fill="${COLOR_ESTRIBO}"></circle>`
@@ -541,32 +610,124 @@
         return ((diametroBarra + (armadura.estribo ?? 0)) / 20) * escala;
     }
 
-    function dibujarPilarRectangular(lado, ancho, armadura) {
-        // Si falta una medida se toma igual a la otra (cuadrado).
-        const l = lado ?? ancho ?? 1;
-        const a = ancho ?? lado ?? 1;
-        const escala = Math.min(MAX_ANCHO_DIBUJO / l, MAX_ALTO_DIBUJO / a);
-        const w = l * escala;
-        const h = a * escala;
-        const x = (320 - w) / 2;
-        const y = (200 - h) / 2 - 6;
+    /* ─── Sección rectangular (pilar y viga) ──────────────────
+       Ubica el rectángulo en proporción real dentro del viewBox.
+       Si falta una medida se toma igual a la otra (cuadrado). */
+    function encuadrarRectangulo(horizontal, vertical, maxAncho = MAX_ANCHO_DIBUJO) {
+        const hor = horizontal ?? vertical ?? 1;
+        const ver = vertical ?? horizontal ?? 1;
+        const escala = Math.min(maxAncho / hor, MAX_ALTO_DIBUJO / ver);
+        const w = hor * escala;
+        const h = ver * escala;
+        return { escala, w, h, x: (320 - w) / 2, y: (200 - h) / 2 - 6 };
+    }
 
-        const cotaLado = lado !== null ? `
+    /* Cotas: la medida horizontal debajo y la vertical a la derecha.
+       "corrimiento" aleja la cota vertical del borde (p. ej. para
+       pasar por fuera de una losa); en ese caso se agregan líneas de
+       referencia hasta la cota. */
+    function cotasRectangulo({ x, y, w, h }, horizontal, vertical, corrimiento = 0) {
+        const xc = x + w + corrimiento;
+        const referencias = corrimiento > 0 ? `
+            <line x1="${xc + 2}" y1="${y}" x2="${xc + 17}" y2="${y}" ${ESTILO_COTA}></line>
+            <line x1="${x + w + 2}" y1="${y + h}" x2="${xc + 17}" y2="${y + h}" ${ESTILO_COTA}></line>
+        ` : '';
+        const cotaHorizontal = horizontal !== null ? `
             <line x1="${x}" y1="${y + h + 12}" x2="${x + w}" y2="${y + h + 12}" ${ESTILO_COTA}></line>
             <line x1="${x}" y1="${y + h + 7}" x2="${x}" y2="${y + h + 17}" ${ESTILO_COTA}></line>
             <line x1="${x + w}" y1="${y + h + 7}" x2="${x + w}" y2="${y + h + 17}" ${ESTILO_COTA}></line>
-            <text x="${x + w / 2}" y="${y + h + 28}" text-anchor="middle" ${ESTILO_TEXTO_COTA}>${formatearMedida(lado)}</text>
+            <text x="${x + w / 2}" y="${y + h + 28}" text-anchor="middle" ${ESTILO_TEXTO_COTA}>${formatearMedida(horizontal)}</text>
         ` : '';
-        const cotaAncho = ancho !== null ? `
-            <line x1="${x + w + 12}" y1="${y}" x2="${x + w + 12}" y2="${y + h}" ${ESTILO_COTA}></line>
-            <line x1="${x + w + 7}" y1="${y}" x2="${x + w + 17}" y2="${y}" ${ESTILO_COTA}></line>
-            <line x1="${x + w + 7}" y1="${y + h}" x2="${x + w + 17}" y2="${y + h}" ${ESTILO_COTA}></line>
-            <text x="${x + w + 22}" y="${y + h / 2 + 4}" text-anchor="start" ${ESTILO_TEXTO_COTA}>${formatearMedida(ancho)}</text>
+        const cotaVertical = vertical !== null ? `
+            ${referencias}
+            <line x1="${xc + 12}" y1="${y}" x2="${xc + 12}" y2="${y + h}" ${ESTILO_COTA}></line>
+            <line x1="${xc + 7}" y1="${y}" x2="${xc + 17}" y2="${y}" ${ESTILO_COTA}></line>
+            <line x1="${xc + 7}" y1="${y + h}" x2="${xc + 17}" y2="${y + h}" ${ESTILO_COTA}></line>
+            <text x="${xc + 22}" y="${y + h / 2 + 4}" text-anchor="start" ${ESTILO_TEXTO_COTA}>${formatearMedida(vertical)}</text>
         ` : '';
+        return cotaHorizontal + cotaVertical;
+    }
 
-        // El estribo solo se dibuja con medidas reales (hace falta la escala en cm).
+    /* ─── Viga ────────────────────────────────────────────────
+       Sección base (horizontal) × altura (vertical), en proporción
+       real. Opcionalmente con losa a uno o ambos lados: la losa se
+       apoya al ras de la cara superior, su altura va a escala y el
+       largo es esquemático, cortado con una línea de continuidad. */
+    const LARGO_LOSA = 56;           // largo dibujado de cada losa
+    const ANCHO_VIGA_CON_LOSAS = 205; // viga + losas, dejando lugar a la cota vertical
+    const ESTILO_TEXTO_LOSA = 'font-size="10" font-weight="600" fill="#445060" font-family="Plus Jakarta Sans, sans-serif"';
+
+    // Contorno de la sección en una sola figura (viga + losas), para
+    // que no quede una línea entre la viga y la losa. "t" es la altura
+    // de la losa en unidades del dibujo.
+    function contornoViga({ x, y, w, h }, t, largoIzq, largoDer) {
+        // Corte en Z a media altura del extremo libre de la losa.
+        const corte = (xf, sentido) => {
+            const a = Math.min(5, t * 0.35);
+            const ym = y + t / 2;
+            const puntos = [[xf, ym - a], [xf + a, ym - a * 0.2], [xf - a, ym + a * 0.2], [xf, ym + a]];
+            return (sentido > 0 ? puntos : puntos.reverse()).map(([px, py]) => `L ${px} ${py}`).join(' ');
+        };
+        const xi = x - largoIzq;
+        const xd = x + w + largoDer;
+        return [
+            `M ${xi} ${y}`,
+            `L ${xd} ${y}`,
+            largoDer ? `${corte(xd, 1)} L ${xd} ${y + t} L ${x + w} ${y + t}` : '',
+            `L ${x + w} ${y + h}`,
+            `L ${x} ${y + h}`,
+            largoIzq ? `L ${x} ${y + t} L ${xi} ${y + t} ${corte(xi, -1)}` : '',
+            'Z',
+        ].join(' ');
+    }
+
+    // Sin medidas cargadas se dibuja una viga genérica vertical de 20×40,
+    // sin estribo ni barras (hace falta la escala en cm).
+    function dibujarViga(base, altura, armadura, losas) {
+        const sinMedidas = base === null && altura === null;
+        const largoIzq = losas.izquierda ? LARGO_LOSA : 0;
+        const largoDer = losas.derecha ? LARGO_LOSA : 0;
+        const r = encuadrarRectangulo(
+            sinMedidas ? 20 : base,
+            sinMedidas ? 40 : altura,
+            Math.min(MAX_ANCHO_DIBUJO, ANCHO_VIGA_CON_LOSAS - largoIzq - largoDer)
+        );
+        // Se centra el conjunto viga + losas.
+        r.x = (320 - (r.w + largoIzq + largoDer)) / 2 + largoIzq;
+
+        // Sin altura cargada, la losa se dibuja a un tercio de la viga.
+        const t = losas.altura !== null ? Math.min(losas.altura * r.escala, r.h) : r.h / 3;
+        const rotuloLosa = xCentro => losas.altura !== null
+            // Arriba de la losa: abajo quedan las cotas de la armadura de piel.
+            ? `<text x="${xCentro}" y="${r.y - 6}" text-anchor="middle" ${ESTILO_TEXTO_LOSA}>h = ${formatearMedida(losas.altura)}</text>`
+            : '';
+        const rotulosLosas =
+            (largoIzq ? rotuloLosa(r.x - largoIzq / 2) : '') +
+            (largoDer ? rotuloLosa(r.x + r.w + largoDer / 2) : '');
+
+        // Las esquinas del estribo envuelven las barras inferiores de los extremos.
+        const esquinaInferior = ordenBarrasInferior(armadura)[0] ?? null;
+        const interior = sinMedidas ? '' : `
+            ${estriboRectangular(r, armadura, esquinaInferior)}
+            ${dibujarBarras(posicionesBarrasViga(armadura, r.x, r.y, r.w, r.h, r.escala))}
+            ${dibujarBarras(posicionesBarrasPiel(armadura, r.x, r.y, r.w, r.h, r.escala))}
+            ${cotasPiel(armadura, r)}
+        `;
+
+        return `<svg viewBox="0 0 320 200" aria-label="Sección de viga">
+                    <path d="${contornoViga(r, t, largoIzq, largoDer)}" ${ESTILO_SECCION} stroke-linejoin="round"></path>
+                    ${interior}
+                    ${rotulosLosas}
+                    ${cotasRectangulo(r, base, altura, largoDer)}
+                </svg>`;
+    }
+
+    /* Estribo de una sección rectangular (pilar o viga), con el gancho
+       en la esquina superior izquierda. Si se conoce el Ø de la barra
+       de esquina, el doblado la envuelve. */
+    function estriboRectangular({ escala, x, y, w, h }, armadura, diametroEsquina) {
         let estribo = '';
-        const datosEstribo = lado !== null || ancho !== null ? calcularEstribo(armadura, escala) : null;
+        const datosEstribo = calcularEstribo(armadura, escala);
         if (datosEstribo) {
             const i = datosEstribo.distanciaEje * escala;
             const we = w - 2 * i;
@@ -578,7 +739,7 @@
                 // ~Ø, sin pasar de una fracción del lado menor.
                 const g = datosEstribo.grosor;
                 // Con armadura principal, el doblado envuelve la barra de esquina.
-                const rDoblado = radioDobladoBarra(armadura.esquina, armadura, escala);
+                const rDoblado = radioDobladoBarra(diametroEsquina, armadura, escala);
                 const rc = rDoblado
                     ? Math.min(Math.max(rDoblado, g * 0.9), Math.min(we, he) / 3)
                     : Math.min(g * 2, Math.min(we, he) / 4);
@@ -618,6 +779,15 @@
                 }, datosEstribo);
             }
         }
+        return estribo;
+    }
+
+    function dibujarPilarRectangular(lado, ancho, armadura) {
+        const rect = encuadrarRectangulo(lado, ancho);
+        const { escala, x, y, w, h } = rect;
+
+        // El estribo solo se dibuja con medidas reales (hace falta la escala en cm).
+        const estribo = lado !== null || ancho !== null ? estriboRectangular(rect, armadura, armadura.esquina) : '';
 
         // Las barras necesitan la escala real (medidas del pilar cargadas).
         const barras = lado !== null || ancho !== null
@@ -635,7 +805,7 @@
                     <rect x="${x}" y="${y}" width="${w}" height="${h}" ${ESTILO_SECCION}></rect>
                     ${estribo}
                     ${barras}
-                    ${cotaLado}${cotaAncho}
+                    ${cotasRectangulo(rect, lado, ancho)}
                     ${rotulosCaras}
                 </svg>`;
     }
@@ -713,9 +883,13 @@
     function dibujarSeccion(card) {
         const d = card.dataset;
         if (d.tipo === 'viga') {
-            return `<svg viewBox="0 0 320 200" aria-label="Sección de viga">
-                        <rect x="30" y="55" width="260" height="90" ${ESTILO_SECCION}></rect>
-                    </svg>`;
+            const armadura = leerArmadura(card);
+            const losas = {
+                izquierda: d.losas === 'izquierda' || d.losas === 'ambas',
+                derecha: d.losas === 'derecha' || d.losas === 'ambas',
+                altura: leerMedida(d.alturaLosa),
+            };
+            return dibujarViga(leerMedida(d.base), leerMedida(d.altura), armadura, losas) + leyendaArmadura(armadura, 'viga');
         }
         if (d.tipo === 'pilar') {
             const armadura = leerArmadura(card);
@@ -739,7 +913,12 @@
         const partes = [];
         if (forma === 'circular') {
             if (armadura.barras.length) partes.push(grupos(armadura.barras));
-        } else {
+        } else if (forma === 'viga') {
+            if (armadura.inferior.length) partes.push(`Inferior: ${grupos(armadura.inferior)}`);
+            if (armadura.piel.length) {
+                partes.push(`Piel: ${armadura.piel.map(b => `${mm(b.diametro)} a ${cm(b.altura)}`).join(' + ')} por cara`);
+            }
+        } else if (forma === 'rectangular') {
             if (armadura.esquina !== null) partes.push(`Esquinas: 4 ${mm(armadura.esquina)}`);
             if (armadura.caraX.length) partes.push(`Cara X: ${grupos(armadura.caraX)} por cara`);
             if (armadura.caraY.length) partes.push(`Cara Y: ${grupos(armadura.caraY)} por cara`);
@@ -771,6 +950,11 @@
             const lado = leerMedida(d.lado);
             const ancho = leerMedida(d.ancho);
             return lado !== null || ancho !== null ? ` (${cm(lado)} x ${cm(ancho)})` : '';
+        }
+        if (d.tipo === 'viga') {
+            const base = leerMedida(d.base);
+            const altura = leerMedida(d.altura);
+            return base !== null || altura !== null ? ` (${cm(base)} x ${cm(altura)})` : '';
         }
         return '';
     }
@@ -821,17 +1005,59 @@
         `;
     }
 
+    // Recubrimiento y estribos: iguales para pilar y viga.
+    function camposEstribo(d) {
+        return `
+            <div>
+                <span class="tipo-label">Recubrimiento y estribos</span>
+                <div class="medidas-grid tres">
+                    ${campoMedida('recubrimiento', 'Recubrimiento (mm)', d.recubrimiento, 'mm')}
+                    ${campoMedida('estribo', 'Estribo Ø (mm)', d.estribo, 'mm')}
+                    ${campoMedida('separacion', 'Separación (cm)', d.separacion)}
+                </div>
+            </div>
+        `;
+    }
+
+    /* Listas de barras. Cada fila edita los campos marcados con
+       data-campo. La armadura de piel de la viga guarda Ø y altura;
+       el resto, cantidad y Ø. */
+    const LISTAS_PIEL = ['barrasPiel'];
+
+    function filaVacia(clave) {
+        return LISTAS_PIEL.includes(clave) ? { diametro: '', altura: '' } : { cantidad: '', diametro: '' };
+    }
+
+    function camposFilaBarra(clave, b) {
+        const diametro = `
+            <input type="number" min="0" step="any" inputmode="decimal" class="medida-input"
+                   data-campo="diametro" value="${b.diametro}" placeholder="mm">
+            <span class="barra-fila-texto">mm</span>
+        `;
+        if (LISTAS_PIEL.includes(clave)) {
+            return `
+                <span class="barra-fila-texto">Ø</span>
+                ${diametro}
+                <span class="barra-fila-texto">a</span>
+                <input type="number" min="0" step="any" inputmode="decimal" class="medida-input"
+                       data-campo="altura" value="${b.altura}" placeholder="cm">
+                <span class="barra-fila-texto">cm</span>
+            `;
+        }
+        return `
+            <input type="number" min="1" step="1" inputmode="numeric" class="medida-input"
+                   data-campo="cantidad" value="${b.cantidad}" placeholder="Cant.">
+            <span class="barra-fila-texto">de Ø</span>
+            ${diametro}
+        `;
+    }
+
     function listaBarrasHTML(card, clave) {
         return `
             <div class="barras-lista" data-lista="${clave}">
                 ${card[clave].map((b, i) => `
                     <div class="barra-fila" data-indice="${i}">
-                        <input type="number" min="1" step="1" inputmode="numeric" class="medida-input barra-cantidad"
-                               value="${b.cantidad}" placeholder="Cant.">
-                        <span class="barra-fila-texto">de Ø</span>
-                        <input type="number" min="0" step="any" inputmode="decimal" class="medida-input barra-diametro"
-                               value="${b.diametro}" placeholder="mm">
-                        <span class="barra-fila-texto">mm</span>
+                        ${camposFilaBarra(clave, b)}
                         <button type="button" class="barra-quitar" title="Quitar armadura"><i class="fas fa-trash"></i></button>
                     </div>
                 `).join('')}
@@ -840,9 +1066,66 @@
         `;
     }
 
+    // Losas a los costados de la viga.
+    const OPCIONES_LOSA = {
+        ninguna:   { nombre: 'Ninguna',   icono: 'fa-ban' },
+        izquierda: { nombre: 'Izquierda', icono: 'fa-arrow-left' },
+        derecha:   { nombre: 'Derecha',   icono: 'fa-arrow-right' },
+        ambas:     { nombre: 'Ambas',     icono: 'fa-arrows-alt-h' },
+    };
+
     function renderParametros(card) {
         const contenedor = card.querySelector('.pach-parametros');
         const d = card.dataset;
+
+        if (d.tipo === 'viga') {
+            const losas = d.losas || 'ninguna';
+            const botonesLosa = Object.entries(OPCIONES_LOSA).map(([clave, op]) => `
+                <button type="button" class="tipo-btn losa-btn ${losas === clave ? 'activo' : ''}" data-losas="${clave}">
+                    <i class="fas ${op.icono}"></i> ${op.nombre}
+                </button>
+            `).join('');
+
+            contenedor.innerHTML = `
+                <div>
+                    <span class="tipo-label">Medidas</span>
+                    <div class="medidas-grid">
+                        ${campoMedida('base', 'Base (cm)', d.base)}
+                        ${campoMedida('altura', 'Altura (cm)', d.altura)}
+                    </div>
+                </div>
+                <div>
+                    <span class="tipo-label">Losas a los costados</span>
+                    <div class="forma-opciones losa-opciones">${botonesLosa}</div>
+                    ${losas !== 'ninguna' ? `
+                        <div class="medidas-grid" style="grid-template-columns:minmax(0, 220px)">
+                            ${campoMedida('alturaLosa', 'Altura de la losa (cm)', d.alturaLosa)}
+                        </div>
+                    ` : ''}
+                </div>
+                ${camposEstribo(d)}
+                <div>
+                    <span class="tipo-label">Armadura principal</span>
+                    <span class="sub-label">Inferior <small>· se distribuye a lo largo de la cara de abajo</small></span>
+                    ${listaBarrasHTML(card, 'barrasInferior')}
+                </div>
+                <div>
+                    <span class="tipo-label">Armadura de piel</span>
+                    <span class="sub-label">Una barra por cara lateral <small>· altura al centro de la barra, medida desde abajo</small></span>
+                    ${listaBarrasHTML(card, 'barrasPiel')}
+                </div>
+            `;
+            contenedor.querySelectorAll('.losa-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    card.dataset.losas = btn.dataset.losas;
+                    renderParametros(card);
+                    redibujar(card);
+                });
+            });
+            escucharListasBarras(card, contenedor);
+            escucharMedidas(card, contenedor);
+            return;
+        }
 
         if (d.tipo !== 'pilar') {
             contenedor.innerHTML = '';
@@ -882,49 +1165,14 @@
                 <span class="tipo-label">Medidas</span>
                 <div class="medidas-grid" ${forma === 'circular' ? 'style="grid-template-columns:minmax(0, 220px)"' : ''}>${medidas}</div>
             </div>
-            <div>
-                <span class="tipo-label">Recubrimiento y estribos</span>
-                <div class="medidas-grid tres">
-                    ${campoMedida('recubrimiento', 'Recubrimiento (mm)', d.recubrimiento, 'mm')}
-                    ${campoMedida('estribo', 'Estribo Ø (mm)', d.estribo, 'mm')}
-                    ${campoMedida('separacion', 'Separación (cm)', d.separacion)}
-                </div>
-            </div>
+            ${camposEstribo(d)}
             <div>
                 <span class="tipo-label">Armadura principal</span>
                 ${armaduraPrincipal}
             </div>
         `;
 
-        // Listas de barras (circular: "barras"; rectangular: "barrasX" y "barrasY").
-        contenedor.querySelectorAll('.barras-lista').forEach(function (lista) {
-            const clave = lista.dataset.lista;
-
-            lista.querySelectorAll('.barra-fila').forEach(function (fila) {
-                const indice = parseInt(fila.dataset.indice, 10);
-                fila.querySelector('.barra-cantidad').addEventListener('input', function () {
-                    card[clave][indice].cantidad = this.value;
-                    redibujar(card);
-                });
-                fila.querySelector('.barra-diametro').addEventListener('input', function () {
-                    card[clave][indice].diametro = this.value;
-                    redibujar(card);
-                });
-                fila.querySelector('.barra-quitar').addEventListener('click', function () {
-                    card[clave].splice(indice, 1);
-                    if (! card[clave].length) card[clave].push({ cantidad: '', diametro: '' });
-                    renderParametros(card);
-                    redibujar(card);
-                });
-            });
-
-            lista.querySelector('.barra-agregar').addEventListener('click', function () {
-                card[clave].push({ cantidad: '', diametro: '' });
-                renderParametros(card);
-                const cantidades = contenedor.querySelectorAll(`.barras-lista[data-lista="${clave}"] .barra-cantidad`);
-                cantidades[cantidades.length - 1].focus();
-            });
-        });
+        escucharListasBarras(card, contenedor);
 
         contenedor.querySelectorAll('.forma-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -934,8 +1182,43 @@
             });
         });
 
-        // El dibujo se actualiza en vivo mientras se escriben las medidas.
-        contenedor.querySelectorAll('.medida-input').forEach(function (input) {
+        escucharMedidas(card, contenedor);
+    }
+
+    /* Listas de barras: pilar circular "barras"; pilar rectangular
+       "barrasX" y "barrasY"; viga "barrasInferior" y "barrasPiel". */
+    function escucharListasBarras(card, contenedor) {
+        contenedor.querySelectorAll('.barras-lista').forEach(function (lista) {
+            const clave = lista.dataset.lista;
+
+            lista.querySelectorAll('.barra-fila').forEach(function (fila) {
+                const indice = parseInt(fila.dataset.indice, 10);
+                fila.querySelectorAll('[data-campo]').forEach(function (input) {
+                    input.addEventListener('input', function () {
+                        card[clave][indice][input.dataset.campo] = input.value;
+                        redibujar(card);
+                    });
+                });
+                fila.querySelector('.barra-quitar').addEventListener('click', function () {
+                    card[clave].splice(indice, 1);
+                    if (! card[clave].length) card[clave].push(filaVacia(clave));
+                    renderParametros(card);
+                    redibujar(card);
+                });
+            });
+
+            lista.querySelector('.barra-agregar').addEventListener('click', function () {
+                card[clave].push(filaVacia(clave));
+                renderParametros(card);
+                const filas = contenedor.querySelectorAll(`.barras-lista[data-lista="${clave}"] .barra-fila`);
+                filas[filas.length - 1].querySelector('[data-campo]').focus();
+            });
+        });
+    }
+
+    // El dibujo se actualiza en vivo mientras se escriben las medidas.
+    function escucharMedidas(card, contenedor) {
+        contenedor.querySelectorAll('.medida-input[data-medida]').forEach(function (input) {
             input.addEventListener('input', function () {
                 card.dataset[input.dataset.medida] = input.value;
                 redibujar(card);
@@ -989,6 +1272,8 @@
         card.barras = [{ cantidad: '', diametro: '' }];
         card.barrasX = [{ cantidad: '', diametro: '' }];
         card.barrasY = [{ cantidad: '', diametro: '' }];
+        card.barrasInferior = [filaVacia('barrasInferior')];
+        card.barrasPiel = [filaVacia('barrasPiel')];
 
         const botonesTipo = Object.entries(TIPOS).map(([clave, tipo]) => `
             <button type="button" class="tipo-btn" data-tipo="${clave}">
