@@ -775,14 +775,31 @@
         return '';
     }
 
-    // Rótulo centrado arriba del dibujo: nombre (PCH1) y debajo el tipo
-    // con sus dimensiones, p. ej. "Pilar (30cm x 40cm)".
+    function escaparHtml(texto) {
+        return String(texto).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Nombre del elemento cargado (p. ej. "Pilar 1"); si no hay, el tipo elegido.
+    function nombreElemento(card) {
+        const propio = (card.dataset.elemento || '').trim();
+        if (propio) return propio;
+        return card.dataset.tipo ? TIPOS[card.dataset.tipo].nombre : '';
+    }
+
+    // Rótulo centrado arriba del dibujo: nombre (PCH1) y debajo el elemento
+    // con sus dimensiones, p. ej. "Pilar 1 (30cm x 40cm)".
     function dibujarRotulo(card) {
         const nombre = `${PREFIJO_NOMBRE}${card.dataset.numero || '?'}`;
-        const tipo = card.dataset.tipo
-            ? `<div class="rotulo-tipo">${TIPOS[card.dataset.tipo].nombre}${dimensionesRotulo(card)}</div>`
+        const elemento = nombreElemento(card);
+        const tipo = elemento
+            ? `<div class="rotulo-tipo">${escaparHtml(elemento)}${dimensionesRotulo(card)}</div>`
             : '';
         return `<div class="lienzo-rotulo"><div class="rotulo-nombre">${nombre}</div>${tipo}</div>`;
+    }
+
+    // Subtítulo de la cabecera de la tarjeta.
+    function actualizarSubtitulo(card) {
+        card.querySelector('.pach-tipo-texto').textContent = nombreElemento(card) || 'Sin tipo seleccionado';
     }
 
     function contenidoLienzo(card) {
@@ -1003,6 +1020,11 @@
                         <span class="tipo-label">Tipo de elemento</span>
                         <div class="tipo-opciones">${botonesTipo}</div>
                     </div>
+                    <div>
+                        <span class="tipo-label">Nombre del elemento</span>
+                        <input type="text" class="medida-input elemento-input" maxlength="60"
+                               placeholder="Ej: Pilar 1" style="max-width:320px; margin-top:0.4rem;">
+                    </div>
                     <div class="pach-parametros"></div>
                     <div class="pach-panel-acciones">
                         <button type="button" class="pach-delete-btn"><i class="fas fa-trash"></i> Eliminar pachometría</button>
@@ -1027,13 +1049,20 @@
             validarNombres();
         });
 
+        card.querySelector('.elemento-input').addEventListener('input', function () {
+            card.dataset.elemento = this.value;
+            actualizarSubtitulo(card);
+            redibujar(card);
+        });
+
         const botonesTipoEl = card.querySelectorAll('.tipo-opciones .tipo-btn');
         botonesTipoEl.forEach(function (btn) {
             btn.addEventListener('click', function () {
                 const tipo = btn.dataset.tipo;
                 card.dataset.tipo = tipo;
                 botonesTipoEl.forEach(b => b.classList.toggle('activo', b === btn));
-                card.querySelector('.pach-tipo-texto').textContent = TIPOS[tipo].nombre;
+                card.querySelector('.elemento-input').placeholder = `Ej: ${TIPOS[tipo].nombre} 1`;
+                actualizarSubtitulo(card);
                 renderParametros(card);
                 redibujar(card);
             });
