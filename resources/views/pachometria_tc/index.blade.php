@@ -188,6 +188,24 @@
         .forma-opciones .tipo-btn { justify-content: center; padding: 0 0.5rem; }
         .medidas-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 0.75rem; margin-top: 0.4rem; }
         .medidas-grid.tres { grid-template-columns: repeat(3, minmax(0, 160px)); }
+        .barras-lista { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.4rem; }
+        .barra-fila { display: flex; align-items: center; gap: 0.5rem; }
+        .barra-fila .medida-input { width: 100px; }
+        .barra-fila-texto { font-size: 0.8rem; font-weight: 600; color: var(--text2); }
+        .barra-quitar {
+            width: 34px; height: 34px; flex-shrink: 0; border-radius: 0.5rem;
+            border: none; background: none; color: var(--muted); cursor: pointer;
+            transition: color 0.14s, background 0.14s;
+        }
+        .barra-quitar:hover { color: #c0392b; background: #fff0f0; }
+        .barra-agregar {
+            align-self: flex-start; height: 34px; padding: 0 0.85rem; margin-top: 0.1rem;
+            border-radius: 0.5rem; border: 1.5px dashed var(--border2); background: #fff;
+            color: var(--accent); font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.8rem; font-weight: 700; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.14s;
+        }
+        .barra-agregar:hover { background: var(--accent-s); border-color: var(--accent); }
         .medida-campo { display: flex; flex-direction: column; gap: 0.3rem; }
         .medida-campo span { font-size: 0.7rem; font-weight: 600; color: var(--muted); }
         .medida-input {
@@ -401,12 +419,144 @@
         return { x: p.x + largo * Math.SQRT1_2, y: p.y + largo * Math.SQRT1_2 };
     }
 
-    function leerArmadura(d) {
+    function leerArmadura(card) {
+        const d = card.dataset;
         return {
             recubrimiento: leerMedida(d.recubrimiento),
             estribo: leerMedida(d.estribo),
             separacion: leerMedida(d.separacion),
+            barras: leerBarras(card),
         };
+    }
+
+    /* ─── Armadura principal ──────────────────────────────────
+       card.barras = [{ cantidad, diametro (mm) }, ...]. Se toman solo
+       los grupos completos, ordenados de mayor a menor diámetro
+       (las barras más gruesas van primero a las esquinas). */
+    function leerBarras(card) {
+        return (card.barras || [])
+            .map(b => ({ cantidad: parseInt(b.cantidad, 10), diametro: leerMedida(b.diametro) }))
+            .filter(b => b.cantidad > 0 && b.diametro !== null)
+            .sort((a, b) => b.diametro - a.diametro);
+    }
+
+    // Reparte "total" lugares entre los grupos según sus cantidades,
+    // intercalándolos de forma pareja (no todas las de un tipo juntas).
+    // Devuelve el índice de grupo de cada lugar.
+    function intercalar(cantidades) {
+        const total = cantidades.reduce((s, c) => s + c, 0);
+        const usados = cantidades.map(() => 0);
+        const orden = [];
+        for (let k = 1; k <= total; k++) {
+            let elegido = -1;
+            let mayorDeficit = -Infinity;
+            cantidades.forEach((c, i) => {
+                if (usados[i] >= c) return;
+                const deficit = (k * c) / total - usados[i];
+                if (deficit > mayorDeficit) { mayorDeficit = deficit; elegido = i; }
+            });
+            usados[elegido]++;
+            orden.push(elegido);
+        }
+        return orden;
+    }
+
+    // Distancia del borde al centro de una barra: recubrimiento +
+    // Ø estribo + radio de la barra (todo en cm).
+    function insetBarra(armadura, diametroMm) {
+        return (armadura.recubrimiento ?? 0) + (armadura.estribo ?? 0) / 10 + diametroMm / 20;
+    }
+
+    /* Pilar rectangular:
+       1) Las 4 esquinas se llenan primero con las barras más gruesas.
+       2) El resto se reparte en pares simétricos (arriba/abajo e
+          izquierda/derecha) proporcional al largo de las caras; si
+          sobra una, va a la cara superior.
+       3) En cada cara las barras quedan equiespaciadas entre esquinas. */
+    function posicionesBarrasRectangular(armadura, x, y, w, h, escala) {
+        const grupos = armadura.barras;
+        if (! grupos.length) return [];
+
+        const restantes = grupos.map(g => g.cantidad);
+        const esquinas = [];
+        for (let i = 0; i < grupos.length && esquinas.length < 4; i++) {
+            while (restantes[i] > 0 && esquinas.length < 4) {
+                esquinas.push(i);
+                restantes[i]--;
+            }
+        }
+
+        const barra = (grupo, cx, cy) => ({ x: cx, y: cy, r: (grupos[grupo].diametro / 20) * escala, grupo });
+        const inset = grupo => insetBarra(armadura, grupos[grupo].diametro) * escala;
+        const resultado = [];
+
+        // Esquinas: arriba-izq, arriba-der, abajo-der, abajo-izq.
+        const esquinasPos = [
+            g => [x + inset(g), y + inset(g)],
+            g => [x + w - inset(g), y + inset(g)],
+            g => [x + w - inset(g), y + h - inset(g)],
+            g => [x + inset(g), y + h - inset(g)],
+        ];
+        esquinas.forEach((g, k) => resultado.push(barra(g, ...esquinasPos[k](g))));
+        if (esquinas.length < 4) return resultado;
+
+        // Pares del mismo diámetro para mantener la simetría.
+        const pares = intercalar(restantes.map(c => Math.floor(c / 2))).map(g => [g, g]);
+        const sueltas = [];
+        restantes.forEach((c, g) => { if (c % 2) sueltas.push(g); });
+        while (sueltas.length >= 2) pares.push([sueltas.shift(), sueltas.shift()]);
+        const suelta = sueltas.length ? sueltas[0] : null;
+
+        const paresH = Math.round(pares.length * w / (w + h));
+        const paresV = pares.length - paresH;
+        const nArriba = paresH + (suelta !== null ? 1 : 0);
+
+        // Borde útil de cada cara: entre los centros de las barras de esquina.
+        const x0 = x + inset(esquinas[0]);
+        const x1 = x + w - inset(esquinas[1]);
+        const y0 = y + inset(esquinas[0]);
+        const y1 = y + h - inset(esquinas[3]);
+        const repartir = (desde, hasta, n, j) => desde + (j + 1) * (hasta - desde) / (n + 1);
+
+        // Cara superior (con la suelta en el medio si la hay) e inferior.
+        const arriba = pares.slice(0, paresH).map(p => p[0]);
+        if (suelta !== null) arriba.splice(Math.floor(arriba.length / 2), 0, suelta);
+        arriba.forEach((g, j) => resultado.push(barra(g, repartir(x0, x1, nArriba, j), y + inset(g))));
+        pares.slice(0, paresH).forEach((p, j) =>
+            resultado.push(barra(p[1], repartir(x0, x1, paresH, j), y + h - inset(p[1]))));
+
+        // Caras laterales.
+        pares.slice(paresH).forEach((p, j) => {
+            resultado.push(barra(p[0], x + inset(p[0]), repartir(y0, y1, paresV, j)));
+            resultado.push(barra(p[1], x + w - inset(p[1]), repartir(y0, y1, paresV, j)));
+        });
+
+        return resultado;
+    }
+
+    // Pilar circular: todas equiespaciadas, empezando por la esquina del gancho.
+    function posicionesBarrasCircular(armadura, o, r, diametroCm, escala) {
+        const grupos = armadura.barras;
+        if (! grupos.length) return [];
+        const orden = intercalar(grupos.map(g => g.cantidad));
+        return orden.map((g, k) => {
+            const radio = r - insetBarra(armadura, grupos[g].diametro) * escala;
+            const p = puntoEn(o, radio, 225 + (360 * k) / orden.length);
+            return { x: p.x, y: p.y, r: (grupos[g].diametro / 20) * escala, grupo: g };
+        }).filter(b => b.r > 0);
+    }
+
+    function dibujarBarras(barras) {
+        return barras.map(b =>
+            `<circle cx="${b.x}" cy="${b.y}" r="${Math.max(1.8, b.r)}" fill="${COLOR_ESTRIBO}"></circle>`
+        ).join('');
+    }
+
+    // Radio del doblado del estribo alrededor de la barra de esquina:
+    // Ø barra / 2 + Ø estribo / 2 (en unidades del dibujo).
+    function radioDobladoBarra(armadura, escala) {
+        if (! armadura.barras.length) return 0;
+        return ((armadura.barras[0].diametro + (armadura.estribo ?? 0)) / 20) * escala;
     }
 
     function dibujarPilarRectangular(lado, ancho, armadura) {
@@ -445,8 +595,14 @@
                 // Radio de las esquinas ~2Ø y radio del doblado del gancho
                 // ~Ø, sin pasar de una fracción del lado menor.
                 const g = datosEstribo.grosor;
-                const rc = Math.min(g * 2, Math.min(we, he) / 4);
-                const rb = Math.min(g * 0.9, Math.min(we, he) / 5);
+                // Con armadura principal, el doblado envuelve la barra de esquina.
+                const rDoblado = radioDobladoBarra(armadura, escala);
+                const rc = rDoblado
+                    ? Math.min(Math.max(rDoblado, g * 0.9), Math.min(we, he) / 3)
+                    : Math.min(g * 2, Math.min(we, he) / 4);
+                const rb = rDoblado
+                    ? rc
+                    : Math.min(g * 0.9, Math.min(we, he) / 5);
                 const largoPata = Math.min(datosEstribo.largoGancho, Math.min(we, he) * 0.35);
                 const c = { x: xe + rb, y: ye + rb };
 
@@ -481,9 +637,15 @@
             }
         }
 
+        // Las barras necesitan la escala real (medidas del pilar cargadas).
+        const barras = lado !== null || ancho !== null
+            ? dibujarBarras(posicionesBarrasRectangular(armadura, x, y, w, h, escala))
+            : '';
+
         return `<svg viewBox="0 0 320 200" aria-label="Sección de pilar rectangular">
                     <rect x="${x}" y="${y}" width="${w}" height="${h}" ${ESTILO_SECCION}></rect>
                     ${estribo}
+                    ${barras}
                     ${cotaLado}${cotaAncho}
                 </svg>`;
     }
@@ -511,7 +673,10 @@
                 // estribo en el punto de 225° (arriba a la izquierda).
                 const o = { x: cx, y: cy };
                 const g = datosEstribo.grosor;
-                const rb = Math.min(g * 0.9, rEstribo / 4);
+                const rDoblado = radioDobladoBarra(armadura, (2 * r) / diametro);
+                const rb = rDoblado
+                    ? Math.min(Math.max(rDoblado, g * 0.9), rEstribo / 3)
+                    : Math.min(g * 0.9, rEstribo / 4);
                 const largoPata = Math.min(datosEstribo.largoGancho, rEstribo * 0.7);
                 const c = puntoEn(o, rEstribo - rb, 225);
                 const tangente = puntoEn(o, rEstribo, 225);
@@ -543,9 +708,14 @@
             }
         }
 
+        const barras = diametro !== null
+            ? dibujarBarras(posicionesBarrasCircular(armadura, { x: cx, y: cy }, r, diametro, (2 * r) / diametro))
+            : '';
+
         return `<svg viewBox="0 0 320 200" aria-label="Sección de pilar circular">
                     <circle cx="${cx}" cy="${cy}" r="${r}" ${ESTILO_SECCION}></circle>
                     ${estribo}
+                    ${barras}
                     ${cota}
                 </svg>`;
     }
@@ -558,7 +728,7 @@
                     </svg>`;
         }
         if (d.tipo === 'pilar') {
-            const armadura = leerArmadura(d);
+            const armadura = leerArmadura(card);
             const dibujo = d.forma === 'circular'
                 ? dibujarPilarCircular(leerMedida(d.diametro), armadura)
                 : dibujarPilarRectangular(leerMedida(d.lado), leerMedida(d.ancho), armadura);
@@ -575,6 +745,11 @@
     function leyendaArmadura(armadura) {
         const cm = v => `${Number(v.toFixed(2))}cm`;
         const partes = [];
+        if (armadura.barras.length) {
+            partes.push(armadura.barras
+                .map(b => `${b.cantidad} Ø${Number(b.diametro.toFixed(2))}mm`)
+                .join(' + '));
+        }
         if (armadura.estribo !== null || armadura.separacion !== null) {
             let texto = 'Est.';
             if (armadura.estribo !== null) texto += ` Ø${Number(armadura.estribo.toFixed(2))}mm`;
@@ -582,7 +757,7 @@
             partes.push(texto);
         }
         if (armadura.recubrimiento !== null) partes.push(`Rec. ${cm(armadura.recubrimiento)}`);
-        // Estribo y recubrimiento en renglones separados.
+        // Armadura principal, estribo y recubrimiento en renglones separados.
         return partes.length
             ? `<div class="lienzo-leyenda">${partes.map(p => `<div>${p}</div>`).join('')}</div>`
             : '';
@@ -666,14 +841,56 @@
                 <div class="medidas-grid" ${forma === 'circular' ? 'style="grid-template-columns:minmax(0, 220px)"' : ''}>${medidas}</div>
             </div>
             <div>
-                <span class="tipo-label">Armadura</span>
+                <span class="tipo-label">Recubrimiento y estribos</span>
                 <div class="medidas-grid tres">
                     ${campoMedida('recubrimiento', 'Recubrimiento (cm)', d.recubrimiento)}
                     ${campoMedida('estribo', 'Estribo Ø (mm)', d.estribo, 'mm')}
                     ${campoMedida('separacion', 'Separación (cm)', d.separacion)}
                 </div>
             </div>
+            <div>
+                <span class="tipo-label">Armadura principal</span>
+                <div class="barras-lista">
+                    ${card.barras.map((b, i) => `
+                        <div class="barra-fila" data-indice="${i}">
+                            <input type="number" min="1" step="1" inputmode="numeric" class="medida-input barra-cantidad"
+                                   value="${b.cantidad}" placeholder="Cant.">
+                            <span class="barra-fila-texto">de Ø</span>
+                            <input type="number" min="0" step="any" inputmode="decimal" class="medida-input barra-diametro"
+                                   value="${b.diametro}" placeholder="mm">
+                            <span class="barra-fila-texto">mm</span>
+                            <button type="button" class="barra-quitar" title="Quitar armadura"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `).join('')}
+                    <button type="button" class="barra-agregar"><i class="fas fa-plus"></i> Agregar armadura</button>
+                </div>
+            </div>
         `;
+
+        contenedor.querySelectorAll('.barra-fila').forEach(function (fila) {
+            const indice = parseInt(fila.dataset.indice, 10);
+            fila.querySelector('.barra-cantidad').addEventListener('input', function () {
+                card.barras[indice].cantidad = this.value;
+                redibujar(card);
+            });
+            fila.querySelector('.barra-diametro').addEventListener('input', function () {
+                card.barras[indice].diametro = this.value;
+                redibujar(card);
+            });
+            fila.querySelector('.barra-quitar').addEventListener('click', function () {
+                card.barras.splice(indice, 1);
+                if (! card.barras.length) card.barras.push({ cantidad: '', diametro: '' });
+                renderParametros(card);
+                redibujar(card);
+            });
+        });
+
+        contenedor.querySelector('.barra-agregar').addEventListener('click', function () {
+            card.barras.push({ cantidad: '', diametro: '' });
+            renderParametros(card);
+            const filas = contenedor.querySelectorAll('.barra-cantidad');
+            filas[filas.length - 1].focus();
+        });
 
         contenedor.querySelectorAll('.forma-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -735,6 +952,7 @@
         card.className = 'pach-card';
         card.dataset.idx = idx;
         card.dataset.numero = idx;
+        card.barras = [{ cantidad: '', diametro: '' }];
 
         const botonesTipo = Object.entries(TIPOS).map(([clave, tipo]) => `
             <button type="button" class="tipo-btn" data-tipo="${clave}">
