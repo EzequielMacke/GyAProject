@@ -48,6 +48,7 @@ class ModuloSeeder extends Seeder
             ['nombre' => 'ano_pla', 'descripcion' => 'Anotaciones - Planos',                      'estado' => 1],
             ['nombre' => 'gal_tc',  'descripcion' => 'Galería - Trabajo de campo',                'estado' => 1],
             ['nombre' => 'ens_tc',  'descripcion' => 'Planilla de Ensayos - Trabajo de campo',    'estado' => 1],
+            ['nombre' => 'pch_tc',  'descripcion' => 'Pachometria - Trabajo de campo',            'estado' => 1],
 
 
 

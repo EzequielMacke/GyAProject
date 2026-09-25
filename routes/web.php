@@ -33,6 +33,7 @@ use App\Http\Controllers\ObraTcController;
 use App\Http\Controllers\DirectorioTcController;
 use App\Http\Controllers\DirectorioTcAutomaticoController;
 use App\Http\Controllers\GaleriaTcController;
+use App\Http\Controllers\PachometriaTcController;
 use App\Http\Controllers\PlanillaTcController;
 use App\Http\Controllers\PlanoController;
 use Illuminate\Support\Facades\Artisan;
@@ -504,6 +505,9 @@ Route::middleware('permiso:pla_tc,ver')->group(function () {
 Route::middleware('permiso:gal_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/galeria', [GaleriaTcController::class, 'index'])->name('galeria_tc.index');
     Route::post('/trabajo-campo/{obraTc}/galeria/descargar', [GaleriaTcController::class, 'descargar'])->name('galeria_tc.descargar');
+});
+Route::middleware('permiso:pch_tc,ver')->group(function () {
+    Route::get('/trabajo-campo/{obraTc}/pachometrias', [PachometriaTcController::class, 'index'])->name('pachometria_tc.index');
 });
 Route::middleware('permiso:ens_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planillas', [PlanillaTcController::class, 'index'])->name('planilla_tc.index');
