@@ -45,6 +45,17 @@
         .ph-sub { font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
         .ph-right { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 
+        /* ── ESTADO DE GUARDADO ── */
+        .estado-guardado {
+            display: inline-flex; align-items: center; gap: 0.4rem; margin-right: 0.35rem;
+            font-size: 0.78rem; font-weight: 600; color: var(--muted);
+        }
+        .estado-guardado i { font-size: 0.72rem; }
+        .estado-guardado.pendiente { color: var(--muted); }
+        .estado-guardado.guardando { color: var(--accent-b); }
+        .estado-guardado.guardado { color: #1e8e5a; }
+        .estado-guardado.error { color: #c0392b; }
+
         /* ── BUTTONS ── */
         .btn {
             height: 38px; padding: 0 1rem; border-radius: 0.55rem;
@@ -275,6 +286,7 @@
             cursor: pointer; transition: all 0.14s;
         }
         .pach-agregar:hover { background: var(--accent-s); border-color: var(--accent); }
+        .pach-agregar[hidden], .pach-delete-btn[hidden] { display: none; }
         .pach-agregar-icono {
             width: 60px; height: 60px; border-radius: 50%;
             background: var(--accent-s); color: var(--accent);
@@ -324,6 +336,14 @@
                         <p class="ph-sub">{{ $obraTc->descripcion ?? '-' }}</p>
                     </div>
                     <div class="ph-right">
+                        @if($puedeEditar || $puedeAgregar)
+                        <span class="estado-guardado guardado" id="estado-guardado">
+                            <i class="fas fa-check"></i> <span id="estado-guardado-texto">Guardado</span>
+                        </span>
+                        @endif
+                        <button type="button" class="btn" id="btn-exportar-pdf">
+                            <i class="fas fa-file-pdf"></i> Exportar PDF
+                        </button>
                         <a href="{{ route('obras_tc.index', $obraTc->id) }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
@@ -336,7 +356,7 @@
             <div class="container-fluid">
 
                 <div class="pach-grid" id="pach-grid">
-                    <button type="button" class="pach-agregar" id="btn-agregar-pachometria">
+                    <button type="button" class="pach-agregar" id="btn-agregar-pachometria" @if(! $puedeAgregar) hidden @endif>
                         <span class="pach-agregar-icono"><i class="fas fa-plus"></i></span>
                         <span class="pach-agregar-texto">Agregar pachometría</span>
                     </button>
@@ -365,7 +385,7 @@
        Pilar: rectangular (lado × ancho, en proporción real) o
               circular (diámetro). Sin medidas cargadas se dibuja
               un cuadrado / círculo genérico.
-       Losa: todavía sin definir. */
+       Losa: planta de 1 m × 1 m y corte A-A (ver más abajo). */
     const ESTILO_SECCION = 'fill="#e9edf2" stroke="#445060" stroke-width="2"';
     const ESTILO_COTA = 'stroke="#8496aa" stroke-width="1"';
     const ESTILO_TEXTO_CARA = 'font-size="10" font-weight="700" fill="#2a6fdb" letter-spacing="0.3" font-family="Plus Jakarta Sans, sans-serif"';
@@ -978,6 +998,264 @@
                 </svg>`;
     }
 
+    /* ─── Losa ────────────────────────────────────────────────
+       Se dibuja una porción de 1 m × 1 m en planta y su corte A-A
+       (paralelo al eje X). Armaduras, cada una con Ø (mm) y separación
+       (cm), en dos direcciones:
+       - Dirección X: barras paralelas al eje X (separadas en Y).
+       - Dirección Y: barras paralelas al eje Y (separadas en X).
+       Inferior: capa de abajo X y encima Y. Negativa (superior, en
+       rojo y a trazos): capa de arriba X y debajo Y. */
+    const VENTANA_LOSA = 100; // cm que abarcan la planta y el corte
+    const COLOR_NEGATIVA = '#c0392b';
+    const ESPESOR_GENERICO_LOSA = 12;
+    const ESTILO_TITULO_VISTA = 'font-size="11" font-weight="700" fill="#445060" font-family="Plus Jakarta Sans, sans-serif"';
+
+    // Cada dirección admite varias armaduras (p. ej. Ø10 c/15 + Ø8 c/15):
+    // [{ diametro (mm) o null, separacion (cm) }], solo las filas con
+    // separación cargada.
+    function leerMallas(lista) {
+        return (lista || [])
+            .map(b => ({ diametro: leerMedida(b.diametro), separacion: leerMedida(b.separacion) }))
+            .filter(b => b.separacion !== null);
+    }
+
+    function leerLosa(card) {
+        const d = card.dataset;
+        return {
+            espesor: leerMedida(d.espesor),
+            recubrimientoMm: leerMedida(d.recubrimiento),
+            recubrimiento: leerMedida(d.recubrimiento) !== null ? leerMedida(d.recubrimiento) / 10 : null,
+            inferior: { x: leerMallas(card.losaInfX), y: leerMallas(card.losaInfY) },
+            negativa: { x: leerMallas(card.losaNegX), y: leerMallas(card.losaNegY) },
+            referenciaX: (d.referenciaX || '').trim(),
+            referenciaY: (d.referenciaY || '').trim(),
+        };
+    }
+
+    // Posiciones (cm, dentro de la ventana) de las barras de una malla.
+    // Las inferiores arrancan a media separación del borde y las
+    // negativas a una separación entera, así no quedan encimadas en
+    // planta cuando tienen la misma separación.
+    function posicionesMalla(malla, negativa) {
+        if (! malla || malla.separacion < 1) return [];
+        const posiciones = [];
+        for (let p = negativa ? malla.separacion : malla.separacion / 2; p < VENTANA_LOSA; p += malla.separacion) {
+            posiciones.push(p);
+        }
+        return posiciones;
+    }
+
+    // Grosor de una barra dibujada como línea y radio de una barra vista
+    // de punta (sin Ø cargado, se toma 8 mm para que se vea).
+    const grosorBarraLosa = (malla, escala, minimo) => Math.max(minimo, ((malla.diametro ?? 8) / 10) * escala);
+    const radioBarraLosa = (malla, escala) => Math.max(RADIO_MINIMO_BARRA, ((malla.diametro ?? 8) / 20) * escala);
+
+    /* Barras de una dirección con varias armaduras. Las que tienen la
+       misma separación van juntas: cada una se corre, respecto de la
+       anterior, lo que ocupan las dos (ancho(malla) = ancho dibujado de
+       la barra), así se ven una al lado de la otra. Devuelve
+       [{ malla, posiciones (cm), desplazamiento (unidades del dibujo) }]. */
+    function barrasDireccion(mallas, negativa, ancho) {
+        const ultimaPorSeparacion = new Map();
+        return mallas.map(malla => {
+            const w = ancho(malla);
+            const anterior = ultimaPorSeparacion.get(malla.separacion);
+            const desplazamiento = anterior ? anterior.desplazamiento + anterior.w / 2 + w / 2 + 0.8 : 0;
+            ultimaPorSeparacion.set(malla.separacion, { desplazamiento, w });
+            return { malla, posiciones: posicionesMalla(malla, negativa), desplazamiento };
+        });
+    }
+
+    function dibujarLosaPlanta(losa) {
+        const S = 150;
+        const x0 = 110;
+        const y0 = 24;
+        const escala = S / VENTANA_LOSA;
+
+        const grosor = malla => grosorBarraLosa(malla, escala, 1.2);
+        const lineas = (mallas, direccion, negativa) => {
+            const color = negativa ? COLOR_NEGATIVA : COLOR_ESTRIBO;
+            const trazo = negativa ? 'stroke-dasharray="6 3"' : '';
+            return barrasDireccion(mallas, negativa, grosor).map(({ malla, posiciones, desplazamiento }) => {
+                const g = grosor(malla);
+                return posiciones.map(p => {
+                    if (direccion === 'x') {
+                        const y = y0 + S - p * escala - desplazamiento;
+                        return `<line x1="${x0}" y1="${y}" x2="${x0 + S}" y2="${y}" stroke="${color}" stroke-width="${g}" ${trazo}></line>`;
+                    }
+                    const x = x0 + p * escala + desplazamiento;
+                    return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0 + S}" stroke="${color}" stroke-width="${g}" ${trazo}></line>`;
+                }).join('');
+            }).join('');
+        };
+
+        /* Cota de la separación (de la primera armadura) de cada
+           dirección: a la derecha para X, arriba para Y. Las inferiores
+           se acotan entre las dos primeras barras (abajo / a la
+           izquierda) y las negativas, en rojo, entre las dos últimas
+           (arriba / a la derecha), así las cotas no se pisan. */
+        const cotaSeparacion = (mallas, direccion, negativa) => {
+            const malla = mallas[0];
+            const todas = posicionesMalla(malla, negativa);
+            if (todas.length < 2) return '';
+            const ps = negativa ? todas.slice(-2) : todas.slice(0, 2);
+            const texto = `c/${Number(malla.separacion.toFixed(2))}`;
+            const estiloLinea = negativa ? `stroke="${COLOR_NEGATIVA}" stroke-width="1"` : ESTILO_COTA;
+            const estiloTexto = negativa ? ESTILO_TEXTO_LOSA.replace('fill="#445060"', `fill="${COLOR_NEGATIVA}"`) : ESTILO_TEXTO_LOSA;
+            if (direccion === 'x') {
+                const xc = x0 + S + 8;
+                const [ya, yb] = [y0 + S - ps[0] * escala, y0 + S - ps[1] * escala];
+                return `
+                    <line x1="${xc}" y1="${ya}" x2="${xc}" y2="${yb}" ${estiloLinea}></line>
+                    <line x1="${xc - 3}" y1="${ya}" x2="${xc + 3}" y2="${ya}" ${estiloLinea}></line>
+                    <line x1="${xc - 3}" y1="${yb}" x2="${xc + 3}" y2="${yb}" ${estiloLinea}></line>
+                    <text x="${xc + 6}" y="${(ya + yb) / 2 + 3.5}" ${estiloTexto}>${texto}</text>`;
+            }
+            // La negativa va en una línea de cota más arriba que la
+            // inferior, así los textos no se pisan.
+            const yc = negativa ? y0 - 16 : y0 - 6;
+            const [xa, xb] = [x0 + ps[0] * escala, x0 + ps[1] * escala];
+            // El texto va a la derecha de la cota; si no entra (cota
+            // cerca del borde derecho), a la izquierda.
+            const textoY = xb + 40 > 320
+                ? `<text x="${xa - 5}" y="${yc + 3.5}" text-anchor="end" ${estiloTexto}>${texto}</text>`
+                : `<text x="${xb + 5}" y="${yc + 3.5}" ${estiloTexto}>${texto}</text>`;
+            return `
+                <line x1="${xa}" y1="${yc}" x2="${xb}" y2="${yc}" ${estiloLinea}></line>
+                <line x1="${xa}" y1="${yc - 3}" x2="${xa}" y2="${yc + 3}" ${estiloLinea}></line>
+                <line x1="${xb}" y1="${yc - 3}" x2="${xb}" y2="${yc + 3}" ${estiloLinea}></line>
+                ${textoY}`;
+        };
+
+        // Ejes con sus referencias: X abajo (hacia la derecha) e Y a la
+        // izquierda (hacia arriba).
+        const flecha = 'fill="#2a6fdb"';
+        const yEjeX = y0 + S + 14;
+        const xEjeY = x0 - 32; // separado: entre el eje y la planta va la marca del corte
+        const rotuloEje = (eje, referencia) => `${eje}${referencia ? ` · ${escaparHtml(referencia)}` : ''}`;
+        const ejes = `
+            <line x1="${x0}" y1="${yEjeX}" x2="${x0 + S}" y2="${yEjeX}" stroke="#2a6fdb" stroke-width="1.2"></line>
+            <polygon points="${x0 + S + 6},${yEjeX} ${x0 + S - 1},${yEjeX - 3.5} ${x0 + S - 1},${yEjeX + 3.5}" ${flecha}></polygon>
+            <text x="${x0 + S / 2}" y="${yEjeX + 15}" text-anchor="middle" ${ESTILO_TEXTO_CARA}>${rotuloEje('X', losa.referenciaX)}</text>
+            <line x1="${xEjeY}" y1="${y0 + S}" x2="${xEjeY}" y2="${y0}" stroke="#2a6fdb" stroke-width="1.2"></line>
+            <polygon points="${xEjeY},${y0 - 6} ${xEjeY - 3.5},${y0 + 1} ${xEjeY + 3.5},${y0 + 1}" ${flecha}></polygon>
+            <text x="${xEjeY - 9}" y="${y0 + S / 2}" text-anchor="middle" ${ESTILO_TEXTO_CARA}
+                  transform="rotate(-90 ${xEjeY - 9} ${y0 + S / 2})">${rotuloEje('Y', losa.referenciaY)}</text>
+        `;
+
+        // Línea del corte A-A (paralela a X, a media altura). Sale de la
+        // planta a los dos lados y las marcas con la "A" quedan afuera,
+        // así no se pierden entre las armaduras.
+        const yA = y0 + S / 2;
+        const salida = 22;
+        const estiloA = 'font-size="12" font-weight="800" fill="#2a6fdb" font-family="Plus Jakarta Sans, sans-serif"';
+        const corte = `
+            <line x1="${x0 - salida}" y1="${yA}" x2="${x0 + S + salida}" y2="${yA}" stroke="#2a6fdb" stroke-width="1.2" stroke-dasharray="9 3 2 3"></line>
+            <line x1="${x0 - salida}" y1="${yA}" x2="${x0 - 6}" y2="${yA}" stroke="#2a6fdb" stroke-width="2.5"></line>
+            <line x1="${x0 + S + 6}" y1="${yA}" x2="${x0 + S + salida}" y2="${yA}" stroke="#2a6fdb" stroke-width="2.5"></line>
+            <text x="${x0 - salida}" y="${yA - 5}" ${estiloA}>A</text>
+            <text x="${x0 + S + salida}" y="${yA - 5}" text-anchor="end" ${estiloA}>A</text>
+        `;
+
+        return `<svg viewBox="0 0 320 214" aria-label="Planta de la losa">
+                    <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Planta</text>
+                    <rect x="${x0}" y="${y0}" width="${S}" height="${S}" fill="#e9edf2" stroke="#445060" stroke-width="1.5" stroke-dasharray="6 3"></rect>
+                    ${lineas(losa.inferior.y, 'y', false)}
+                    ${lineas(losa.inferior.x, 'x', false)}
+                    ${lineas(losa.negativa.y, 'y', true)}
+                    ${lineas(losa.negativa.x, 'x', true)}
+                    ${corte}
+                    ${cotaSeparacion(losa.inferior.x, 'x', false)}
+                    ${cotaSeparacion(losa.inferior.y, 'y', false)}
+                    ${cotaSeparacion(losa.negativa.x, 'x', true)}
+                    ${cotaSeparacion(losa.negativa.y, 'y', true)}
+                    ${ejes}
+                </svg>`;
+    }
+
+    // Corte A-A: paralelo a X. Las barras en X se ven a lo largo (una
+    // línea) y las barras en Y se ven de punta (círculos). Sin espesor
+    // cargado se dibuja uno genérico, sin cota.
+    function dibujarLosaCorte(losa) {
+        const espesor = losa.espesor ?? ESPESOR_GENERICO_LOSA;
+        const escala = Math.min(2.4, 110 / espesor);
+        const W = VENTANA_LOSA * escala;
+        const h = espesor * escala;
+        const x0 = (320 - W) / 2 - 20; // corrido a la izquierda: a la derecha va la cota
+        const y0 = 28;
+        const rec = (losa.recubrimiento ?? 0) * escala;
+
+        // Capas desde cada cara hacia adentro, apoyadas una sobre otra.
+        // Las barras en X de todas las armaduras se ven como una sola
+        // línea (del grosor de la más gruesa); las barras en Y, como
+        // círculos, las de igual separación una al lado de la otra.
+        let capas = '';
+        const capaLinea = (mallas, desdeAbajo, yCara, negativa) => {
+            if (! mallas.length) return yCara;
+            const g = Math.max(...mallas.map(m => grosorBarraLosa(m, escala, 1.5)));
+            const y = desdeAbajo ? yCara - g / 2 : yCara + g / 2;
+            capas += `<line x1="${x0}" y1="${y}" x2="${x0 + W}" y2="${y}" stroke="${negativa ? COLOR_NEGATIVA : COLOR_ESTRIBO}" stroke-width="${g}"></line>`;
+            return desdeAbajo ? yCara - g : yCara + g;
+        };
+        const capaPuntos = (mallas, desdeAbajo, yCara, negativa) => {
+            const radio = malla => radioBarraLosa(malla, escala);
+            barrasDireccion(mallas, negativa, malla => 2 * radio(malla)).forEach(({ malla, posiciones, desplazamiento }) => {
+                const r = radio(malla);
+                const y = desdeAbajo ? yCara - r : yCara + r;
+                capas += posiciones.map(p =>
+                    `<circle cx="${x0 + p * escala + desplazamiento}" cy="${y}" r="${r}" fill="${negativa ? COLOR_NEGATIVA : COLOR_ESTRIBO}"></circle>`
+                ).join('');
+            });
+        };
+
+        const yAbajo = capaLinea(losa.inferior.x, true, y0 + h - rec, false);
+        capaPuntos(losa.inferior.y, true, yAbajo, false);
+        const yArriba = capaLinea(losa.negativa.x, false, y0 + rec, true);
+        capaPuntos(losa.negativa.y, false, yArriba, true);
+
+        // Extremos cortados (la losa sigue): línea quebrada en cada lado.
+        const quiebre = xq => {
+            const ym = y0 + h / 2;
+            const a = Math.min(4, h / 5);
+            return `<path d="M ${xq} ${y0} L ${xq} ${ym - a} L ${xq + a} ${ym - a / 3} L ${xq - a} ${ym + a / 3} L ${xq} ${ym + a} L ${xq} ${y0 + h}"
+                          fill="none" stroke="#445060" stroke-width="1"></path>`;
+        };
+
+        const cota = losa.espesor !== null ? `
+            <line x1="${x0 + W + 12}" y1="${y0}" x2="${x0 + W + 12}" y2="${y0 + h}" ${ESTILO_COTA}></line>
+            <line x1="${x0 + W + 7}" y1="${y0}" x2="${x0 + W + 17}" y2="${y0}" ${ESTILO_COTA}></line>
+            <line x1="${x0 + W + 7}" y1="${y0 + h}" x2="${x0 + W + 17}" y2="${y0 + h}" ${ESTILO_COTA}></line>
+            <text x="${x0 + W + 20}" y="${y0 + h / 2 + 4}" ${ESTILO_TEXTO_COTA}>${formatearMedida(losa.espesor)}</text>
+        ` : '';
+
+        return `<svg viewBox="0 0 320 ${Math.ceil(y0 + h + 14)}" aria-label="Corte A-A de la losa">
+                    <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Corte A-A</text>
+                    <rect x="${x0}" y="${y0}" width="${W}" height="${h}" fill="#e9edf2"></rect>
+                    <line x1="${x0}" y1="${y0}" x2="${x0 + W}" y2="${y0}" stroke="#445060" stroke-width="2"></line>
+                    <line x1="${x0}" y1="${y0 + h}" x2="${x0 + W}" y2="${y0 + h}" stroke="#445060" stroke-width="2"></line>
+                    ${quiebre(x0)}
+                    ${quiebre(x0 + W)}
+                    ${capas}
+                    ${cota}
+                </svg>`;
+    }
+
+    function leyendaLosa(losa) {
+        const texto = mallas => mallas
+            .map(m => `${m.diametro !== null ? `Ø${Number(m.diametro.toFixed(2))}mm ` : ''}c/${Number(m.separacion.toFixed(2))}cm`)
+            .join(' + ');
+        const partes = [];
+        if (losa.inferior.x.length) partes.push(`Inf. X: ${texto(losa.inferior.x)}`);
+        if (losa.inferior.y.length) partes.push(`Inf. Y: ${texto(losa.inferior.y)}`);
+        if (losa.negativa.x.length) partes.push(`<span style="color:${COLOR_NEGATIVA}">Neg. X: ${texto(losa.negativa.x)}</span>`);
+        if (losa.negativa.y.length) partes.push(`<span style="color:${COLOR_NEGATIVA}">Neg. Y: ${texto(losa.negativa.y)}</span>`);
+        if (losa.recubrimientoMm !== null) partes.push(`Rec. ${Number(losa.recubrimientoMm.toFixed(2))}mm`);
+        return partes.length
+            ? `<div class="lienzo-leyenda">${partes.map(p => `<div>${p}</div>`).join('')}</div>`
+            : '';
+    }
+
     function dibujarSeccion(card) {
         const d = card.dataset;
         if (d.tipo === 'viga') {
@@ -997,7 +1275,8 @@
             return dibujo + leyendaArmadura(armadura, d.forma === 'circular' ? 'circular' : 'rectangular');
         }
         if (d.tipo === 'losa') {
-            return `<div class="lienzo-mensaje"><i class="fas fa-layer-group"></i>Dibujo de losa a definir.</div>`;
+            const losa = leerLosa(card);
+            return dibujarLosaPlanta(losa) + dibujarLosaCorte(losa) + leyendaLosa(losa);
         }
         return `<div class="lienzo-mensaje"><i class="fas fa-hand-pointer"></i>Seleccioná el tipo de elemento para dibujarlo.</div>`;
     }
@@ -1056,6 +1335,10 @@
             const altura = leerMedida(d.altura);
             return base !== null || altura !== null ? ` (${cm(base)} x ${cm(altura)})` : '';
         }
+        if (d.tipo === 'losa') {
+            const espesor = leerMedida(d.espesor);
+            return espesor !== null ? ` (e = ${cm(espesor)})` : '';
+        }
         return '';
     }
 
@@ -1101,8 +1384,11 @@
         `;
     }
 
+    // Cada cambio de datos pasa por acá, así que también dispara el
+    // autoguardado de la tarjeta.
     function redibujar(card) {
         card.querySelector('.lienzo-zoom').innerHTML = contenidoLienzo(card);
+        programarGuardado(card);
     }
 
     /* ─── Zoom del lienzo ─────────────────────────────────────
@@ -1225,6 +1511,18 @@
         `;
     }
 
+    // Campo de texto libre (p. ej. las referencias de la losa). Usa
+    // data-medida igual que las medidas, así se guarda y redibuja igual.
+    function campoTexto(clave, etiqueta, valor, placeholder) {
+        return `
+            <label class="medida-campo">
+                <span>${etiqueta}</span>
+                <input type="text" maxlength="40" class="medida-input"
+                       data-medida="${clave}" value="${escaparHtml(valor ?? '')}" placeholder="${placeholder}">
+            </label>
+        `;
+    }
+
     // Recubrimiento y estribos: iguales para pilar y viga.
     function camposEstribo(d) {
         return `
@@ -1244,9 +1542,11 @@
        el resto, cantidad y Ø. */
     const LISTAS_PIEL = ['barrasPiel'];
     const LISTAS_CAMADA = ['barrasCamadas']; // cantidad, Ø y altura
+    const LISTAS_MALLA = ['losaInfX', 'losaInfY', 'losaNegX', 'losaNegY']; // losa: Ø y separación
 
     function filaVacia(clave) {
         if (LISTAS_CAMADA.includes(clave)) return { cantidad: '', diametro: '', altura: '' };
+        if (LISTAS_MALLA.includes(clave)) return { diametro: '', separacion: '' };
         return LISTAS_PIEL.includes(clave) ? { diametro: '', altura: '' } : { cantidad: '', diametro: '' };
     }
 
@@ -1267,6 +1567,16 @@
                 <span class="barra-fila-texto">Ø</span>
                 ${diametro}
                 ${altura}
+            `;
+        }
+        if (LISTAS_MALLA.includes(clave)) {
+            return `
+                <span class="barra-fila-texto">Ø</span>
+                ${diametro}
+                <span class="barra-fila-texto">c/</span>
+                <input type="number" min="0" step="any" inputmode="decimal" class="medida-input"
+                       data-campo="separacion" value="${b.separacion}" placeholder="cm">
+                <span class="barra-fila-texto">cm</span>
             `;
         }
         return `
@@ -1355,6 +1665,44 @@
                     redibujar(card);
                 });
             });
+            escucharListasBarras(card, contenedor);
+            escucharMedidas(card, contenedor);
+            return;
+        }
+
+        if (d.tipo === 'losa') {
+            // Una lista por dirección: cada fila, Ø y separación. Las de
+            // igual separación se dibujan juntas (p. ej. Ø10 + Ø8 c/15).
+            const malla = (clave, direccion, detalle) => `
+                <span class="sub-label">Dirección ${direccion} <small>· ${detalle}</small></span>
+                ${listaBarrasHTML(card, clave)}
+            `;
+            contenedor.innerHTML = `
+                <div>
+                    <span class="tipo-label">Medidas</span>
+                    <div class="medidas-grid">
+                        ${campoMedida('espesor', 'Espesor (cm)', d.espesor)}
+                        ${campoMedida('recubrimiento', 'Recubrimiento (mm)', d.recubrimiento, 'mm')}
+                    </div>
+                </div>
+                <div>
+                    <span class="tipo-label">Referencias</span>
+                    <div class="medidas-grid">
+                        ${campoTexto('referenciaX', 'Referencia X', d.referenciaX, 'Ej: Calle Mitre')}
+                        ${campoTexto('referenciaY', 'Referencia Y', d.referenciaY, 'Ej: Calle Tango')}
+                    </div>
+                </div>
+                <div>
+                    <span class="tipo-label">Armadura inferior</span>
+                    ${malla('losaInfX', 'X', 'barras paralelas al eje X')}
+                    ${malla('losaInfY', 'Y', 'barras paralelas al eje Y')}
+                </div>
+                <div>
+                    <span class="tipo-label">Armadura negativa</span>
+                    ${malla('losaNegX', 'X', 'barras paralelas al eje X')}
+                    ${malla('losaNegY', 'Y', 'barras paralelas al eje Y')}
+                </div>
+            `;
             escucharListasBarras(card, contenedor);
             escucharMedidas(card, contenedor);
             return;
@@ -1497,19 +1845,29 @@
         grilla.insertBefore(card, siguiente || btnAgregar);
     }
 
-    function crearTarjeta() {
-        const idx = obtenerSiguienteIdx();
+    /* Sin argumento crea una tarjeta nueva. Con "guardada" ({ id, datos })
+       la reconstruye con lo que vino de la base: los campos van al
+       dataset y las listas de barras a sus propiedades. */
+    function crearTarjeta(guardada = null) {
         const card = document.createElement('div');
         card.className = 'pach-card';
+        const campos = guardada?.datos?.campos ?? {};
+        const listas = guardada?.datos?.listas ?? {};
+        Object.entries(campos).forEach(([clave, valor]) => {
+            if (clave !== 'id' && valor !== null) card.dataset[clave] = valor;
+        });
+        if (guardada) card.dataset.id = guardada.id;
+        const idx = parseInt(card.dataset.idx, 10) || obtenerSiguienteIdx();
         card.dataset.idx = idx;
-        card.dataset.numero = idx;
-        card.barras = [{ cantidad: '', diametro: '' }];
-        card.barrasX = [{ cantidad: '', diametro: '' }];
-        card.barrasY = [{ cantidad: '', diametro: '' }];
-        card.barrasSuperior = [filaVacia('barrasSuperior')];
-        card.barrasInferior = [filaVacia('barrasInferior')];
-        card.barrasCamadas = [filaVacia('barrasCamadas')];
-        card.barrasPiel = [filaVacia('barrasPiel')];
+        if (card.dataset.numero === undefined) card.dataset.numero = idx;
+        // Los campos vacíos llegan como null (Laravel convierte "" en null):
+        // se vuelven a dejar como texto vacío para los inputs.
+        const sinNulos = fila => Object.fromEntries(Object.entries(fila ?? {}).map(([k, v]) => [k, v ?? '']));
+        LISTAS_GUARDADAS.forEach(clave => {
+            card[clave] = Array.isArray(listas[clave]) && listas[clave].length
+                ? listas[clave].map(fila => ({ ...filaVacia(clave), ...sinNulos(fila) }))
+                : [filaVacia(clave)];
+        });
 
         const botonesTipo = Object.entries(TIPOS).map(([clave, tipo]) => `
             <button type="button" class="tipo-btn" data-tipo="${clave}">
@@ -1519,7 +1877,7 @@
 
         card.innerHTML = `
             <div class="pach-head">
-                <div class="pach-badge">${PREFIJO_NOMBRE}${idx}</div>
+                <div class="pach-badge">${PREFIJO_NOMBRE}${escaparHtml(card.dataset.numero || '?')}</div>
                 <div>
                     <div class="pach-head-title">Pachometría</div>
                     <div class="pach-head-sub pach-tipo-texto">Sin tipo seleccionado</div>
@@ -1533,7 +1891,7 @@
                         <span class="tipo-label">Nombre</span>
                         <label class="nombre-campo">
                             <span class="nombre-prefijo">${PREFIJO_NOMBRE}</span>
-                            <input type="number" min="1" step="1" inputmode="numeric" class="nombre-input" value="${idx}" placeholder="N°">
+                            <input type="number" min="1" step="1" inputmode="numeric" class="nombre-input" value="${escaparHtml(card.dataset.numero)}" placeholder="N°">
                         </label>
                         <div class="nombre-aviso" hidden>Ya existe otra pachometría con este nombre.</div>
                     </div>
@@ -1544,11 +1902,12 @@
                     <div>
                         <span class="tipo-label">Nombre del elemento</span>
                         <input type="text" class="medida-input elemento-input" maxlength="60"
-                               placeholder="Ej: Pilar 1" style="max-width:320px; margin-top:0.4rem;">
+                               value="${escaparHtml(card.dataset.elemento ?? '')}"
+                               placeholder="Ej: ${card.dataset.tipo ? TIPOS[card.dataset.tipo].nombre : 'Pilar'} 1" style="max-width:320px; margin-top:0.4rem;">
                     </div>
                     <div class="pach-parametros"></div>
                     <div class="pach-panel-acciones">
-                        <button type="button" class="pach-delete-btn"><i class="fas fa-trash"></i> Eliminar pachometría</button>
+                        <button type="button" class="pach-delete-btn" ${PUEDE_ELIMINAR ? '' : 'hidden'}><i class="fas fa-trash"></i> Eliminar pachometría</button>
                     </div>
                 </aside>
             </div>
@@ -1592,9 +1951,19 @@
         });
 
         card.querySelector('.pach-delete-btn').addEventListener('click', function () {
+            const nombre = `${PREFIJO_NOMBRE}${card.dataset.numero || '?'}`;
+            if (! confirm(`¿Eliminar la pachometría ${nombre}? No se puede deshacer.`)) return;
+            eliminarEnServidor(card);
             card.remove();
             validarNombres();
         });
+
+        // Tarjeta reconstruida: se marca el tipo elegido y se arma su panel.
+        if (card.dataset.tipo && TIPOS[card.dataset.tipo]) {
+            botonesTipoEl.forEach(b => b.classList.toggle('activo', b.dataset.tipo === card.dataset.tipo));
+            actualizarSubtitulo(card);
+            renderParametros(card);
+        }
 
         insertarOrdenada(card);
         validarNombres();
@@ -1633,9 +2002,308 @@
         if (e.key === 'Escape') contraerTodas();
     });
 
+    /* ─── Guardado en la base ─────────────────────────────────
+       Cada pachometría es una fila (PachometriaTc). Al agregar una
+       tarjeta se crea en el servidor (store) y, con cada modificación,
+       se guarda sola unos instantes después (update), sin botón. Se
+       manda la tarjeta completa: los campos del dataset y las listas
+       de barras. */
+    const CSRF_TOKEN = @json(csrf_token());
+    const URL_PACHOMETRIAS = @json(route('pachometria_tc.store', $obraTc->id));
+    const PACHOMETRIAS_GUARDADAS = @json($pachometrias);
+    const PUEDE_AGREGAR = @json($puedeAgregar);
+    const PUEDE_EDITAR = @json($puedeEditar);
+    const PUEDE_ELIMINAR = @json($puedeEliminar);
+    const DEMORA_GUARDADO_MS = 800;
+    const LISTAS_GUARDADAS = [
+        'barras', 'barrasX', 'barrasY',
+        'barrasSuperior', 'barrasInferior', 'barrasCamadas', 'barrasPiel',
+        ...LISTAS_MALLA,
+    ];
+
+    const urlPachometria = id => `${URL_PACHOMETRIAS}/${id}`;
+
+    function datosTarjeta(card) {
+        const campos = { ...card.dataset };
+        delete campos.id;
+        const listas = {};
+        LISTAS_GUARDADAS.forEach(clave => { listas[clave] = card[clave] ?? []; });
+        return { campos, listas };
+    }
+
+    function pedir(url, metodo, cuerpo, keepalive = false) {
+        return fetch(url, {
+            method: metodo,
+            keepalive,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Accept': 'application/json',
+            },
+            body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
+        }).then(respuesta => {
+            if (! respuesta.ok) throw new Error(`Error ${respuesta.status}`);
+            return respuesta.status === 204 ? null : respuesta.json();
+        });
+    }
+
+    // Indicador de la cabecera: "Cambios sin guardar", "Guardando...",
+    // "Guardado" o "Error al guardar", según el estado de todas las tarjetas.
+    const elEstadoGuardado = document.getElementById('estado-guardado');
+    const ESTADOS_GUARDADO = {
+        pendiente: { icono: 'fa-circle-notch', texto: 'Cambios sin guardar' },
+        guardando: { icono: 'fa-circle-notch fa-spin', texto: 'Guardando...' },
+        guardado: { icono: 'fa-check', texto: 'Guardado' },
+        error: { icono: 'fa-exclamation-triangle', texto: 'Error al guardar' },
+    };
+    const tarjetasPendientes = new Set();  // con cambios esperando la demora
+    let pedidosEnCurso = 0;
+    let huboError = false;
+
+    function actualizarEstadoGuardado() {
+        if (! elEstadoGuardado) return;
+        const estado = huboError ? 'error'
+            : pedidosEnCurso ? 'guardando'
+            : tarjetasPendientes.size ? 'pendiente'
+            : 'guardado';
+        elEstadoGuardado.className = `estado-guardado ${estado}`;
+        elEstadoGuardado.querySelector('i').className = `fas ${ESTADOS_GUARDADO[estado].icono}`;
+        document.getElementById('estado-guardado-texto').textContent = ESTADOS_GUARDADO[estado].texto;
+    }
+
+    // Envuelve cada pedido para llevar la cuenta de los que están en curso.
+    async function conEstado(promesa) {
+        pedidosEnCurso++;
+        actualizarEstadoGuardado();
+        try {
+            const resultado = await promesa;
+            huboError = false;
+            return resultado;
+        } catch (error) {
+            huboError = true;
+            throw error;
+        } finally {
+            pedidosEnCurso--;
+            actualizarEstadoGuardado();
+        }
+    }
+
+    // Tarjeta nueva: se crea en el servidor para tener su id. Los cambios
+    // que se hagan mientras tanto esperan a esta promesa.
+    function crearEnServidor(card) {
+        card.creacion = conEstado(pedir(URL_PACHOMETRIAS, 'POST', { datos: datosTarjeta(card) }))
+            .then(({ id }) => { card.dataset.id = id; })
+            .catch(error => console.error('No se pudo crear la pachometría', error));
+        return card.creacion;
+    }
+
+    function programarGuardado(card) {
+        if (! PUEDE_EDITAR) return;
+        tarjetasPendientes.add(card);
+        actualizarEstadoGuardado();
+        clearTimeout(card.temporizadorGuardado);
+        card.temporizadorGuardado = setTimeout(() => guardarTarjeta(card), DEMORA_GUARDADO_MS);
+    }
+
+    // Una tarjeta nunca manda dos guardados a la vez: si cambia mientras
+    // se guarda, se vuelve a guardar al terminar (con los datos nuevos).
+    async function guardarTarjeta(card) {
+        clearTimeout(card.temporizadorGuardado);
+        if (card.guardando) {
+            card.guardarDeNuevo = true;
+            return;
+        }
+        tarjetasPendientes.delete(card);
+        card.guardando = true;
+        try {
+            if (card.creacion) await card.creacion;
+            if (! card.dataset.id) throw new Error('La pachometría no se pudo crear en el servidor');
+            await conEstado(pedir(urlPachometria(card.dataset.id), 'PATCH', { datos: datosTarjeta(card) }));
+        } catch (error) {
+            console.error(error);
+            huboError = true;
+            actualizarEstadoGuardado();
+        } finally {
+            card.guardando = false;
+            if (card.guardarDeNuevo) {
+                card.guardarDeNuevo = false;
+                guardarTarjeta(card);
+            }
+        }
+    }
+
+    async function eliminarEnServidor(card) {
+        clearTimeout(card.temporizadorGuardado);
+        tarjetasPendientes.delete(card);
+        actualizarEstadoGuardado();
+        if (card.creacion) await card.creacion;
+        if (! card.dataset.id) return;
+        try {
+            await conEstado(pedir(urlPachometria(card.dataset.id), 'DELETE'));
+        } catch (error) {
+            console.error('No se pudo eliminar la pachometría', error);
+        }
+    }
+
+    // Si se sale de la página con cambios esperando la demora, se mandan
+    // igual (keepalive deja terminar el pedido aunque la página se cierre).
+    window.addEventListener('pagehide', function () {
+        tarjetasPendientes.forEach(card => {
+            if (! card.dataset.id) return;
+            clearTimeout(card.temporizadorGuardado);
+            pedir(urlPachometria(card.dataset.id), 'PATCH', { datos: datosTarjeta(card) }, true).catch(() => {});
+        });
+    });
+    window.addEventListener('beforeunload', function (e) {
+        if (pedidosEnCurso || [...tarjetasPendientes].some(card => ! card.dataset.id)) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // Las pachometrías guardadas se reconstruyen al abrir la página.
+    PACHOMETRIAS_GUARDADAS.forEach(guardada => crearTarjeta(guardada));
+
     // Una tarjeta nueva se abre expandida para elegir el tipo enseguida.
     btnAgregar.addEventListener('click', function () {
-        expandir(crearTarjeta());
+        const card = crearTarjeta();
+        crearEnServidor(card);
+        expandir(card);
+    });
+
+    /* ─── Exportar a PDF ──────────────────────────────────────
+       Todas las pachometrías con tipo elegido, en orden, en un A4
+       vertical en blanco (sin encabezado). Cada detalle es igual que en
+       pantalla: rótulo (PCH y elemento), dibujos (vectoriales, con
+       svg2pdf) y leyenda. Los detalles se ubican uno al lado del otro
+       mientras entren en el ancho; si no, pasan al renglón siguiente,
+       y si el renglón no entra, a la hoja siguiente. Las librerías se
+       cargan recién al exportar, para no sumar peso a la página. */
+    const OBRA_DESCRIPCION = @json($obraTc->descripcion ?? '');
+    const LIBRERIAS_PDF = [
+        'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+        'https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js',
+    ];
+
+    function cargarScript(url) {
+        return new Promise((resolve, reject) => {
+            if (document.querySelector(`script[src="${url}"]`)) return resolve();
+            const s = document.createElement('script');
+            s.src = url;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error(`No se pudo cargar ${url}`));
+            document.head.appendChild(s);
+        });
+    }
+
+    async function exportarPdf() {
+        const cards = Array.from(grilla.querySelectorAll('.pach-card')).filter(c => c.dataset.tipo);
+        if (! cards.length) {
+            alert('No hay pachometrías con tipo de elemento para exportar.');
+            return;
+        }
+
+        for (const url of LIBRERIAS_PDF) await cargarScript(url);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+        const ANCHO_PAGINA = 210;
+        const ALTO_PAGINA = 297;
+        const MARGEN = 12;
+        const ANCHO_DETALLE = 88;   // 2 por renglón en A4
+        const SEPARACION = 6;       // entre detalles, horizontal y vertical
+        const RENGLON = 4;
+
+        // Los dibujos se generan de nuevo (sin el zoom que tenga la
+        // tarjeta) en un contenedor fuera de pantalla: svg2pdf necesita
+        // que estén en el documento para medir los textos.
+        const temporal = document.createElement('div');
+        temporal.style.cssText = 'position:absolute; left:-10000px; top:0; width:320px;';
+        document.body.appendChild(temporal);
+
+        try {
+            let x = MARGEN;
+            let y = MARGEN;
+            let altoRenglon = 0;
+
+            for (const card of cards) {
+                temporal.innerHTML = dibujarSeccion(card);
+                const svgs = Array.from(temporal.querySelectorAll('svg'));
+                const leyenda = Array.from(temporal.querySelectorAll('.lienzo-leyenda > div'));
+
+                const medidas = svgs.map(svg => {
+                    const [, , w, h] = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+                    return { svg, alto: ANCHO_DETALLE * h / w };
+                });
+                const altoDetalle = 9 + medidas.reduce((s, m) => s + m.alto + 1, 0) + leyenda.length * RENGLON;
+
+                // No entra al lado: renglón siguiente. No entra el renglón: hoja siguiente.
+                if (x + ANCHO_DETALLE > ANCHO_PAGINA - MARGEN + 0.01) {
+                    x = MARGEN;
+                    y += altoRenglon + SEPARACION;
+                    altoRenglon = 0;
+                }
+                if (y + altoDetalle > ALTO_PAGINA - MARGEN && y > MARGEN) {
+                    doc.addPage();
+                    x = MARGEN;
+                    y = MARGEN;
+                    altoRenglon = 0;
+                }
+
+                const centro = x + ANCHO_DETALLE / 2;
+                let yd = y + 4;
+
+                // Rótulo: "PCH1" y el elemento con sus dimensiones.
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor('#1e2835');
+                doc.text(`${PREFIJO_NOMBRE}${card.dataset.numero || '?'}`, centro, yd, { align: 'center' });
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8.5);
+                doc.setTextColor('#6b7a8c');
+                doc.text(`${nombreElemento(card)}${dimensionesRotulo(card)}`, centro, yd + 4.5, { align: 'center' });
+                yd += 5;
+
+                for (const { svg, alto } of medidas) {
+                    const opciones = { x, y: yd, width: ANCHO_DETALLE, height: alto };
+                    if (typeof doc.svg === 'function') await doc.svg(svg, opciones);
+                    else await window.svg2pdf.svg2pdf(svg, doc, opciones);
+                    yd += alto + 1;
+                }
+
+                doc.setFontSize(8);
+                leyenda.forEach(renglon => {
+                    // Las negativas de la losa van en rojo, como en pantalla.
+                    doc.setTextColor(renglon.querySelector('span') ? COLOR_NEGATIVA : '#445060');
+                    doc.text(renglon.textContent, centro, yd + 3, { align: 'center' });
+                    yd += RENGLON;
+                });
+
+                x += ANCHO_DETALLE + SEPARACION;
+                altoRenglon = Math.max(altoRenglon, altoDetalle);
+            }
+        } finally {
+            temporal.remove();
+        }
+
+        const nombreArchivo = `Pachometrias ${OBRA_DESCRIPCION}`.trim().replace(/[\\/:*?"<>|]+/g, '-');
+        doc.save(`${nombreArchivo}.pdf`);
+    }
+
+    const btnExportarPdf = document.getElementById('btn-exportar-pdf');
+    btnExportarPdf.addEventListener('click', async function () {
+        const textoOriginal = btnExportarPdf.innerHTML;
+        btnExportarPdf.disabled = true;
+        btnExportarPdf.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando…';
+        try {
+            await exportarPdf();
+        } catch (error) {
+            console.error(error);
+            alert('No se pudo generar el PDF. Revisá la conexión e intentá de nuevo.');
+        } finally {
+            btnExportarPdf.disabled = false;
+            btnExportarPdf.innerHTML = textoOriginal;
+        }
     });
 </script>
 </body>

@@ -509,6 +509,19 @@ Route::middleware('permiso:gal_tc,ver')->group(function () {
 Route::middleware('permiso:pch_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/pachometrias', [PachometriaTcController::class, 'index'])->name('pachometria_tc.index');
 });
+Route::middleware('permiso:pch_tc,agregar')->group(function () {
+    Route::post('/trabajo-campo/{obraTc}/pachometrias', [PachometriaTcController::class, 'store'])->name('pachometria_tc.store');
+});
+Route::middleware('permiso:pch_tc,editar')->group(function () {
+    Route::patch('/trabajo-campo/{obraTc}/pachometrias/{pachometria}', [PachometriaTcController::class, 'update'])
+        ->where('pachometria', '[0-9]+')
+        ->name('pachometria_tc.update');
+});
+Route::middleware('permiso:pch_tc,eliminar')->group(function () {
+    Route::delete('/trabajo-campo/{obraTc}/pachometrias/{pachometria}', [PachometriaTcController::class, 'destroy'])
+        ->where('pachometria', '[0-9]+')
+        ->name('pachometria_tc.destroy');
+});
 Route::middleware('permiso:ens_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planillas', [PlanillaTcController::class, 'index'])->name('planilla_tc.index');
     Route::get('/trabajo-campo/{obraTc}/planillas/esclerometria', [PlanillaTcController::class, 'esclerometria'])->name('planilla_tc.esclerometria');
