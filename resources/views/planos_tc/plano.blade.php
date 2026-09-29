@@ -501,6 +501,74 @@
         .panel-seleccion-btn:hover { background: #555; }
         .panel-seleccion-btn.activo { background: #2a6fdb; }
         .panel-seleccion-btn.borrar:hover { background: #7f1d1d; }
+
+        /* ── NAVEGACIÓN ENTRE PLANOS (botón flotante abajo a la derecha) ──
+           Grupos → subgrupos → planos, con buscador por texto. */
+        .nav-planos {
+            position: fixed; z-index: 25;
+            right: calc(16px + env(safe-area-inset-right));
+            bottom: calc(16px + env(safe-area-inset-bottom));
+            display: flex; flex-direction: column; align-items: flex-end; gap: 0.6rem;
+        }
+        .nav-planos-fab {
+            width: 54px; height: 54px; border-radius: 50%;
+            background: #2a6fdb; color: #fff; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+            transition: background 0.14s, transform 0.14s;
+        }
+        .nav-planos-fab:hover { background: #245fc0; }
+        .nav-planos.abierto .nav-planos-fab { transform: rotate(90deg); }
+        .nav-planos-panel {
+            display: none; flex-direction: column;
+            width: min(340px, calc(100vw - 32px));
+            max-height: min(70vh, calc(100dvh - 110px));
+            background: #222; border-radius: 0.7rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .nav-planos.abierto .nav-planos-panel { display: flex; }
+        .nav-planos-cabecera {
+            display: flex; align-items: center; gap: 0.4rem;
+            padding: 0.6rem 0.6rem 0.5rem;
+            border-bottom: 1px solid #333;
+        }
+        .nav-planos-titulo {
+            flex: 1; min-width: 0;
+            color: #fff; font-size: 0.85rem; font-weight: 700;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .nav-planos-buscar-wrap { padding: 0.55rem 0.6rem; border-bottom: 1px solid #333; }
+        .nav-planos-buscar {
+            width: 100%; padding: 0.5rem 0.65rem;
+            background: #2f2f2f; border: 1px solid #444; border-radius: 0.45rem;
+            color: #fff; font-size: 0.85rem; font-family: inherit; outline: none;
+        }
+        .nav-planos-buscar:focus { border-color: #2a6fdb; }
+        .nav-planos-lista {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 0.35rem; display: flex; flex-direction: column; gap: 0.1rem;
+        }
+        .nav-planos-item {
+            display: flex; align-items: center; gap: 0.6rem;
+            width: 100%; text-align: left; text-decoration: none;
+            background: none; border: none; cursor: pointer; font-family: inherit;
+            color: #eee; font-size: 0.82rem; font-weight: 500;
+            padding: 0.6rem 0.55rem; border-radius: 0.45rem;
+        }
+        .nav-planos-item:hover { background: #2f2f2f; }
+        .nav-planos-item.actual { background: rgba(42,111,219,0.22); color: #fff; }
+        .nav-planos-item-texto { flex: 1; min-width: 0; }
+        .nav-planos-item-nombre { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .nav-planos-item-ruta { display: block; color: #888; font-size: 0.7rem; margin-top: 0.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .nav-planos-item-cantidad { color: #888; font-size: 0.72rem; font-weight: 600; flex-shrink: 0; }
+        .nav-planos-item-flecha { color: #777; flex-shrink: 0; display: flex; transition: transform 0.14s; }
+        .nav-planos-vacio { color: #888; font-size: 0.8rem; padding: 0.7rem 0.55rem; }
+        /* Árbol desplegable: la flecha gira al abrir; cada nivel con sangría */
+        .nav-planos-item.desplegado > .nav-planos-item-flecha { transform: rotate(90deg); }
+        .nav-planos-item.grupo { font-weight: 700; color: #fff; }
+        .nav-planos-item.contiene-actual > .nav-planos-item-texto { color: #7fa9ec; }
+        .nav-planos-hijos { display: flex; flex-direction: column; gap: 0.1rem; padding-left: 0.9rem; margin-left: 0.85rem; border-left: 1px solid #333; }
     </style>
 </head>
 <body>
@@ -612,6 +680,24 @@
             </button>
         </div>
         <a href="{{ route('planos_tc.index', $obraTc->id) }}" class="btn-superior">&larr; Volver</a>
+    </div>
+
+    {{-- Navegación entre planos: botón flotante abajo a la derecha --}}
+    <div class="nav-planos" id="nav-planos">
+        <div class="nav-planos-panel" id="nav-planos-panel">
+            <div class="nav-planos-cabecera">
+                <span class="nav-planos-titulo">Planos de la obra</span>
+            </div>
+            <div class="nav-planos-buscar-wrap">
+                <input type="search" class="nav-planos-buscar" id="nav-planos-buscar" placeholder="Buscar plano…" autocomplete="off">
+            </div>
+            <div class="nav-planos-lista" id="nav-planos-lista"></div>
+        </div>
+        <button type="button" class="nav-planos-fab" id="nav-planos-fab" title="Ir a otro plano">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </button>
     </div>
 
     <div class="app">
@@ -4625,6 +4711,141 @@
         });
 
         cargarPdf();
+    </script>
+    <script>
+        /* ── Navegación entre planos ─────────────────────────────
+           Botón flotante con un árbol desplegable: grupos → subgrupos →
+           planos. Cada grupo y subgrupo se abre y se cierra sin ocultar
+           a los demás. Al abrir el panel queda desplegado el camino del
+           plano actual. Con texto en el buscador el árbol se filtra: se
+           muestran (ya desplegados) los grupos y subgrupos con planos que
+           coinciden por nombre del plano, del grupo o del subgrupo. */
+        (function () {
+            const ARBOL = @json($navegacion);
+            const PLANO_ACTUAL = {{ $plano->id }};
+
+            const nav = document.getElementById('nav-planos');
+            const fab = document.getElementById('nav-planos-fab');
+            const buscador = document.getElementById('nav-planos-buscar');
+            const lista = document.getElementById('nav-planos-lista');
+
+            // Grupos ("g") y subgrupos ("g-s") desplegados, por índice.
+            const desplegados = new Set();
+
+            const FLECHA = `<span class="nav-planos-item-flecha"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>`;
+
+            const escapar = texto => String(texto ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            // Para buscar sin distinguir mayúsculas ni tildes.
+            const normalizar = texto => String(texto ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
+            const contieneActual = planos => planos.some(p => p.id === PLANO_ACTUAL);
+
+            function itemCarpeta(clave, nombre, cantidad, { abierto, actual, grupo }) {
+                return `
+                    <button type="button" class="nav-planos-item ${grupo ? 'grupo' : ''} ${abierto ? 'desplegado' : ''} ${actual ? 'contiene-actual' : ''}" data-clave="${clave}">
+                        ${FLECHA}
+                        <span class="nav-planos-item-texto"><span class="nav-planos-item-nombre">${escapar(nombre)}</span></span>
+                        <span class="nav-planos-item-cantidad">${cantidad}</span>
+                    </button>`;
+            }
+
+            function itemPlano(plano) {
+                return `
+                    <a href="${escapar(plano.url)}" class="nav-planos-item ${plano.id === PLANO_ACTUAL ? 'actual' : ''}">
+                        <span class="nav-planos-item-texto"><span class="nav-planos-item-nombre">${escapar(plano.nombre)}</span></span>
+                    </a>`;
+            }
+
+            function render() {
+                const texto = normalizar(buscador.value.trim());
+                const coincide = t => normalizar(t).includes(texto);
+                let html = '';
+
+                ARBOL.forEach((g, gi) => {
+                    // Con búsqueda: si coincide el grupo (o el subgrupo) se
+                    // muestran todos sus planos; si no, solo los que coinciden.
+                    const subgrupos = g.subgrupos
+                        .map((sg, si) => ({
+                            sg, si,
+                            planos: ! texto || coincide(g.nombre) || coincide(sg.nombre)
+                                ? sg.planos
+                                : sg.planos.filter(p => coincide(p.nombre)),
+                        }))
+                        .filter(x => x.planos.length);
+                    if (! subgrupos.length) return;
+
+                    const claveG = `${gi}`;
+                    const abiertoG = !! texto || desplegados.has(claveG);
+                    const cantidadG = subgrupos.reduce((s, x) => s + x.planos.length, 0);
+                    html += itemCarpeta(claveG, g.nombre, cantidadG, {
+                        abierto: abiertoG, grupo: true,
+                        actual: subgrupos.some(x => contieneActual(x.planos)),
+                    });
+                    if (! abiertoG) return;
+
+                    html += '<div class="nav-planos-hijos">';
+                    subgrupos.forEach(({ sg, si, planos }) => {
+                        const claveS = `${gi}-${si}`;
+                        const abiertoS = !! texto || desplegados.has(claveS);
+                        html += itemCarpeta(claveS, sg.nombre, planos.length, {
+                            abierto: abiertoS, actual: contieneActual(planos),
+                        });
+                        if (abiertoS) html += `<div class="nav-planos-hijos">${planos.map(itemPlano).join('')}</div>`;
+                    });
+                    html += '</div>';
+                });
+
+                lista.innerHTML = html || `<div class="nav-planos-vacio">${texto ? 'No hay planos que coincidan.' : 'No hay planos cargados.'}</div>`;
+            }
+
+            function abrir() {
+                // Queda desplegado el camino hasta el plano actual.
+                desplegados.clear();
+                ARBOL.forEach((g, gi) => g.subgrupos.forEach((sg, si) => {
+                    if (contieneActual(sg.planos)) {
+                        desplegados.add(`${gi}`);
+                        desplegados.add(`${gi}-${si}`);
+                    }
+                }));
+                buscador.value = '';
+                nav.classList.add('abierto');
+                render();
+                lista.querySelector('.nav-planos-item.actual')?.scrollIntoView({ block: 'center' });
+            }
+
+            function cerrar() {
+                nav.classList.remove('abierto');
+            }
+
+            fab.addEventListener('click', e => {
+                e.stopPropagation();
+                nav.classList.contains('abierto') ? cerrar() : abrir();
+            });
+
+            // stopPropagation: la lista se regenera con el clic y, para
+            // cuando el evento llega al document, el ítem ya no está dentro
+            // del panel (lo cerraría como si fuera un clic afuera).
+            lista.addEventListener('click', e => {
+                const item = e.target.closest('[data-clave]');
+                if (! item) return;
+                e.stopPropagation();
+                // Durante una búsqueda todo se muestra desplegado.
+                if (buscador.value.trim()) return;
+                const clave = item.dataset.clave;
+                desplegados.has(clave) ? desplegados.delete(clave) : desplegados.add(clave);
+                render();
+            });
+
+            buscador.addEventListener('input', render);
+
+            // Se cierra con clic fuera del panel o con Esc.
+            document.addEventListener('click', e => {
+                if (! nav.contains(e.target)) cerrar();
+            });
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') cerrar();
+            });
+        })();
     </script>
 </body>
 </html>

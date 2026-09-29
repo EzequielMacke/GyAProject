@@ -184,7 +184,34 @@ class PlanoController extends Controller
         $puedeEliminar = $permisoService->puede('ano_pla', 'eliminar');
         $estadoGuardado = $plano->estado ? json_decode($plano->estado, true) : null;
 
-        return view('planos_tc.plano', compact('obraTc', 'plano', 'puedeEditar', 'puedeEliminar', 'estadoGuardado'));
+        /* Para el botón flotante de navegación: grupos → subgrupos →
+           planos de la obra (solo los ya nombrados y clasificados, igual
+           que en el índice). */
+        $navegacion = Plano::where('obra_id', $obraTc->id)
+            ->whereNotNull('descripcion')
+            ->whereNotNull('subgrupo_id')
+            ->with(['grupo', 'subgrupo'])
+            ->orderBy('descripcion')
+            ->get()
+            ->groupBy('grupo_id')
+            ->map(fn ($planosDelGrupo) => [
+                'nombre' => $planosDelGrupo->first()->grupo->descripcion ?? 'Sin grupo',
+                'subgrupos' => $planosDelGrupo->groupBy('subgrupo_id')
+                    ->map(fn ($planosDelSubgrupo) => [
+                        'nombre' => $planosDelSubgrupo->first()->subgrupo->descripcion ?? 'Sin subgrupo',
+                        'planos' => $planosDelSubgrupo->map(fn (Plano $p) => [
+                            'id' => $p->id,
+                            'nombre' => $p->descripcion,
+                            'url' => route('planos_tc.plano', [$obraTc->id, $p->id]),
+                        ])->values(),
+                    ])
+                    ->sortBy('nombre', SORT_NATURAL | SORT_FLAG_CASE)
+                    ->values(),
+            ])
+            ->sortBy('nombre', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        return view('planos_tc.plano', compact('obraTc', 'plano', 'puedeEditar', 'puedeEliminar', 'estadoGuardado', 'navegacion'));
     }
 
     /**

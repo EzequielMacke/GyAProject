@@ -195,6 +195,7 @@
         .barras-lista { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.4rem; }
         .barra-fila { display: flex; align-items: center; gap: 0.5rem; }
         .barra-fila .medida-input { width: 100px; }
+        .barra-fila.camada .medida-input { width: 80px; }
         .barra-fila-texto { font-size: 0.8rem; font-weight: 600; color: var(--text2); }
         .barra-quitar {
             width: 34px; height: 34px; flex-shrink: 0; border-radius: 0.5rem;
@@ -224,15 +225,23 @@
         .medida-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
 
         /* Área de dibujo */
+        /* El marco no se agranda; adentro, la capa .lienzo-zoom lleva la
+           cuadrícula y el contenido, y es la que se escala con el zoom. */
         .pach-lienzo {
             flex: 1; min-width: 0; min-height: 220px;
             border: 1.5px dashed var(--border2); border-radius: 0.7rem;
+            background: #fff;
+            display: flex; position: relative; overflow: hidden;
+        }
+        .lienzo-zoom {
+            flex: 1; min-width: 0;
             background:
                 linear-gradient(var(--surface2) 1px, transparent 1px) 0 0 / 20px 20px,
                 linear-gradient(90deg, var(--surface2) 1px, transparent 1px) 0 0 / 20px 20px,
                 #fff;
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
             padding: 1rem; text-align: center;
+            transform-origin: 0 0;
         }
         .lienzo-rotulo { line-height: 1.25; }
         .rotulo-nombre { font-size: 0.95rem; font-weight: 700; color: var(--text); }
@@ -240,6 +249,19 @@
         .lienzo-leyenda { font-size: 0.78rem; font-weight: 600; color: var(--muted); line-height: 1.35; }
         .pach-lienzo svg { width: 100%; max-width: 320px; height: auto; }
         .pach-card.expandida .pach-lienzo svg { max-width: 300px; }
+        /* Zoom (solo con la tarjeta expandida): ruedita / dos dedos, y arrastrar para mover */
+        .pach-card.expandida .lienzo-zoom { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+        .pach-card.expandida .pach-lienzo.arrastrando .lienzo-zoom { cursor: grabbing; }
+        .lienzo-zoom-reset {
+            display: none;
+            position: absolute; top: 0.5rem; right: 0.5rem;
+            height: 30px; padding: 0 0.65rem; border-radius: 0.45rem;
+            border: 1.5px solid var(--border); background: #fff; color: var(--text2);
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.75rem; font-weight: 600;
+            cursor: pointer; align-items: center; gap: 0.35rem;
+        }
+        .lienzo-zoom-reset:hover { border-color: var(--accent); color: var(--accent-b); }
+        .pach-card.expandida .pach-lienzo.con-zoom .lienzo-zoom-reset { display: inline-flex; }
         .lienzo-mensaje { font-size: 0.8rem; color: var(--muted); }
         .lienzo-mensaje i { display: block; font-size: 1.3rem; margin-bottom: 0.4rem; color: var(--border2); }
 
@@ -379,8 +401,9 @@
         return {
             distanciaEje: armadura.recubrimiento + diametroCm / 2,
             grosor: Math.max(GROSOR_MINIMO_ESTRIBO, diametroCm * escala),
-            // Gancho de 135°: extensión de 6Ø (mínimo 3 cm para que se vea).
-            largoGancho: Math.max(6 * diametroCm, 3) * escala,
+            // Gancho de 135°: extensión de 12Ø del estribo. Sin Ø cargado,
+            // 3 cm para que se vea.
+            largoGancho: (diametroCm ? 12 * diametroCm : 3) * escala,
         };
     }
 
@@ -438,7 +461,9 @@
             esquina: leerMedida(d.esquina),     // pilar rectangular: Ø de las 4 esquinas
             caraX: leerBarras(card.barrasX),    // pilar rectangular: por cara X (arriba = abajo)
             caraY: leerBarras(card.barrasY),    // pilar rectangular: por cara Y (izquierda = derecha)
+            superior: leerBarras(card.barrasSuperior), // viga: a lo largo de la cara de arriba
             inferior: leerBarras(card.barrasInferior), // viga: a lo largo de la cara de abajo
+            camadas: leerCamadas(card.barrasCamadas),  // viga: a lo ancho, a cierta altura
             piel: leerPiel(card.barrasPiel),           // viga: una por cara lateral, a cierta altura
         };
     }
@@ -451,6 +476,23 @@
             .map(b => ({ cantidad: parseInt(b.cantidad, 10), diametro: leerMedida(b.diametro) }))
             .filter(b => b.cantidad > 0 && b.diametro !== null)
             .sort((a, b) => b.diametro - a.diametro);
+    }
+
+    // Camadas: [{ cantidad, diametro (mm), altura (cm desde abajo) }].
+    // Las filas completas con la misma altura forman una camada. Devuelve
+    // [{ altura, grupos: [{ cantidad, diametro }] }], de abajo hacia arriba.
+    function leerCamadas(lista) {
+        const porAltura = new Map();
+        (lista || []).forEach(b => {
+            const altura = leerMedida(b.altura);
+            const [grupo] = leerBarras([b]);
+            if (altura === null || ! grupo) return;
+            if (! porAltura.has(altura)) porAltura.set(altura, []);
+            porAltura.get(altura).push(grupo);
+        });
+        return [...porAltura.entries()]
+            .map(([altura, grupos]) => ({ altura, grupos: grupos.sort((a, b) => b.diametro - a.diametro) }))
+            .sort((a, b) => a.altura - b.altura);
     }
 
     // Armadura de piel: [{ diametro (mm), altura (cm desde abajo) }],
@@ -483,10 +525,25 @@
         return orden;
     }
 
-    // Distancia del borde al centro de una barra: recubrimiento +
-    // Ø estribo + radio de la barra (todo en cm).
-    function insetBarra(armadura, diametroMm) {
-        return (armadura.recubrimiento ?? 0) + (armadura.estribo ?? 0) / 10 + diametroMm / 20;
+    // Radio con el que se dibuja una barra (en unidades del dibujo):
+    // el real, con un mínimo para que se vea.
+    const RADIO_MINIMO_BARRA = 1.8;
+
+    function radioBarraDibujo(diametroMm, escala) {
+        return diametroMm ? Math.max(RADIO_MINIMO_BARRA, (diametroMm / 20) * escala) : 0;
+    }
+
+    /* Distancia del borde al centro de una barra, en unidades del
+       dibujo: cara interior del estribo + radio de la barra. Se mide
+       sobre el estribo y la barra tal como se dibujan (con sus
+       grosores mínimos), así la barra queda apoyada contra el estribo
+       y nunca tapada por él aunque sean muy chicos. */
+    function insetBarra(armadura, diametroMm, escala) {
+        const datos = calcularEstribo(armadura, escala);
+        const caraInterior = datos
+            ? datos.distanciaEje * escala + datos.grosor / 2
+            : ((armadura.estribo ?? 0) / 10) * escala;
+        return caraInterior + radioBarraDibujo(diametroMm, escala);
     }
 
     /* Pilar rectangular:
@@ -499,8 +556,8 @@
        y, si hay varios diámetros, intercalados. */
     function posicionesBarrasRectangular(armadura, x, y, w, h, escala) {
         const resultado = [];
-        const barra = (diametro, cx, cy) => ({ x: cx, y: cy, r: (diametro / 20) * escala });
-        const inset = diametro => insetBarra(armadura, diametro) * escala;
+        const barra = (diametro, cx, cy) => ({ x: cx, y: cy, r: radioBarraDibujo(diametro, escala) });
+        const inset = diametro => insetBarra(armadura, diametro, escala);
 
         const esquina = armadura.esquina;
         if (esquina !== null) {
@@ -537,32 +594,53 @@
         if (! grupos.length) return [];
         const orden = intercalar(grupos.map(g => g.cantidad));
         return orden.map((g, k) => {
-            const radio = r - insetBarra(armadura, grupos[g].diametro) * escala;
+            const radio = r - insetBarra(armadura, grupos[g].diametro, escala);
             const p = puntoEn(o, radio, 225 + (360 * k) / orden.length);
-            return { x: p.x, y: p.y, r: (grupos[g].diametro / 20) * escala };
+            return { x: p.x, y: p.y, r: radioBarraDibujo(grupos[g].diametro, escala) };
         }).filter(b => b.r > 0);
     }
 
-    /* Viga: todas las barras en la cara inferior, apoyadas sobre el
-       estribo. Las de los extremos van en las esquinas y el resto
-       queda equiespaciado entre ellas (intercalando diámetros). Con
-       una sola barra, va al centro. */
-    function ordenBarrasInferior(armadura) {
-        const grupos = armadura.inferior;
+    /* Viga: barras en la cara superior y en la inferior, apoyadas
+       contra el estribo. En cada cara las de los extremos van en las
+       esquinas y el resto queda equiespaciado entre ellas (intercalando
+       diámetros). Con una sola barra, va al centro.
+       "cara" es 'superior' o 'inferior'. */
+    function ordenGrupos(grupos) {
         return intercalar(grupos.map(g => g.cantidad)).map(i => grupos[i].diametro);
     }
 
-    function posicionesBarrasViga(armadura, x, y, w, h, escala) {
-        const orden = ordenBarrasInferior(armadura);
+    function ordenBarrasViga(armadura, cara) {
+        return ordenGrupos(armadura[cara]);
+    }
+
+    // Reparte una fila de barras a lo ancho de la viga: las de los
+    // extremos contra el estribo y el resto equiespaciado. yDe(diametro)
+    // da la altura del centro de cada barra.
+    function filaBarrasViga(armadura, orden, x, w, escala, yDe) {
         if (! orden.length) return [];
-        const inset = diametro => insetBarra(armadura, diametro) * escala;
+        const inset = diametro => insetBarra(armadura, diametro, escala);
         const desde = x + inset(orden[0]);
         const hasta = x + w - inset(orden[orden.length - 1]);
         return orden.map((diametro, j) => ({
             x: orden.length === 1 ? x + w / 2 : desde + j * (hasta - desde) / (orden.length - 1),
-            y: y + h - inset(diametro),
-            r: (diametro / 20) * escala,
+            y: yDe(diametro),
+            r: radioBarraDibujo(diametro, escala),
         }));
+    }
+
+    function posicionesBarrasViga(armadura, cara, x, y, w, h, escala) {
+        const inset = diametro => insetBarra(armadura, diametro, escala);
+        return filaBarrasViga(armadura, ordenBarrasViga(armadura, cara), x, w, escala,
+            diametro => cara === 'superior' ? y + inset(diametro) : y + h - inset(diametro));
+    }
+
+    // Camadas: igual que la armadura principal, pero con el centro de
+    // las barras a la altura cargada. Se descartan las que caen fuera
+    // de la viga.
+    function posicionesBarrasCamadas(armadura, x, y, w, h, escala) {
+        return armadura.camadas
+            .filter(c => c.altura * escala < h)
+            .flatMap(c => filaBarrasViga(armadura, ordenGrupos(c.grupos), x, w, escala, () => y + h - c.altura * escala));
     }
 
     // Piel: una barra en cada cara lateral, apoyada en el estribo, con
@@ -572,42 +650,48 @@
         return armadura.piel
             .filter(b => b.altura * escala < h)
             .flatMap(b => {
-                const inset = insetBarra(armadura, b.diametro) * escala;
+                const inset = insetBarra(armadura, b.diametro, escala);
                 const cy = y + h - b.altura * escala;
-                const r = (b.diametro / 20) * escala;
+                const r = radioBarraDibujo(b.diametro, escala);
                 return [{ x: x + inset, y: cy, r }, { x: x + w - inset, y: cy, r }];
             });
     }
 
-    /* Cotas de altura de la piel, a la izquierda de la viga: una
-       línea vertical desde la cara inferior, con una marca y el valor
-       en cada nivel (todas medidas desde abajo). */
-    function cotasPiel(armadura, { x, y, w, h, escala }) {
-        const niveles = armadura.piel.filter(b => b.altura * escala < h);
-        if (! niveles.length) return '';
+    /* Cotas de altura de las camadas y la piel, a la izquierda de la
+       viga: una línea vertical desde la cara inferior, con una marca y
+       el valor en cada nivel (todas medidas desde abajo). */
+    function cotasAlturas(armadura, { x, y, w, h, escala }) {
+        const alturas = [...new Set([...armadura.camadas, ...armadura.piel].map(b => b.altura))]
+            .filter(a => a * escala < h)
+            .sort((a, b) => a - b);
+        if (! alturas.length) return '';
         const xc = x - 12;
-        const yNivel = b => y + h - b.altura * escala;
+        const yNivel = a => y + h - a * escala;
         return `
-            <line x1="${xc}" y1="${y + h}" x2="${xc}" y2="${yNivel(niveles[niveles.length - 1])}" ${ESTILO_COTA}></line>
+            <line x1="${xc}" y1="${y + h}" x2="${xc}" y2="${yNivel(alturas[alturas.length - 1])}" ${ESTILO_COTA}></line>
             <line x1="${xc - 5}" y1="${y + h}" x2="${x - 2}" y2="${y + h}" ${ESTILO_COTA}></line>
-            ${niveles.map(b => `
-                <line x1="${xc - 5}" y1="${yNivel(b)}" x2="${x - 2}" y2="${yNivel(b)}" ${ESTILO_COTA}></line>
-                <text x="${xc - 8}" y="${yNivel(b) + 3.5}" text-anchor="end" ${ESTILO_TEXTO_LOSA}>${formatearMedida(b.altura)}</text>
+            ${alturas.map(a => `
+                <line x1="${xc - 5}" y1="${yNivel(a)}" x2="${x - 2}" y2="${yNivel(a)}" ${ESTILO_COTA}></line>
+                <text x="${xc - 8}" y="${yNivel(a) + 3.5}" text-anchor="end" ${ESTILO_TEXTO_LOSA}>${formatearMedida(a)}</text>
             `).join('')}
         `;
     }
 
     function dibujarBarras(barras) {
         return barras.map(b =>
-            `<circle cx="${b.x}" cy="${b.y}" r="${Math.max(1.8, b.r)}" fill="${COLOR_ESTRIBO}"></circle>`
+            `<circle cx="${b.x}" cy="${b.y}" r="${b.r}" fill="${COLOR_ESTRIBO}"></circle>`
         ).join('');
     }
 
-    // Radio del doblado del estribo alrededor de la barra de esquina:
-    // Ø barra / 2 + Ø estribo / 2 (en unidades del dibujo).
+    // Radio del doblado del estribo alrededor de la barra de esquina
+    // (en unidades del dibujo): radio dibujado de la barra + medio
+    // grosor dibujado del estribo, así el eje del estribo la envuelve
+    // con el mismo centro que la barra.
     function radioDobladoBarra(diametroBarra, armadura, escala) {
         if (! diametroBarra) return 0;
-        return ((diametroBarra + (armadura.estribo ?? 0)) / 20) * escala;
+        const datos = calcularEstribo(armadura, escala);
+        const medioGrosor = datos ? datos.grosor / 2 : ((armadura.estribo ?? 0) / 20) * escala;
+        return radioBarraDibujo(diametroBarra, escala) + medioGrosor;
     }
 
     /* ─── Sección rectangular (pilar y viga) ──────────────────
@@ -705,13 +789,18 @@
             (largoIzq ? rotuloLosa(r.x - largoIzq / 2) : '') +
             (largoDer ? rotuloLosa(r.x + r.w + largoDer / 2) : '');
 
-        // Las esquinas del estribo envuelven las barras inferiores de los extremos.
-        const esquinaInferior = ordenBarrasInferior(armadura)[0] ?? null;
+        // Las esquinas del estribo envuelven las barras de los extremos:
+        // arriba las superiores y abajo las inferiores. Si falta una de
+        // las dos, se toma la otra para que las cuatro esquinas coincidan.
+        const esquinaInferior = ordenBarrasViga(armadura, 'inferior')[0] ?? null;
+        const esquinaSuperior = ordenBarrasViga(armadura, 'superior')[0] ?? null;
         const interior = sinMedidas ? '' : `
-            ${estriboRectangular(r, armadura, esquinaInferior)}
-            ${dibujarBarras(posicionesBarrasViga(armadura, r.x, r.y, r.w, r.h, r.escala))}
+            ${estriboRectangular(r, armadura, esquinaSuperior ?? esquinaInferior, esquinaInferior ?? esquinaSuperior)}
+            ${dibujarBarras(posicionesBarrasViga(armadura, 'superior', r.x, r.y, r.w, r.h, r.escala))}
+            ${dibujarBarras(posicionesBarrasViga(armadura, 'inferior', r.x, r.y, r.w, r.h, r.escala))}
+            ${dibujarBarras(posicionesBarrasCamadas(armadura, r.x, r.y, r.w, r.h, r.escala))}
             ${dibujarBarras(posicionesBarrasPiel(armadura, r.x, r.y, r.w, r.h, r.escala))}
-            ${cotasPiel(armadura, r)}
+            ${cotasAlturas(armadura, r)}
         `;
 
         return `<svg viewBox="0 0 320 200" aria-label="Sección de viga">
@@ -724,8 +813,9 @@
 
     /* Estribo de una sección rectangular (pilar o viga), con el gancho
        en la esquina superior izquierda. Si se conoce el Ø de la barra
-       de esquina, el doblado la envuelve. */
-    function estriboRectangular({ escala, x, y, w, h }, armadura, diametroEsquina) {
+       de esquina, el doblado la envuelve. Las esquinas de abajo pueden
+       envolver barras de otro Ø (viga: superior e inferior). */
+    function estriboRectangular({ escala, x, y, w, h }, armadura, diametroEsquina, diametroEsquinaInferior = diametroEsquina) {
         let estribo = '';
         const datosEstribo = calcularEstribo(armadura, escala);
         if (datosEstribo) {
@@ -739,14 +829,20 @@
                 // ~Ø, sin pasar de una fracción del lado menor.
                 const g = datosEstribo.grosor;
                 // Con armadura principal, el doblado envuelve la barra de esquina.
-                const rDoblado = radioDobladoBarra(diametroEsquina, armadura, escala);
-                const rc = rDoblado
-                    ? Math.min(Math.max(rDoblado, g * 0.9), Math.min(we, he) / 3)
-                    : Math.min(g * 2, Math.min(we, he) / 4);
-                const rb = rDoblado
+                const radioEsquina = diametro => {
+                    const rDoblado = radioDobladoBarra(diametro, armadura, escala);
+                    return rDoblado
+                        ? Math.min(Math.max(rDoblado, g * 0.9), Math.min(we, he) / 3)
+                        : Math.min(g * 2, Math.min(we, he) / 4);
+                };
+                const rc = radioEsquina(diametroEsquina);            // esquina superior derecha
+                const rci = radioEsquina(diametroEsquinaInferior);   // esquinas inferiores
+                const rb = radioDobladoBarra(diametroEsquina, armadura, escala)
                     ? rc
                     : Math.min(g * 0.9, Math.min(we, he) / 5);
-                const largoPata = Math.min(datosEstribo.largoGancho, Math.min(we, he) * 0.35);
+                // 12Ø siempre; solo se acorta si la pata (en diagonal) se
+                // saldría por el otro lado del estribo.
+                const largoPata = Math.min(datosEstribo.largoGancho, Math.max(0, Math.min(we, he) - 2 * rb) * Math.SQRT2);
                 const c = { x: xe + rb, y: ye + rb };
 
                 estribo = dibujarEstriboHueco(recorte => {
@@ -761,10 +857,10 @@
                         `A ${rb} ${rb} 0 0 1 ${xe + rb} ${ye}`,      // doblado 135° → lado superior
                         `L ${xe + we - rc} ${ye}`,
                         `A ${rc} ${rc} 0 0 1 ${xe + we} ${ye + rc}`,
-                        `L ${xe + we} ${ye + he - rc}`,
-                        `A ${rc} ${rc} 0 0 1 ${xe + we - rc} ${ye + he}`,
-                        `L ${xe + rc} ${ye + he}`,
-                        `A ${rc} ${rc} 0 0 1 ${xe} ${ye + he - rc}`,
+                        `L ${xe + we} ${ye + he - rci}`,
+                        `A ${rci} ${rci} 0 0 1 ${xe + we - rci} ${ye + he}`,
+                        `L ${xe + rci} ${ye + he}`,
+                        `A ${rci} ${rci} 0 0 1 ${xe} ${ye + he - rci}`,
                         `L ${xe} ${medio}`,
                     ].join(' ');
                     // El relleno blanco arranca antes que el borde oscuro,
@@ -837,7 +933,9 @@
                 const rb = rDoblado
                     ? Math.min(Math.max(rDoblado, g * 0.9), rEstribo / 3)
                     : Math.min(g * 0.9, rEstribo / 4);
-                const largoPata = Math.min(datosEstribo.largoGancho, rEstribo * 0.7);
+                // 12Ø siempre; solo se acorta si la pata se saldría por el
+                // otro lado del estribo.
+                const largoPata = Math.min(datosEstribo.largoGancho, Math.max(0, 2 * (rEstribo - rb)));
                 const c = puntoEn(o, rEstribo - rb, 225);
                 const tangente = puntoEn(o, rEstribo, 225);
                 const opuesto = puntoEn(o, rEstribo, 45);
@@ -914,7 +1012,9 @@
         if (forma === 'circular') {
             if (armadura.barras.length) partes.push(grupos(armadura.barras));
         } else if (forma === 'viga') {
+            if (armadura.superior.length) partes.push(`Superior: ${grupos(armadura.superior)}`);
             if (armadura.inferior.length) partes.push(`Inferior: ${grupos(armadura.inferior)}`);
+            armadura.camadas.forEach(c => partes.push(`Camada a ${cm(c.altura)}: ${grupos(c.grupos)}`));
             if (armadura.piel.length) {
                 partes.push(`Piel: ${armadura.piel.map(b => `${mm(b.diametro)} a ${cm(b.altura)}`).join(' + ')} por cara`);
             }
@@ -990,8 +1090,128 @@
         return dibujarRotulo(card) + dibujarSeccion(card);
     }
 
+    // El marco del lienzo: la capa que se escala con el zoom (cuadrícula
+    // y contenido) y, afuera de ella, el botón para restablecer la vista.
+    function marcoLienzo(card) {
+        return `
+            <div class="lienzo-zoom">${contenidoLienzo(card)}</div>
+            <button type="button" class="lienzo-zoom-reset" title="Ver el área completa">
+                <i class="fas fa-compress-arrows-alt"></i> Restablecer
+            </button>
+        `;
+    }
+
     function redibujar(card) {
-        card.querySelector('.pach-lienzo').innerHTML = contenidoLienzo(card);
+        card.querySelector('.lienzo-zoom').innerHTML = contenidoLienzo(card);
+    }
+
+    /* ─── Zoom del lienzo ─────────────────────────────────────
+       Se escala toda el área cuadriculada (dibujo, textos y
+       cuadrícula) con un transform sobre la capa .lienzo-zoom; el marco
+       queda fijo y recorta lo que sobra. La vista { k, tx, ty } (aumento
+       y corrimiento en px) queda guardada en la tarjeta, así no se
+       pierde al redibujar mientras se cargan datos; null es el área
+       completa. Solo funciona con la tarjeta expandida. */
+    const ZOOM_MAXIMO = 8;
+
+    function aplicarVista(card) {
+        const lienzo = card.querySelector('.pach-lienzo');
+        const v = card.vista;
+        lienzo.querySelector('.lienzo-zoom').style.transform =
+            v ? `translate(${v.tx}px, ${v.ty}px) scale(${v.k})` : '';
+        lienzo.classList.toggle('con-zoom', !! v);
+    }
+
+    // Limita el aumento y no deja mover la capa fuera del marco.
+    function ajustarVista(v, ancho, alto) {
+        const k = Math.min(ZOOM_MAXIMO, Math.max(1, v.k));
+        if (k <= 1) return null;
+        return {
+            k,
+            tx: Math.min(0, Math.max(ancho - ancho * k, v.tx)),
+            ty: Math.min(0, Math.max(alto - alto * k, v.ty)),
+        };
+    }
+
+    /* Mueve y/o escala la capa para que el punto que estaba bajo
+       "antes" (coordenadas de pantalla) quede bajo "despues", con el
+       aumento multiplicado por "factor". Sirve para la ruedita, el
+       arrastre y el pellizco con dos dedos. */
+    function moverVista(card, antes, despues, factor) {
+        const lienzo = card.querySelector('.pach-lienzo');
+        const capa = lienzo.querySelector('.lienzo-zoom');
+        const marco = lienzo.getBoundingClientRect();
+        // Origen de la capa sin transformar (dentro del borde del marco).
+        const ox = marco.left + lienzo.clientLeft;
+        const oy = marco.top + lienzo.clientTop;
+        const v = card.vista ?? { k: 1, tx: 0, ty: 0 };
+        // Punto de la capa (sin escalar) que está bajo "antes".
+        const ux = (antes.x - ox - v.tx) / v.k;
+        const uy = (antes.y - oy - v.ty) / v.k;
+        const k = v.k * factor;
+        card.vista = ajustarVista({
+            k,
+            tx: despues.x - ox - ux * k,
+            ty: despues.y - oy - uy * k,
+        }, capa.offsetWidth, capa.offsetHeight);
+        aplicarVista(card);
+    }
+
+    function activarZoom(card) {
+        const lienzo = card.querySelector('.pach-lienzo');
+        const punteros = new Map();
+        const expandida = () => card.classList.contains('expandida');
+
+        lienzo.addEventListener('wheel', function (e) {
+            if (! expandida()) return;
+            e.preventDefault();
+            const punto = { x: e.clientX, y: e.clientY };
+            moverVista(card, punto, punto, Math.exp(-e.deltaY * 0.0015));
+        }, { passive: false });
+
+        lienzo.addEventListener('pointerdown', function (e) {
+            if (! expandida() || e.target.closest('.lienzo-zoom-reset')) return;
+            punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            lienzo.setPointerCapture(e.pointerId);
+            lienzo.classList.add('arrastrando');
+        });
+
+        // Con un dedo (o el mouse) se arrastra; con dos, el centro entre
+        // ellos arrastra y la distancia entre ellos da el aumento.
+        lienzo.addEventListener('pointermove', function (e) {
+            if (! punteros.has(e.pointerId)) return;
+            const previos = [...punteros.values()];
+            punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            const actuales = [...punteros.values()];
+            const centro = ps => ({
+                x: ps.reduce((s, p) => s + p.x, 0) / ps.length,
+                y: ps.reduce((s, p) => s + p.y, 0) / ps.length,
+            });
+            const distancia = ps => ps.length > 1 ? Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y) : 0;
+            const factor = actuales.length > 1 && distancia(previos) > 0
+                ? distancia(actuales) / distancia(previos)
+                : 1;
+            moverVista(card, centro(previos), centro(actuales), factor);
+        });
+
+        const soltar = function (e) {
+            punteros.delete(e.pointerId);
+            if (! punteros.size) lienzo.classList.remove('arrastrando');
+        };
+        lienzo.addEventListener('pointerup', soltar);
+        lienzo.addEventListener('pointercancel', soltar);
+
+        lienzo.addEventListener('click', function (e) {
+            if (! e.target.closest('.lienzo-zoom-reset')) return;
+            card.vista = null;
+            aplicarVista(card);
+        });
+
+        lienzo.addEventListener('dblclick', function () {
+            if (! expandida()) return;
+            card.vista = null;
+            aplicarVista(card);
+        });
     }
 
     /* ─── Parámetros según el tipo de elemento ───────────────── */
@@ -1023,8 +1243,10 @@
        data-campo. La armadura de piel de la viga guarda Ø y altura;
        el resto, cantidad y Ø. */
     const LISTAS_PIEL = ['barrasPiel'];
+    const LISTAS_CAMADA = ['barrasCamadas']; // cantidad, Ø y altura
 
     function filaVacia(clave) {
+        if (LISTAS_CAMADA.includes(clave)) return { cantidad: '', diametro: '', altura: '' };
         return LISTAS_PIEL.includes(clave) ? { diametro: '', altura: '' } : { cantidad: '', diametro: '' };
     }
 
@@ -1034,14 +1256,17 @@
                    data-campo="diametro" value="${b.diametro}" placeholder="mm">
             <span class="barra-fila-texto">mm</span>
         `;
+        const altura = `
+            <span class="barra-fila-texto">a</span>
+            <input type="number" min="0" step="any" inputmode="decimal" class="medida-input"
+                   data-campo="altura" value="${b.altura}" placeholder="cm">
+            <span class="barra-fila-texto">cm</span>
+        `;
         if (LISTAS_PIEL.includes(clave)) {
             return `
                 <span class="barra-fila-texto">Ø</span>
                 ${diametro}
-                <span class="barra-fila-texto">a</span>
-                <input type="number" min="0" step="any" inputmode="decimal" class="medida-input"
-                       data-campo="altura" value="${b.altura}" placeholder="cm">
-                <span class="barra-fila-texto">cm</span>
+                ${altura}
             `;
         }
         return `
@@ -1049,6 +1274,7 @@
                    data-campo="cantidad" value="${b.cantidad}" placeholder="Cant.">
             <span class="barra-fila-texto">de Ø</span>
             ${diametro}
+            ${LISTAS_CAMADA.includes(clave) ? altura : ''}
         `;
     }
 
@@ -1056,7 +1282,7 @@
         return `
             <div class="barras-lista" data-lista="${clave}">
                 ${card[clave].map((b, i) => `
-                    <div class="barra-fila" data-indice="${i}">
+                    <div class="barra-fila ${LISTAS_CAMADA.includes(clave) ? 'camada' : ''}" data-indice="${i}">
                         ${camposFilaBarra(clave, b)}
                         <button type="button" class="barra-quitar" title="Quitar armadura"><i class="fas fa-trash"></i></button>
                     </div>
@@ -1108,6 +1334,13 @@
                     <span class="tipo-label">Armadura principal</span>
                     <span class="sub-label">Inferior <small>· se distribuye a lo largo de la cara de abajo</small></span>
                     ${listaBarrasHTML(card, 'barrasInferior')}
+                    <span class="sub-label">Superior <small>· se distribuye a lo largo de la cara de arriba</small></span>
+                    ${listaBarrasHTML(card, 'barrasSuperior')}
+                </div>
+                <div>
+                    <span class="tipo-label">Camadas</span>
+                    <span class="sub-label">Se distribuyen a lo ancho, como la principal <small>· altura al centro de la barra, medida desde abajo; las filas con la misma altura forman una camada</small></span>
+                    ${listaBarrasHTML(card, 'barrasCamadas')}
                 </div>
                 <div>
                     <span class="tipo-label">Armadura de piel</span>
@@ -1186,7 +1419,8 @@
     }
 
     /* Listas de barras: pilar circular "barras"; pilar rectangular
-       "barrasX" y "barrasY"; viga "barrasInferior" y "barrasPiel". */
+       "barrasX" y "barrasY"; viga "barrasSuperior", "barrasInferior",
+       "barrasCamadas" y "barrasPiel". */
     function escucharListasBarras(card, contenedor) {
         contenedor.querySelectorAll('.barras-lista').forEach(function (lista) {
             const clave = lista.dataset.lista;
@@ -1272,7 +1506,9 @@
         card.barras = [{ cantidad: '', diametro: '' }];
         card.barrasX = [{ cantidad: '', diametro: '' }];
         card.barrasY = [{ cantidad: '', diametro: '' }];
+        card.barrasSuperior = [filaVacia('barrasSuperior')];
         card.barrasInferior = [filaVacia('barrasInferior')];
+        card.barrasCamadas = [filaVacia('barrasCamadas')];
         card.barrasPiel = [filaVacia('barrasPiel')];
 
         const botonesTipo = Object.entries(TIPOS).map(([clave, tipo]) => `
@@ -1291,7 +1527,7 @@
                 <button type="button" class="pach-cerrar-btn" title="Contraer"><i class="fas fa-compress"></i></button>
             </div>
             <div class="pach-body">
-                <div class="pach-lienzo">${contenidoLienzo(card)}</div>
+                <div class="pach-lienzo">${marcoLienzo(card)}</div>
                 <aside class="pach-panel">
                     <div>
                         <span class="tipo-label">Nombre</span>
@@ -1317,6 +1553,8 @@
                 </aside>
             </div>
         `;
+
+        activarZoom(card);
 
         card.addEventListener('click', function () {
             if (! card.classList.contains('expandida')) expandir(card);
@@ -1367,7 +1605,12 @@
        Solo una tarjeta expandida a la vez. Se contrae con el botón
        de la cabecera, haciendo clic fuera de las tarjetas o con Esc. */
     function contraerTodas() {
-        grilla.querySelectorAll('.pach-card.expandida').forEach(c => c.classList.remove('expandida'));
+        // Al contraer se vuelve a ver la sección completa.
+        grilla.querySelectorAll('.pach-card.expandida').forEach(c => {
+            c.classList.remove('expandida');
+            c.vista = null;
+            aplicarVista(c);
+        });
     }
 
     function expandir(card) {
