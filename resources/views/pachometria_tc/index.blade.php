@@ -287,6 +287,40 @@
         }
         .pach-agregar:hover { background: var(--accent-s); border-color: var(--accent); }
         .pach-agregar[hidden], .pach-delete-btn[hidden] { display: none; }
+
+        /* ── MODAL (igual que en las planillas) ── */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-overlay.active { display: flex; }
+        .modal-caja {
+            background: #fff; border-radius: 1rem;
+            width: 100%; max-width: 420px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+            overflow: hidden;
+            animation: modalIn 0.2s ease both;
+        }
+        @keyframes modalIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+        .modal-head {
+            padding: 1.4rem 1.75rem 1.2rem;
+            border-bottom: 1.5px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-head-title { font-size: 1rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.5rem; }
+        .modal-head-title.danger i { color: #c0392b; }
+        .modal-close { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; padding: 0.25rem; border-radius: 0.35rem; transition: color 0.14s; }
+        .modal-close:hover { color: var(--text); }
+        .modal-body { padding: 1.25rem 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.6rem; }
+        .modal-body p { font-size: 0.83rem; color: var(--muted); padding: 0 0.5rem; }
+        .modal-body p strong { color: var(--text); }
+        .modal-foot { padding: 1rem 1.75rem 1.4rem; display: flex; justify-content: flex-end; gap: 0.5rem; }
+        .btn-cancel { height: 36px; padding: 0 1rem; border-radius: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; border: 1.5px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.14s; }
+        .btn-cancel:hover { background: var(--surface2); }
+        .btn-confirmar-eliminar {
+            height: 36px; padding: 0 1.1rem; border-radius: 0.5rem;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600;
+            border: 1.5px solid #c0392b; background: #c0392b; color: #fff; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.14s;
+        }
+        .btn-confirmar-eliminar:hover { background: #a93226; border-color: #a93226; }
         .pach-agregar-icono {
             width: 60px; height: 60px; border-radius: 50%;
             background: var(--accent-s); color: var(--accent);
@@ -368,6 +402,27 @@
 
     @include('partials.footer')
 </div>
+
+{{-- Modal de confirmación para eliminar una pachometría --}}
+@if($puedeEliminar)
+<div class="modal-overlay" id="modal-eliminar-pachometria">
+    <div class="modal-caja">
+        <div class="modal-head">
+            <div class="modal-head-title danger"><i class="fas fa-triangle-exclamation"></i> Eliminar pachometría</div>
+            <button type="button" class="modal-close" id="modal-eliminar-cerrar" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p>¿Seguro que querés eliminar la pachometría <strong id="eliminar-pachometria-nombre"></strong>? Esta acción no se puede deshacer.</p>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn-cancel" id="modal-eliminar-cancelar">Cancelar</button>
+            <button type="button" class="btn-confirmar-eliminar" id="modal-eliminar-confirmar">
+                <i class="fas fa-trash"></i> Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 
 <script>
     const grilla = document.getElementById('pach-grid');
@@ -1951,11 +2006,7 @@
         });
 
         card.querySelector('.pach-delete-btn').addEventListener('click', function () {
-            const nombre = `${PREFIJO_NOMBRE}${card.dataset.numero || '?'}`;
-            if (! confirm(`¿Eliminar la pachometría ${nombre}? No se puede deshacer.`)) return;
-            eliminarEnServidor(card);
-            card.remove();
-            validarNombres();
+            abrirModalEliminar(card);
         });
 
         // Tarjeta reconstruida: se marca el tipo elegido y se arma su panel.
@@ -1968,6 +2019,40 @@
         insertarOrdenada(card);
         validarNombres();
         return card;
+    }
+
+    /* ─── Eliminar (con confirmación en un modal) ─────────────
+       Se cierra con Cancelar, la cruz, un clic en el fondo o Esc. */
+    const modalEliminar = document.getElementById('modal-eliminar-pachometria');
+    let tarjetaAEliminar = null;
+
+    function abrirModalEliminar(card) {
+        if (! modalEliminar) return;
+        tarjetaAEliminar = card;
+        document.getElementById('eliminar-pachometria-nombre').textContent = `${PREFIJO_NOMBRE}${card.dataset.numero || '?'}`;
+        modalEliminar.classList.add('active');
+    }
+
+    function cerrarModalEliminar() {
+        modalEliminar?.classList.remove('active');
+        tarjetaAEliminar = null;
+    }
+
+    function eliminarConfirmado() {
+        if (! tarjetaAEliminar) return;
+        eliminarEnServidor(tarjetaAEliminar);
+        tarjetaAEliminar.remove();
+        validarNombres();
+        cerrarModalEliminar();
+    }
+
+    if (modalEliminar) {
+        document.getElementById('modal-eliminar-cerrar').addEventListener('click', cerrarModalEliminar);
+        document.getElementById('modal-eliminar-cancelar').addEventListener('click', cerrarModalEliminar);
+        document.getElementById('modal-eliminar-confirmar').addEventListener('click', eliminarConfirmado);
+        modalEliminar.addEventListener('click', function (e) {
+            if (e.target === modalEliminar) cerrarModalEliminar();
+        });
     }
 
     /* ─── Expandir / contraer ─────────────────────────────────
@@ -1991,15 +2076,20 @@
     // Se usa composedPath() y no e.target.closest(): algunos botones del
     // panel (p. ej. la forma del pilar) se regeneran al hacer clic y, para
     // cuando llega acá, ya no están dentro de la tarjeta.
+    // Los clics en el modal de eliminar tampoco contraen: si se cancela,
+    // la tarjeta sigue abierta.
     document.addEventListener('click', function (e) {
         const dentroDeTarjeta = e.composedPath().some(el =>
-            el.classList && (el.classList.contains('pach-card') || el.id === 'btn-agregar-pachometria')
+            el.classList && (el.classList.contains('pach-card') || el.id === 'btn-agregar-pachometria' || el === modalEliminar)
         );
         if (! dentroDeTarjeta) contraerTodas();
     });
 
+    // Esc cierra primero el modal (si está abierto) y si no, contrae.
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') contraerTodas();
+        if (e.key !== 'Escape') return;
+        if (modalEliminar?.classList.contains('active')) cerrarModalEliminar();
+        else contraerTodas();
     });
 
     /* ─── Guardado en la base ─────────────────────────────────
