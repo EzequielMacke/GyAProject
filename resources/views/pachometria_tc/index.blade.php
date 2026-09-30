@@ -2275,6 +2275,43 @@
         'https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js',
     ];
 
+    // Plus Jakarta Sans (la de la pantalla) se incrusta en el PDF para que
+    // rótulos, dibujos y leyenda usen la misma tipografía. Cada peso se
+    // registra como una familia aparte, así svg2pdf no tiene que resolver
+    // pesos numéricos (600, 800) que jsPDF no conoce.
+    const URL_FUENTES_PDF = 'https://cdn.jsdelivr.net/gh/tokotype/PlusJakartaSans@master/fonts/ttf/';
+    const FUENTES_PDF = { 400: 'Regular', 600: 'SemiBold', 700: 'Bold', 800: 'ExtraBold' };
+    const fuentesPdfCache = {};
+
+    async function registrarFuentesPdf(doc) {
+        for (const peso of Object.values(FUENTES_PDF)) {
+            if (! fuentesPdfCache[peso]) {
+                const respuesta = await fetch(`${URL_FUENTES_PDF}PlusJakartaSans-${peso}.ttf`);
+                if (! respuesta.ok) throw new Error(`No se pudo cargar la fuente ${peso}`);
+                const bytes = new Uint8Array(await respuesta.arrayBuffer());
+                let binario = '';
+                for (let i = 0; i < bytes.length; i += 0x8000) {
+                    binario += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+                }
+                fuentesPdfCache[peso] = btoa(binario);
+            }
+            doc.addFileToVFS(`PJS-${peso}.ttf`, fuentesPdfCache[peso]);
+            doc.addFont(`PJS-${peso}.ttf`, `PJS-${peso}`, 'normal');
+        }
+    }
+
+    // Familia registrada que corresponde a un peso CSS (el más cercano).
+    function familiaPdf(peso) {
+        const p = peso === 'bold' ? 700 : (parseInt(peso, 10) || 400);
+        const cercano = Object.keys(FUENTES_PDF).map(Number)
+            .reduce((a, b) => Math.abs(b - p) < Math.abs(a - p) ? b : a);
+        return `PJS-${FUENTES_PDF[cercano]}`;
+    }
+
+    function usarFuentePdf(doc, peso) {
+        doc.setFont(familiaPdf(peso), 'normal');
+    }
+
     function cargarScript(url) {
         return new Promise((resolve, reject) => {
             if (document.querySelector(`script[src="${url}"]`)) return resolve();
@@ -2296,6 +2333,7 @@
         for (const url of LIBRERIAS_PDF) await cargarScript(url);
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        await registrarFuentesPdf(doc);
 
         const ANCHO_PAGINA = 210;
         const ALTO_PAGINA = 297;
@@ -2318,6 +2356,11 @@
 
             for (const card of cards) {
                 temporal.innerHTML = dibujarSeccion(card);
+                temporal.querySelectorAll('text, tspan').forEach(t => {
+                    const conPeso = t.closest('[font-weight]');
+                    t.setAttribute('font-family', familiaPdf(conPeso ? conPeso.getAttribute('font-weight') : 400));
+                    t.setAttribute('font-weight', 'normal');
+                });
                 const svgs = Array.from(temporal.querySelectorAll('svg'));
                 const leyenda = Array.from(temporal.querySelectorAll('.lienzo-leyenda > div'));
 
@@ -2344,11 +2387,11 @@
                 let yd = y + 4;
 
                 // Rótulo: "PCH1" y el elemento con sus dimensiones.
-                doc.setFont('helvetica', 'bold');
+                usarFuentePdf(doc, 700);
                 doc.setFontSize(11);
                 doc.setTextColor('#1e2835');
                 doc.text(`${PREFIJO_NOMBRE}${card.dataset.numero || '?'}`, centro, yd, { align: 'center' });
-                doc.setFont('helvetica', 'normal');
+                usarFuentePdf(doc, 600);
                 doc.setFontSize(8.5);
                 doc.setTextColor('#6b7a8c');
                 doc.text(`${nombreElemento(card)}${dimensionesRotulo(card)}`, centro, yd + 4.5, { align: 'center' });
@@ -2361,6 +2404,7 @@
                     yd += alto + 1;
                 }
 
+                usarFuentePdf(doc, 600);
                 doc.setFontSize(8);
                 leyenda.forEach(renglon => {
                     // Las negativas de la losa van en rojo, como en pantalla.
