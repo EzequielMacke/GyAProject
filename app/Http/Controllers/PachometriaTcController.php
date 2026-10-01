@@ -17,14 +17,15 @@ class PachometriaTcController extends Controller
         }
 
         // Lo que necesita el frontend para reconstruir cada tarjeta.
-        $pachometrias = PachometriaTc::where('obra_tc_id', $obraTc->id)
+        $pachometrias = PachometriaTc::with('usuario')
+            ->where('obra_tc_id', $obraTc->id)
             ->orderBy('orden')
             ->orderBy('id')
             ->get()
             ->map(fn (PachometriaTc $p) => [
                 'id' => $p->id,
                 'datos' => $p->datos ?? [],
-            ])
+            ] + $this->autoria($p))
             ->values();
 
         $permisoService = app(PermisoService::class);
@@ -50,7 +51,7 @@ class PachometriaTcController extends Controller
             'usuario_id' => session('usuario_id'),
         ]);
 
-        return response()->json(['id' => $pachometria->id], 201);
+        return response()->json(['id' => $pachometria->id] + $this->autoria($pachometria), 201);
     }
 
     // Autoguardado: recibe la tarjeta completa y la reemplaza.
@@ -103,6 +104,17 @@ class PachometriaTcController extends Controller
             'tipo' => in_array($tipo, ['viga', 'pilar', 'losa'], true) ? $tipo : null,
             'elemento' => isset($campos['elemento']) ? mb_substr(trim($campos['elemento']), 0, 60) ?: null : null,
             'datos' => $data['datos'],
+        ];
+    }
+
+    // Quién la dibujó y cuándo, para mostrarlo en la cabecera de la tarjeta.
+    private function autoria(PachometriaTc $p): array
+    {
+        $usuario = $p->usuario;
+
+        return [
+            'usuario' => $usuario ? ($usuario->nombre_completo ?: $usuario->nombre) : null,
+            'creado' => $p->created_at?->format('d/m/Y H:i'),
         ];
     }
 

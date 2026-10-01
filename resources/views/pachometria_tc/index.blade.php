@@ -81,6 +81,42 @@
         }
         .panel-title i { color: var(--accent); }
 
+        /* ── BUSCADOR ── */
+        .pach-buscador {
+            display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .buscador-campo {
+            position: relative; flex: 1; max-width: 460px; min-width: 220px;
+        }
+        .buscador-campo > i {
+            position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%);
+            font-size: 0.78rem; color: var(--muted); pointer-events: none;
+        }
+        .buscador-input {
+            width: 100%; height: 38px; padding: 0 2.2rem 0 2.2rem;
+            border: 1.5px solid var(--border); border-radius: 0.55rem;
+            background: var(--surface); color: var(--text);
+            font-size: 0.825rem; outline: none;
+            transition: border-color 0.14s, box-shadow 0.14s;
+        }
+        .buscador-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.12); }
+        .buscador-input::-webkit-search-cancel-button { display: none; }
+        .buscador-limpiar {
+            position: absolute; right: 0.4rem; top: 50%; transform: translateY(-50%);
+            width: 26px; height: 26px; border: none; border-radius: 0.4rem;
+            background: none; color: var(--muted); cursor: pointer;
+        }
+        .buscador-limpiar:hover { background: var(--surface2); color: var(--text); }
+        .buscador-limpiar[hidden] { display: none; }
+        .buscador-resultado { font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+        .pach-card[hidden] { display: none; }
+        .pach-sin-resultados {
+            grid-column: 1 / -1; padding: 2rem 1rem; text-align: center;
+            font-size: 0.85rem; color: var(--muted);
+        }
+        .pach-sin-resultados[hidden] { display: none; }
+
         /* ── GRILLA DE PACHOMETRÍAS ── */
         .pach-grid {
             display: grid;
@@ -121,6 +157,8 @@
         }
         .pach-head-title { font-size: 0.85rem; font-weight: 700; color: var(--text); }
         .pach-head-sub { font-size: 0.72rem; color: var(--muted); }
+        .pach-autoria { font-size: 0.62rem; color: var(--muted); opacity: 0.85; margin-top: 0.1rem; }
+        .pach-autoria:empty { display: none; }
         .pach-cerrar-btn {
             display: none;
             margin-left: auto; background: none; border: none; cursor: pointer;
@@ -378,6 +416,9 @@
                         <button type="button" class="btn" id="btn-exportar-pdf">
                             <i class="fas fa-file-pdf"></i> Exportar PDF
                         </button>
+                        <button type="button" class="btn" id="btn-exportar-dxf">
+                            <i class="fas fa-drafting-compass"></i> Exportar DXF
+                        </button>
                         <a href="{{ route('obras_tc.index', $obraTc->id) }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
@@ -389,7 +430,22 @@
         <section class="content">
             <div class="container-fluid">
 
+                <div class="pach-buscador">
+                    <label class="buscador-campo">
+                        <i class="fas fa-search"></i>
+                        <input type="search" class="buscador-input" id="buscador-pachometrias" autocomplete="off"
+                               placeholder="Buscar por PCH, elemento, tipo, persona o fecha...">
+                        <button type="button" class="buscador-limpiar" id="buscador-limpiar" title="Limpiar búsqueda" hidden>
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </label>
+                    <span class="buscador-resultado" id="buscador-resultado"></span>
+                </div>
+
                 <div class="pach-grid" id="pach-grid">
+                    <div class="pach-sin-resultados" id="pach-sin-resultados" hidden>
+                        <i class="fas fa-search"></i> No hay pachometrías que coincidan con la búsqueda.
+                    </div>
                     <button type="button" class="pach-agregar" id="btn-agregar-pachometria" @if(! $puedeAgregar) hidden @endif>
                         <span class="pach-agregar-icono"><i class="fas fa-plus"></i></span>
                         <span class="pach-agregar-texto">Agregar pachometría</span>
@@ -470,12 +526,19 @@
     const COLOR_ESTRIBO = '#1e2835';
     const GROSOR_MINIMO_ESTRIBO = 4;
 
+    // En pantalla el estribo y las barras tienen un tamaño mínimo para
+    // que se vean. Al exportar el DXF se activa esto y salen con su
+    // medida real (el estribo sin Ø cargado conserva el mínimo).
+    let dibujoEscalaReal = false;
+
     function calcularEstribo(armadura, escala) {
         if (armadura.recubrimiento === null) return null;
         const diametroCm = (armadura.estribo ?? 0) / 10;
         return {
             distanciaEje: armadura.recubrimiento + diametroCm / 2,
-            grosor: Math.max(GROSOR_MINIMO_ESTRIBO, diametroCm * escala),
+            grosor: dibujoEscalaReal && diametroCm
+                ? diametroCm * escala
+                : Math.max(GROSOR_MINIMO_ESTRIBO, diametroCm * escala),
             // Gancho de 135°: extensión de 12Ø del estribo. Sin Ø cargado,
             // 3 cm para que se vea.
             largoGancho: (diametroCm ? 12 * diametroCm : 3) * escala,
@@ -505,12 +568,19 @@
     function dibujarEstriboHueco(construirTramos, datos) {
         const g = datos.grosor;
         const borde = Math.min(1.2, g / 4);
-        const trazo = (d, color, ancho) =>
+        const trazo = (d, color, ancho, dxf) =>
             `<path d="${d}" fill="none" stroke="${color}" stroke-width="${ancho}"
-                   stroke-linecap="butt" stroke-linejoin="round"></path>`;
+                   stroke-linecap="butt" stroke-linejoin="round" ${dxf}></path>`;
         const oscuros = construirTramos(0);
         const claros = construirTramos(borde);
-        return oscuros.map((d, i) => trazo(d, COLOR_ESTRIBO, g) + trazo(claros[i], '#fff', g - 2 * borde)).join('');
+        // Para el DXF: el trazo oscuro es el eje del estribo (se exporta
+        // como dos líneas de contorno, cerradas en las puntas de las
+        // patas) y el blanco se omite.
+        const tapas = i => [i === 0 ? 'inicio' : '', i === oscuros.length - 1 ? 'fin' : ''].join(' ');
+        return oscuros.map((d, i) =>
+            trazo(d, COLOR_ESTRIBO, g, `data-dxf="estribo" data-grosor="${g}" data-tapas="${tapas(i)}"`) +
+            trazo(claros[i], '#fff', g - 2 * borde, 'data-dxf="omitir"')
+        ).join('');
     }
 
     // Punto sobre una circunferencia (ángulo en grados, eje Y hacia abajo).
@@ -605,7 +675,9 @@
     const RADIO_MINIMO_BARRA = 1.8;
 
     function radioBarraDibujo(diametroMm, escala) {
-        return diametroMm ? Math.max(RADIO_MINIMO_BARRA, (diametroMm / 20) * escala) : 0;
+        if (! diametroMm) return 0;
+        const real = (diametroMm / 20) * escala;
+        return dibujoEscalaReal ? real : Math.max(RADIO_MINIMO_BARRA, real);
     }
 
     /* Distancia del borde al centro de una barra, en unidades del
@@ -878,7 +950,9 @@
             ${cotasAlturas(armadura, r)}
         `;
 
-        return `<svg viewBox="0 0 320 200" aria-label="Sección de viga">
+        // data-escala (unidades del dibujo por cm) la usa el DXF; sin
+        // medidas el dibujo no está a escala y no se exporta.
+        return `<svg viewBox="0 0 320 200" ${sinMedidas ? '' : `data-escala="${r.escala}"`} aria-label="Sección de viga">
                     <path d="${contornoViga(r, t, largoIzq, largoDer)}" ${ESTILO_SECCION} stroke-linejoin="round"></path>
                     ${interior}
                     ${rotulosLosas}
@@ -972,7 +1046,7 @@
                   transform="rotate(-90 ${x - 8} ${y + h / 2})">Cara Y</text>
         `;
 
-        return `<svg viewBox="0 0 320 200" aria-label="Sección de pilar rectangular">
+        return `<svg viewBox="0 0 320 200" ${lado !== null || ancho !== null ? `data-escala="${escala}"` : ''} aria-label="Sección de pilar rectangular">
                     <rect x="${x}" y="${y}" width="${w}" height="${h}" ${ESTILO_SECCION}></rect>
                     ${estribo}
                     ${barras}
@@ -1045,7 +1119,7 @@
             ? dibujarBarras(posicionesBarrasCircular(armadura, { x: cx, y: cy }, r, diametro, (2 * r) / diametro))
             : '';
 
-        return `<svg viewBox="0 0 320 200" aria-label="Sección de pilar circular">
+        return `<svg viewBox="0 0 320 200" ${diametro !== null ? `data-escala="${(2 * r) / diametro}"` : ''} aria-label="Sección de pilar circular">
                     <circle cx="${cx}" cy="${cy}" r="${r}" ${ESTILO_SECCION}></circle>
                     ${estribo}
                     ${barras}
@@ -1103,8 +1177,8 @@
 
     // Grosor de una barra dibujada como línea y radio de una barra vista
     // de punta (sin Ø cargado, se toma 8 mm para que se vea).
-    const grosorBarraLosa = (malla, escala, minimo) => Math.max(minimo, ((malla.diametro ?? 8) / 10) * escala);
-    const radioBarraLosa = (malla, escala) => Math.max(RADIO_MINIMO_BARRA, ((malla.diametro ?? 8) / 20) * escala);
+    const grosorBarraLosa = (malla, escala, minimo) => Math.max(dibujoEscalaReal ? 0 : minimo, ((malla.diametro ?? 8) / 10) * escala);
+    const radioBarraLosa = (malla, escala) => Math.max(dibujoEscalaReal ? 0 : RADIO_MINIMO_BARRA, ((malla.diametro ?? 8) / 20) * escala);
 
     /* Barras de una dirección con varias armaduras. Las que tienen la
        misma separación van juntas: cada una se corre, respecto de la
@@ -1213,7 +1287,7 @@
             <text x="${x0 + S + salida}" y="${yA - 5}" text-anchor="end" ${estiloA}>A</text>
         `;
 
-        return `<svg viewBox="0 0 320 214" aria-label="Planta de la losa">
+        return `<svg viewBox="0 0 320 214" data-escala="${escala}" aria-label="Planta de la losa">
                     <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Planta</text>
                     <rect x="${x0}" y="${y0}" width="${S}" height="${S}" fill="#e9edf2" stroke="#445060" stroke-width="1.5" stroke-dasharray="6 3"></rect>
                     ${lineas(losa.inferior.y, 'y', false)}
@@ -1284,7 +1358,7 @@
             <text x="${x0 + W + 20}" y="${y0 + h / 2 + 4}" ${ESTILO_TEXTO_COTA}>${formatearMedida(losa.espesor)}</text>
         ` : '';
 
-        return `<svg viewBox="0 0 320 ${Math.ceil(y0 + h + 14)}" aria-label="Corte A-A de la losa">
+        return `<svg viewBox="0 0 320 ${Math.ceil(y0 + h + 14)}" data-escala="${escala}" aria-label="Corte A-A de la losa">
                     <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Corte A-A</text>
                     <rect x="${x0}" y="${y0}" width="${W}" height="${h}" fill="#e9edf2"></rect>
                     <line x1="${x0}" y1="${y0}" x2="${x0 + W}" y2="${y0}" stroke="#445060" stroke-width="2"></line>
@@ -1900,6 +1974,14 @@
         grilla.insertBefore(card, siguiente || btnAgregar);
     }
 
+    // Quién dibujó la pachometría y cuándo (texto chiquito bajo el tipo).
+    // Se guarda también en la tarjeta para el buscador.
+    function mostrarAutoria(card, autoria) {
+        card.autoria = { usuario: autoria?.usuario ?? '', creado: autoria?.creado ?? '' };
+        const partes = [autoria?.usuario, autoria?.creado].filter(Boolean);
+        card.querySelector('.pach-autoria').textContent = partes.join(' · ');
+    }
+
     /* Sin argumento crea una tarjeta nueva. Con "guardada" ({ id, datos })
        la reconstruye con lo que vino de la base: los campos van al
        dataset y las listas de barras a sus propiedades. */
@@ -1936,6 +2018,7 @@
                 <div>
                     <div class="pach-head-title">Pachometría</div>
                     <div class="pach-head-sub pach-tipo-texto">Sin tipo seleccionado</div>
+                    <div class="pach-autoria"></div>
                 </div>
                 <button type="button" class="pach-cerrar-btn" title="Contraer"><i class="fas fa-compress"></i></button>
             </div>
@@ -1968,6 +2051,7 @@
             </div>
         `;
 
+        mostrarAutoria(card, guardada);
         activarZoom(card);
 
         card.addEventListener('click', function () {
@@ -2043,6 +2127,7 @@
         eliminarEnServidor(tarjetaAEliminar);
         tarjetaAEliminar.remove();
         validarNombres();
+        if (buscador.value) filtrarTarjetas();
         cerrarModalEliminar();
     }
 
@@ -2054,6 +2139,59 @@
             if (e.target === modalEliminar) cerrarModalEliminar();
         });
     }
+
+    /* ─── Buscador ────────────────────────────────────────────
+       Filtra las tarjetas por nombre (PCH1), elemento, tipo, persona
+       que la dibujó y fecha de creación. Cada palabra tiene que
+       aparecer en alguno de esos datos; no distingue mayúsculas ni
+       tildes. Solo se filtra al escribir en el buscador, así una
+       tarjeta no desaparece mientras se la está editando. */
+    const buscador = document.getElementById('buscador-pachometrias');
+    const buscadorLimpiar = document.getElementById('buscador-limpiar');
+    const buscadorResultado = document.getElementById('buscador-resultado');
+    const sinResultados = document.getElementById('pach-sin-resultados');
+
+    const normalizar = texto => String(texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+    function textoBuscable(card) {
+        const d = card.dataset;
+        return normalizar([
+            `${PREFIJO_NOMBRE}${d.numero ?? ''}`,
+            d.elemento,
+            d.tipo ? TIPOS[d.tipo].nombre : '',
+            card.autoria?.usuario,
+            card.autoria?.creado,
+        ].join(' '));
+    }
+
+    function filtrarTarjetas() {
+        const palabras = normalizar(buscador.value).split(/\s+/).filter(Boolean);
+        const tarjetas = [...grilla.querySelectorAll('.pach-card')];
+        let visibles = 0;
+        tarjetas.forEach(card => {
+            const texto = textoBuscable(card);
+            const coincide = palabras.every(p => texto.includes(p));
+            card.hidden = ! coincide;
+            if (coincide) visibles++;
+        });
+        const buscando = palabras.length > 0;
+        buscadorLimpiar.hidden = ! buscando;
+        sinResultados.hidden = ! buscando || visibles > 0;
+        buscadorResultado.textContent = buscando
+            ? `${visibles} de ${tarjetas.length} pachometría${tarjetas.length === 1 ? '' : 's'}`
+            : '';
+    }
+
+    function limpiarBusqueda() {
+        buscador.value = '';
+        filtrarTarjetas();
+    }
+
+    buscador.addEventListener('input', filtrarTarjetas);
+    buscadorLimpiar.addEventListener('click', function () {
+        limpiarBusqueda();
+        buscador.focus();
+    });
 
     /* ─── Expandir / contraer ─────────────────────────────────
        Solo una tarjeta expandida a la vez. Se contrae con el botón
@@ -2080,7 +2218,8 @@
     // la tarjeta sigue abierta.
     document.addEventListener('click', function (e) {
         const dentroDeTarjeta = e.composedPath().some(el =>
-            el.classList && (el.classList.contains('pach-card') || el.id === 'btn-agregar-pachometria' || el === modalEliminar)
+            el.classList && (el.classList.contains('pach-card') || el.id === 'btn-agregar-pachometria' || el === modalEliminar ||
+            el.classList.contains('pach-buscador'))
         );
         if (! dentroDeTarjeta) contraerTodas();
     });
@@ -2182,7 +2321,10 @@
     // que se hagan mientras tanto esperan a esta promesa.
     function crearEnServidor(card) {
         card.creacion = conEstado(pedir(URL_PACHOMETRIAS, 'POST', { datos: datosTarjeta(card) }))
-            .then(({ id }) => { card.dataset.id = id; })
+            .then(respuesta => {
+                card.dataset.id = respuesta.id;
+                mostrarAutoria(card, respuesta);
+            })
             .catch(error => console.error('No se pudo crear la pachometría', error));
         return card.creacion;
     }
@@ -2256,13 +2398,15 @@
 
     // Una tarjeta nueva se abre expandida para elegir el tipo enseguida.
     btnAgregar.addEventListener('click', function () {
+        if (buscador.value) limpiarBusqueda();
         const card = crearTarjeta();
         crearEnServidor(card);
         expandir(card);
     });
 
     /* ─── Exportar a PDF ──────────────────────────────────────
-       Todas las pachometrías con tipo elegido, en orden, en un A4
+       Las pachometrías visibles (las que deja el buscador) con tipo
+       elegido, en orden, en un A4
        vertical en blanco (sin encabezado). Cada detalle es igual que en
        pantalla: rótulo (PCH y elemento), dibujos (vectoriales, con
        svg2pdf) y leyenda. Los detalles se ubican uno al lado del otro
@@ -2324,9 +2468,11 @@
     }
 
     async function exportarPdf() {
-        const cards = Array.from(grilla.querySelectorAll('.pach-card')).filter(c => c.dataset.tipo);
+        const cards = Array.from(grilla.querySelectorAll('.pach-card')).filter(c => c.dataset.tipo && ! c.hidden);
         if (! cards.length) {
-            alert('No hay pachometrías con tipo de elemento para exportar.');
+            alert(buscador.value
+                ? 'No hay pachometrías visibles con tipo de elemento para exportar.'
+                : 'No hay pachometrías con tipo de elemento para exportar.');
             return;
         }
 
@@ -2437,6 +2583,411 @@
         } finally {
             btnExportarPdf.disabled = false;
             btnExportarPdf.innerHTML = textoOriginal;
+        }
+    });
+
+    /* ─── Exportar a DXF ──────────────────────────────────────
+       Las mismas pachometrías que el PDF (visibles y con tipo), en
+       metros y a escala real, una al lado de la otra, cada una con su
+       rótulo arriba y la leyenda abajo. Se parte de los mismos SVG de
+       pantalla: cada uno trae en data-escala sus unidades por cm, así
+       que 1 unidad = 1 / (escala · 100) m. El eje Y se invierte (en el
+       SVG crece hacia abajo).
+       - El estribo se exporta como dos líneas de contorno (su eje
+         desplazado medio Ø a cada lado), cerradas en las puntas.
+       - Estribo y barras con su medida real (sin los mínimos de
+         pantalla): el estribo de Ø8 son dos líneas a 8 mm y cada barra
+         un círculo de su diámetro, apoyadas según el recubrimiento.
+       - Cada cosa va en su capa (hormigón, estribos, barras, cotas...).
+       Formato R12 (AC1009): lo abre cualquier versión de AutoCAD y la
+       mayoría de los programas de CAD. */
+    const CAPAS_DXF = {
+        'PCH-HORMIGON':  { color: 7, tipo: 'CONTINUOUS' },
+        'PCH-ESTRIBOS':  { color: 3, tipo: 'CONTINUOUS' },
+        'PCH-BARRAS':    { color: 2, tipo: 'CONTINUOUS' },
+        'PCH-NEGATIVAS': { color: 1, tipo: 'CONTINUOUS' },
+        'PCH-COTAS':     { color: 8, tipo: 'CONTINUOUS' },
+        'PCH-EJES':      { color: 5, tipo: 'CONTINUOUS' },
+        'PCH-TEXTOS':    { color: 7, tipo: 'CONTINUOUS' },
+    };
+    const SEPARACION_DXF = 0.4; // m entre una pachometría y la siguiente
+
+    // Capa según el color del trazo / relleno con que se dibuja en pantalla.
+    function capaDxf(el) {
+        const color = (el.getAttribute('stroke') || el.getAttribute('fill') || '').toLowerCase();
+        const ancho = parseFloat(el.getAttribute('stroke-width')) || 0;
+        if (el.tagName === 'text') return 'PCH-TEXTOS';
+        if (color === COLOR_NEGATIVA.toLowerCase()) return ancho > 1 || el.tagName === 'circle' ? 'PCH-NEGATIVAS' : 'PCH-COTAS';
+        if (color === COLOR_ESTRIBO.toLowerCase()) return 'PCH-BARRAS';
+        if (color === '#8496aa') return 'PCH-COTAS';
+        if (color === '#2a6fdb') return 'PCH-EJES';
+        return 'PCH-HORMIGON';
+    }
+
+    function tipoLineaDxf(el) {
+        const guiones = el.getAttribute('stroke-dasharray');
+        if (! guiones) return null;
+        return guiones.trim().split(/[\s,]+/).length > 2 ? 'CENTRO' : 'TRAZOS';
+    }
+
+    // Recorre un "d" de SVG (solo M, L, A y Z absolutos, que es lo que se
+    // usa en los dibujos) y devuelve sus tramos en unidades del SVG:
+    // { tipo: 'linea', a, b } o { tipo: 'arco', a, b, c, r, sentido }.
+    function tramosPath(d) {
+        const tokens = d.match(/[MLAZ]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) || [];
+        const tramos = [];
+        let i = 0;
+        let actual = null;
+        let inicio = null;
+        const num = () => parseFloat(tokens[i++]);
+        while (i < tokens.length) {
+            const cmd = tokens[i++].toUpperCase();
+            if (cmd === 'M') {
+                actual = { x: num(), y: num() };
+                inicio = actual;
+            } else if (cmd === 'L') {
+                const b = { x: num(), y: num() };
+                tramos.push({ tipo: 'linea', a: actual, b });
+                actual = b;
+            } else if (cmd === 'A') {
+                let r = num(); num(); num();            // rx, ry, rotación (círculos: rx = ry)
+                const grande = num();
+                const sentido = num();
+                const b = { x: num(), y: num() };
+                // Centro del arco a partir de los extremos (SVG 1.1, F.6.5).
+                const mx = (actual.x - b.x) / 2;
+                const my = (actual.y - b.y) / 2;
+                const d2 = mx * mx + my * my;
+                if (d2 > r * r) r = Math.sqrt(d2);
+                const k = (grande === sentido ? -1 : 1) * Math.sqrt(Math.max(0, (r * r - d2) / d2));
+                const c = { x: k * my + (actual.x + b.x) / 2, y: -k * mx + (actual.y + b.y) / 2 };
+                if (d2 > 0) tramos.push({ tipo: 'arco', a: actual, b, c, r, sentido });
+                actual = b;
+            } else if (cmd === 'Z') {
+                if (actual && inicio && (actual.x !== inicio.x || actual.y !== inicio.y)) {
+                    tramos.push({ tipo: 'linea', a: actual, b: inicio });
+                }
+                actual = inicio;
+            }
+        }
+        return tramos;
+    }
+
+    /* Convierte un SVG de la sección en entidades DXF (en metros, Y hacia
+       arriba, con el origen del SVG en 0,0). */
+    function entidadesSvg(svg) {
+        const escala = parseFloat(svg.dataset.escala);
+        const k = 1 / (escala * 100);
+        const P = p => ({ x: p.x * k, y: -p.y * k });
+        const ang = (c, p) => Math.atan2(p.y - c.y, p.x - c.x) * 180 / Math.PI;
+        const entidades = [];
+        const linea = (capa, a, b, tipo = null) => entidades.push({ e: 'linea', capa, a: P(a), b: P(b), tipo });
+        // Arco del SVG → arco DXF (antihorario, ángulos con Y hacia arriba).
+        const arco = (capa, t, r = t.r) => {
+            const a1 = -ang(t.c, t.a);
+            const a2 = -ang(t.c, t.b);
+            entidades.push({ e: 'arco', capa, c: P(t.c), r: r * k, desde: t.sentido ? a2 : a1, hasta: t.sentido ? a1 : a2 });
+        };
+        const num = (el, attr) => parseFloat(el.getAttribute(attr)) || 0;
+
+        svg.querySelectorAll('*').forEach(el => {
+            const etiqueta = el.tagName.toLowerCase();
+            if (el.dataset.dxf === 'omitir') return;
+            const conTrazo = el.getAttribute('stroke') && el.getAttribute('stroke') !== 'none';
+            const capa = capaDxf(el);
+            const tipo = tipoLineaDxf(el);
+
+            if (etiqueta === 'path' && el.dataset.dxf === 'estribo') {
+                // Contorno: cada tramo del eje desplazado ±g/2 (son todos
+                // tangentes entre sí, así que los desplazados empalman).
+                const medio = num(el, 'data-grosor') / 2;
+                const tramos = tramosPath(el.getAttribute('d'));
+                const normal = (a, b) => {
+                    const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+                    return { x: -(b.y - a.y) / l * medio, y: (b.x - a.x) / l * medio };
+                };
+                tramos.forEach(t => {
+                    if (t.tipo === 'linea') {
+                        const n = normal(t.a, t.b);
+                        [1, -1].forEach(s => linea('PCH-ESTRIBOS',
+                            { x: t.a.x + s * n.x, y: t.a.y + s * n.y }, { x: t.b.x + s * n.x, y: t.b.y + s * n.y }));
+                    } else {
+                        arco('PCH-ESTRIBOS', t, t.r + medio);
+                        if (t.r > medio) arco('PCH-ESTRIBOS', t, t.r - medio);
+                    }
+                });
+                // Puntas de las patas: una línea que cierra el contorno.
+                const tapas = el.dataset.tapas || '';
+                const tapa = (p, a, b) => {
+                    const n = normal(a, b);
+                    linea('PCH-ESTRIBOS', { x: p.x + n.x, y: p.y + n.y }, { x: p.x - n.x, y: p.y - n.y });
+                };
+                const primero = tramos[0];
+                const ultimo = tramos[tramos.length - 1];
+                if (tapas.includes('inicio') && primero?.tipo === 'linea') tapa(primero.a, primero.a, primero.b);
+                if (tapas.includes('fin') && ultimo?.tipo === 'linea') tapa(ultimo.b, ultimo.a, ultimo.b);
+            } else if (etiqueta === 'path') {
+                if (! conTrazo) return;
+                tramosPath(el.getAttribute('d')).forEach(t =>
+                    t.tipo === 'linea' ? linea(capa, t.a, t.b, tipo) : arco(capa, t));
+            } else if (etiqueta === 'line') {
+                linea(capa, { x: num(el, 'x1'), y: num(el, 'y1') }, { x: num(el, 'x2'), y: num(el, 'y2') }, tipo);
+            } else if (etiqueta === 'rect') {
+                if (! conTrazo) return;
+                const x = num(el, 'x'), y = num(el, 'y'), w = num(el, 'width'), h = num(el, 'height');
+                const v = [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
+                v.forEach((p, j) => linea(capa, p, v[(j + 1) % 4], tipo));
+            } else if (etiqueta === 'circle') {
+                const c = P({ x: num(el, 'cx'), y: num(el, 'cy') });
+                const r = num(el, 'r') * k;
+                // Con trazo es el contorno del pilar circular; si no, una
+                // barra: círculo con su diámetro real.
+                entidades.push({ e: 'circulo', capa, c, r });
+            } else if (etiqueta === 'polygon') {
+                const v = el.getAttribute('points').trim().split(/\s+/)
+                    .map(par => par.split(',').map(Number)).map(([x, y]) => P({ x, y }));
+                if (v.length >= 3) entidades.push({ e: 'solido', capa, v: [v[0], v[1], v[2], v[3] ?? v[2]] });
+            } else if (etiqueta === 'text') {
+                const texto = el.textContent.trim();
+                if (! texto) return;
+                const anclaje = { middle: 1, end: 2 }[el.getAttribute('text-anchor')] ?? 0;
+                // rotate(-90 ...) en el SVG es antihorario: 90° en el DXF.
+                const giro = /rotate\(\s*(-?[\d.]+)/.exec(el.getAttribute('transform') || '');
+                entidades.push({
+                    e: 'texto', capa: 'PCH-TEXTOS', texto, anclaje,
+                    p: P({ x: num(el, 'x'), y: num(el, 'y') }),
+                    alto: (num(el, 'font-size') || 10) * 0.72 * k,
+                    rotacion: giro ? -parseFloat(giro[1]) : 0,
+                });
+            }
+        });
+        return entidades;
+    }
+
+    // Puntos que encierran una entidad (para ubicar los dibujos).
+    function puntosEntidad(en) {
+        switch (en.e) {
+            case 'linea': return [en.a, en.b];
+            case 'arco': case 'circulo':
+                return [{ x: en.c.x - en.r, y: en.c.y - en.r }, { x: en.c.x + en.r, y: en.c.y + en.r }];
+            case 'solido': return en.v;
+            case 'texto': {
+                const largo = en.texto.length * en.alto * 0.62;
+                const desde = -largo * en.anclaje / 2;
+                const rad = en.rotacion * Math.PI / 180;
+                const punto = (u, v) => ({
+                    x: en.p.x + u * Math.cos(rad) - v * Math.sin(rad),
+                    y: en.p.y + u * Math.sin(rad) + v * Math.cos(rad),
+                });
+                return [punto(desde, 0), punto(desde + largo, 0), punto(desde, en.alto), punto(desde + largo, en.alto)];
+            }
+        }
+        return [];
+    }
+
+    function limites(entidades) {
+        const pts = entidades.flatMap(puntosEntidad);
+        return {
+            minX: Math.min(...pts.map(p => p.x)), maxX: Math.max(...pts.map(p => p.x)),
+            minY: Math.min(...pts.map(p => p.y)), maxY: Math.max(...pts.map(p => p.y)),
+        };
+    }
+
+    function moverEntidades(entidades, dx, dy) {
+        const m = p => ({ x: p.x + dx, y: p.y + dy });
+        entidades.forEach(en => {
+            if (en.a) en.a = m(en.a);
+            if (en.b) en.b = m(en.b);
+            if (en.c) en.c = m(en.c);
+            if (en.p) en.p = m(en.p);
+            if (en.v) en.v = en.v.map(m);
+        });
+    }
+
+    // El archivo va en ANSI 1252 (el de Windows en español): Ø, tildes,
+    // ñ y · se escriben tal cual. Lo que no entra en un byte (raro) va
+    // como \U+XXXX, que AutoCAD también entiende. Ø va como %%c, el
+    // código de diámetro de AutoCAD, que se ve bien con cualquier fuente.
+    function textoDxf(texto) {
+        return [...texto.replace(/Ø/g, '%%c')].map(c => {
+            const cod = c.codePointAt(0);
+            return cod < 128 || (cod >= 160 && cod < 256) ? c : `\\U+${cod.toString(16).toUpperCase().padStart(4, '0')}`;
+        }).join('');
+    }
+
+    // Pasa el texto a bytes ANSI 1252 (de 160 a 255 coincide con Unicode).
+    function bytesAnsi(texto) {
+        const bytes = new Uint8Array(texto.length);
+        for (let i = 0; i < texto.length; i++) {
+            const cod = texto.charCodeAt(i);
+            bytes[i] = cod < 256 ? cod : 63; // "?"
+        }
+        return bytes;
+    }
+
+    function generarDxf(entidades) {
+        const n = v => String(Number(v.toFixed(6)));
+        const out = [];
+        const g = (codigo, valor) => out.push(String(codigo), String(valor));
+        const lim = entidades.length ? limites(entidades) : { minX: 0, minY: 0, maxX: 1, maxY: 1 };
+
+        g(0, 'SECTION'); g(2, 'HEADER');
+        g(9, '$ACADVER'); g(1, 'AC1009');
+        g(9, '$DWGCODEPAGE'); g(3, 'ANSI_1252');
+        g(9, '$INSBASE'); g(10, 0); g(20, 0); g(30, 0);
+        g(9, '$EXTMIN'); g(10, n(lim.minX)); g(20, n(lim.minY)); g(30, 0);
+        g(9, '$EXTMAX'); g(10, n(lim.maxX)); g(20, n(lim.maxY)); g(30, 0);
+        g(9, '$LTSCALE'); g(40, 1);
+        g(0, 'ENDSEC');
+
+        g(0, 'SECTION'); g(2, 'TABLES');
+        // Tipos de línea (largos en metros): trazos y trazo-punto.
+        const tiposLinea = [
+            ['CONTINUOUS', 'Solid line', []],
+            ['TRAZOS', '__ __ __', [0.02, -0.01]],
+            ['CENTRO', '____ _ ____', [0.03, -0.008, 0.005, -0.008]],
+        ];
+        g(0, 'TABLE'); g(2, 'LTYPE'); g(70, tiposLinea.length);
+        tiposLinea.forEach(([nombre, desc, patron]) => {
+            g(0, 'LTYPE'); g(2, nombre); g(70, 0); g(3, desc); g(72, 65); g(73, patron.length);
+            g(40, n(patron.reduce((s, v) => s + Math.abs(v), 0)));
+            patron.forEach(v => g(49, n(v)));
+        });
+        g(0, 'ENDTAB');
+        g(0, 'TABLE'); g(2, 'LAYER'); g(70, Object.keys(CAPAS_DXF).length + 1);
+        g(0, 'LAYER'); g(2, '0'); g(70, 0); g(62, 7); g(6, 'CONTINUOUS');
+        Object.entries(CAPAS_DXF).forEach(([nombre, capa]) => {
+            g(0, 'LAYER'); g(2, nombre); g(70, 0); g(62, capa.color); g(6, capa.tipo);
+        });
+        g(0, 'ENDTAB');
+        g(0, 'TABLE'); g(2, 'STYLE'); g(70, 1);
+        g(0, 'STYLE'); g(2, 'STANDARD'); g(70, 0); g(40, 0); g(41, 1); g(50, 0); g(71, 0); g(42, 0.1); g(3, 'arial.ttf'); g(4, '');
+        g(0, 'ENDTAB');
+        g(0, 'ENDSEC');
+
+        g(0, 'SECTION'); g(2, 'ENTITIES');
+        const punto = (base, p) => { g(10 + base, n(p.x)); g(20 + base, n(p.y)); g(30 + base, 0); };
+        entidades.forEach(en => {
+            if (en.e === 'linea') {
+                g(0, 'LINE'); g(8, en.capa); if (en.tipo) g(6, en.tipo);
+                punto(0, en.a); punto(1, en.b);
+            } else if (en.e === 'arco') {
+                g(0, 'ARC'); g(8, en.capa); punto(0, en.c); g(40, n(en.r));
+                g(50, n((en.desde + 360) % 360)); g(51, n((en.hasta + 360) % 360));
+            } else if (en.e === 'circulo') {
+                g(0, 'CIRCLE'); g(8, en.capa); punto(0, en.c); g(40, n(en.r));
+            } else if (en.e === 'solido') {
+                // SOLID toma los vértices en "Z": 1, 2, 4, 3.
+                g(0, 'SOLID'); g(8, en.capa);
+                punto(0, en.v[0]); punto(1, en.v[1]); punto(2, en.v[3]); punto(3, en.v[2]);
+            } else if (en.e === 'texto') {
+                g(0, 'TEXT'); g(8, en.capa); punto(0, en.p); g(40, n(en.alto)); g(1, textoDxf(en.texto));
+                if (en.rotacion) g(50, n(en.rotacion));
+                if (en.anclaje) { g(72, en.anclaje); punto(1, en.p); }
+            }
+        });
+        g(0, 'ENDSEC');
+        g(0, 'EOF');
+        return out.join('\r\n') + '\r\n';
+    }
+
+    function exportarDxf() {
+        const cards = Array.from(grilla.querySelectorAll('.pach-card')).filter(c => c.dataset.tipo && ! c.hidden);
+        if (! cards.length) {
+            alert(buscador.value
+                ? 'No hay pachometrías visibles con tipo de elemento para exportar.'
+                : 'No hay pachometrías con tipo de elemento para exportar.');
+            return;
+        }
+
+        const todas = [];
+        const sinMedidas = [];
+        let x = 0;
+        const temporal = document.createElement('div');
+
+        cards.forEach(card => {
+            // Estribo y barras con sus medidas reales (solo para el DXF).
+            dibujoEscalaReal = true;
+            try {
+                temporal.innerHTML = dibujarSeccion(card);
+            } finally {
+                dibujoEscalaReal = false;
+            }
+            const svgs = Array.from(temporal.querySelectorAll('svg'));
+            const nombre = `${PREFIJO_NOMBRE}${card.dataset.numero || '?'}`;
+            // Sin medidas el dibujo no está a escala: no se puede pasar a metros.
+            if (! svgs.length || svgs.some(svg => ! svg.dataset.escala)) {
+                sinMedidas.push(nombre);
+                return;
+            }
+
+            // Altura de texto de referencia: la de las cotas del primer dibujo.
+            const alto = 12 * 0.72 / (parseFloat(svgs[0].dataset.escala) * 100);
+
+            // Los dibujos (la losa tiene dos: planta y corte) uno debajo del
+            // otro, alineados por el borde izquierdo del hormigón (en la
+            // losa, la planta y el corte miden lo mismo: 1 m).
+            const detalle = [];
+            let y = 0;
+            svgs.forEach(svg => {
+                const entidades = entidadesSvg(svg);
+                if (! entidades.length) return;
+                const l = limites(entidades);
+                const hormigon = entidades.filter(en => en.capa === 'PCH-HORMIGON');
+                const xBorde = hormigon.length ? limites(hormigon).minX : l.minX;
+                moverEntidades(entidades, -xBorde, y - l.maxY);
+                y -= (l.maxY - l.minY) + 2 * alto;
+                detalle.push(...entidades);
+            });
+            if (! detalle.length) return;
+            const l = limites(detalle);
+            const centro = (l.minX + l.maxX) / 2;
+
+            // Rótulo arriba: "PCH1" y el elemento con sus dimensiones.
+            const texto = (t, yt, h) => ({ e: 'texto', capa: 'PCH-TEXTOS', texto: t, anclaje: 1, p: { x: centro, y: yt }, alto: h, rotacion: 0 });
+            const elemento = `${nombreElemento(card)}${dimensionesRotulo(card)}`;
+            detalle.push(texto(nombre, l.maxY + alto * 4, alto * 1.5));
+            if (elemento) detalle.push(texto(elemento, l.maxY + alto * 2, alto * 1.1));
+
+            // Leyenda abajo, un renglón por línea (como en pantalla).
+            Array.from(temporal.querySelectorAll('.lienzo-leyenda > div')).forEach((renglon, i) => {
+                const t = texto(renglon.textContent.trim(), l.minY - alto * (2 + i * 1.7), alto);
+                if (renglon.querySelector('span')) t.capa = 'PCH-NEGATIVAS';
+                detalle.push(t);
+            });
+
+            // Uno al lado del otro, alineados arriba.
+            const lt = limites(detalle);
+            moverEntidades(detalle, x - lt.minX, -lt.maxY);
+            x += (lt.maxX - lt.minX) + SEPARACION_DXF;
+            todas.push(...detalle);
+        });
+
+        if (! todas.length) {
+            alert('Las pachometrías no tienen medidas cargadas: sin medidas no se pueden dibujar a escala.');
+            return;
+        }
+
+        const blob = new Blob([bytesAnsi(generarDxf(todas))], { type: 'application/dxf' });
+        const enlace = document.createElement('a');
+        enlace.href = URL.createObjectURL(blob);
+        enlace.download = `${`Pachometrias ${OBRA_DESCRIPCION}`.trim().replace(/[\\/:*?"<>|]+/g, '-')}.dxf`;
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+        setTimeout(() => URL.revokeObjectURL(enlace.href), 1000);
+
+        if (sinMedidas.length) {
+            alert(`Se exportó el DXF. Quedaron afuera por no tener medidas cargadas: ${sinMedidas.join(', ')}.`);
+        }
+    }
+
+    document.getElementById('btn-exportar-dxf').addEventListener('click', function () {
+        try {
+            exportarDxf();
+        } catch (error) {
+            console.error(error);
+            alert('No se pudo generar el DXF.');
         }
     });
 </script>
