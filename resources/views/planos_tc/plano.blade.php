@@ -410,7 +410,7 @@
         }
         .overlay-foto-accion:disabled { opacity: 0.5; cursor: default; }
 
-        /* ── DESCARGA (modal de opciones PDF/PNG) ── */
+        /* ── DESCARGA (modal de opciones PDF/PNG/DXF) ── */
         .overlay-descarga {
             position: fixed; inset: 0; z-index: 50;
             background: rgba(0,0,0,0.6);
@@ -518,6 +518,22 @@
             transition: background 0.14s, transform 0.14s;
         }
         .nav-planos-fab:hover { background: #245fc0; }
+        /* Anterior / siguiente, agrupados con el botón de selección en
+           una misma "píldora". */
+        .nav-planos-botones {
+            display: flex; align-items: center; gap: 0.3rem;
+            padding: 4px; border-radius: 999px;
+            background: #222; box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+        }
+        .nav-planos-botones .nav-planos-fab { box-shadow: none; }
+        .nav-planos-paso {
+            width: 42px; height: 42px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #ddd; text-decoration: none; cursor: pointer;
+            transition: background 0.14s, color 0.14s;
+        }
+        .nav-planos-paso:hover { background: #333; color: #fff; }
+        .nav-planos-paso.deshabilitado { color: #555; cursor: default; pointer-events: none; }
         .nav-planos.abierto .nav-planos-fab { transform: rotate(90deg); }
         .nav-planos-panel {
             display: none; flex-direction: column;
@@ -693,11 +709,23 @@
             </div>
             <div class="nav-planos-lista" id="nav-planos-lista"></div>
         </div>
-        <button type="button" class="nav-planos-fab" id="nav-planos-fab" title="Ir a otro plano">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-            </svg>
-        </button>
+        <div class="nav-planos-botones">
+            <a class="nav-planos-paso" id="nav-planos-anterior" aria-label="Plano anterior">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </a>
+            <button type="button" class="nav-planos-fab" id="nav-planos-fab" title="Ir a otro plano">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </button>
+            <a class="nav-planos-paso" id="nav-planos-siguiente" aria-label="Plano siguiente">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </a>
+        </div>
     </div>
 
     <div class="app">
@@ -991,6 +1019,14 @@
                     </svg>
                     PNG
                 </button>
+                <button type="button" class="overlay-descarga-formato" data-formato="dxf">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 21h18"></path>
+                        <path d="M5 21V7l7-4 7 4v14"></path>
+                        <path d="M9 21v-6h6v6"></path>
+                    </svg>
+                    DXF
+                </button>
             </div>
             <label class="overlay-descarga-referencia">
                 <input type="checkbox" id="check-descarga-referencia">
@@ -1005,7 +1041,9 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="{{ asset('js/plano-offline.js') }}"></script>
+    <script src="{{ asset('js/plano-dxf.js') }}"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -2497,7 +2535,7 @@
             return Math.min(FACTOR_EXPORTACION_DESEADO, 6000 / anchoBase, 6000 / altoBase);
         }
 
-        async function generarCanvasExportacion() {
+        async function generarCanvasExportacion({ conAnotaciones = true } = {}) {
             const factor = calcularFactorExportacion();
             const pagina = await pdfDoc.getPage(1);
             const viewport = pagina.getViewport({ scale: factor, rotation: rotacionPlano });
@@ -2510,7 +2548,7 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             await pagina.render({ canvasContext: ctx, viewport }).promise;
-            dibujarItems(ctx, (x, y) => ({ x: x * factor, y: y * factor }), factor);
+            if (conAnotaciones) dibujarItems(ctx, (x, y) => ({ x: x * factor, y: y * factor }), factor);
 
             return canvas;
         }
@@ -3395,6 +3433,137 @@
             descargarBlob(new Blob([bytes], { type: 'application/pdf' }), nombreArchivoDescarga('pdf'));
         }
 
+        /* ─── Exportación a DXF (ZIP con .dxf + .png de fondo + .pdf) ───
+             El DXF lleva las anotaciones como entidades editables (cada
+             herramienta en su capa) y el plano como imagen PNG de fondo,
+             vinculada como archivo externo: el DXF no puede incrustarla,
+             AutoCAD la busca en la misma carpeta del dibujo. Se usa una
+             imagen y no un PDF underlay porque el tamaño de una imagen lo
+             fija el propio DXF, mientras que el del PDF lo calcula
+             AutoCAD con una regla propia que no calzaba con el dibujo.
+             El .pdf original va en el ZIP solo como respaldo.
+
+             El dibujo queda en milímetros a tamaño real de la hoja
+             (1 punto PDF = 25.4/72 mm) y en la misma orientación que ve
+             el usuario: las coordenadas "mundo" ya están en el viewport
+             rotado (ver renderPagina), igual que la imagen, así que
+             alcanza con invertir el eje Y. */
+        const MM_POR_PUNTO = 25.4 / 72;
+
+        async function generarDxf(nombreImagen, anchoPx, altoPx) {
+            const pagina = await pdfDoc.getPage(1);
+            const viewportBase = pagina.getViewport({ scale: 1, rotation: rotacionPlano });
+            const alto = viewportBase.height;
+            const aDxf = (x, y) => ({ x: x * MM_POR_PUNTO, y: (alto - y) * MM_POR_PUNTO });
+            const anchoMm = viewportBase.width * MM_POR_PUNTO;
+            const altoMm = alto * MM_POR_PUNTO;
+
+            const dxf = PlanoDxf.crearDxf({ insunits: 4 });
+            dxf.imagen(nombreImagen, {
+                anchoPx,
+                altoPx,
+                ancho: anchoMm,
+                alto: altoMm,
+                capa: dxf.agregarCapa('Plano original'),
+            });
+            dxf.fijarExtension(0, 0, anchoMm, altoMm);
+
+            /* Un bloque por tipo de ícono (en coordenadas del viewBox,
+               centrado y con Y invertida), insertado en cada punto con su
+               escala — mismo parser vectorial que usa el PDF. */
+            const bloquesIcono = {};
+            async function bloqueParaIcono(tool) {
+                if (tool in bloquesIcono) return bloquesIcono[tool];
+                const icono = await obtenerIconoVectorial(tool);
+                if (!icono) return (bloquesIcono[tool] = null);
+                const cx = icono.minX + icono.w / 2;
+                const cy = icono.minY + icono.h / 2;
+                const local = p => ({ x: p.x - cx, y: cy - p.y });
+                const nombre = dxf.agregarBloque('ICONO_' + tool, b => {
+                    icono.formas.forEach(forma => {
+                        const contornos = forma.subpaths.filter(sp => sp.length >= 2).map(sp => sp.map(local));
+                        if (!contornos.length) return;
+                        if (forma.fill) b.sombreado(contornos, { color: forma.fill });
+                        if (forma.stroke) {
+                            contornos.forEach(c => b.polilinea(c, { cerrada: true, ancho: forma.strokeWidth, color: forma.stroke }));
+                        }
+                    });
+                });
+                return (bloquesIcono[tool] = { nombre, icono });
+            }
+
+            const capaPorTool = {};
+            const capaDe = tool => capaPorTool[tool]
+                ?? (capaPorTool[tool] = dxf.agregarCapa(metaCapas[tool]?.nombre || tool, metaCapas[tool]?.color));
+
+            /* El TEXT de DXF mide la altura de mayúscula; el canvas, el
+               tamaño de fuente (em). En Arial la mayúscula es ≈ 0.716 em. */
+            const ALTURA_MAYUSCULA = 0.716;
+
+            for (const item of estadoPlano.trazos) {
+                if (capasVisibles[item.tool] === false) continue;
+                const capa = capaDe(item.tool);
+
+                if (item.tipo === 'icono') {
+                    const bloque = await bloqueParaIcono(item.tool);
+                    if (!bloque) continue;
+                    const factorEscala = estadoPlano.escalas[GRUPO_ESCALA[item.tool]] ?? 1;
+                    const base = item.tamano * factorEscala;
+                    const s = base / Math.max(bloque.icono.w, bloque.icono.h);
+                    const centro = aDxf(item.x, item.y);
+                    dxf.modelo.insercion(bloque.nombre, centro.x, centro.y, s * MM_POR_PUNTO, { capa });
+
+                    if (item.etiqueta) {
+                        const tamanoFuente = base * 0.32;
+                        const posTexto = aDxf(item.x + (s * bloque.icono.w) / 2 - base * 0.14, item.y);
+                        dxf.modelo.texto(item.etiqueta, posTexto.x, posTexto.y, tamanoFuente * ALTURA_MAYUSCULA * MM_POR_PUNTO, {
+                            capa, color: item.colorEtiqueta || '#000000',
+                        });
+                    }
+                    continue;
+                }
+
+                if (item.tipo === 'texto') {
+                    const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
+                    const tamanoFuente = item.tamano * (estadoPlano.escalas[grupoEscala] ?? 1);
+                    const pos = aDxf(item.x, item.y);
+                    dxf.modelo.texto(item.texto, pos.x, pos.y, tamanoFuente * ALTURA_MAYUSCULA * MM_POR_PUNTO, { capa, color: item.color });
+                    continue;
+                }
+
+                if (!item.puntos || item.puntos.length < 2) continue;
+                const puntos = item.puntos.map(p => aDxf(p.x, p.y));
+                /* El relleno va primero para que quede debajo del contorno;
+                   sólido semitransparente en vez de la trama de pantalla. */
+                if (item.cerrado && item.relleno) {
+                    dxf.modelo.sombreado([puntos], { capa, color: item.color, transparencia: 0.8 });
+                }
+                dxf.modelo.polilinea(puntos, {
+                    cerrada: !!item.cerrado,
+                    ancho: item.grosor * MM_POR_PUNTO,
+                    capa,
+                    color: item.color,
+                });
+            }
+
+            return dxf.serializar();
+        }
+
+        async function descargarComoDXF() {
+            const nombreImagen = nombreArchivoDescarga('png');
+            const canvas = await generarCanvasExportacion({ conAnotaciones: false });
+            const blobImagen = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blobImagen) throw new Error('No se pudo generar la imagen del plano');
+            const textoDxf = await generarDxf(nombreImagen, canvas.width, canvas.height);
+
+            const zip = new JSZip();
+            zip.file(nombreArchivoDescarga('dxf'), textoDxf);
+            zip.file(nombreImagen, blobImagen);
+            zip.file(nombreArchivoDescarga('pdf'), await pdfDoc.getData());
+            const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+            descargarBlob(blob, nombreArchivoDescarga('zip'));
+        }
+
         const descargaWrap = document.getElementById('descarga-wrap');
         const btnDescarga = document.getElementById('btn-descarga');
         const overlayDescarga = document.getElementById('overlay-descarga');
@@ -3424,6 +3593,8 @@
                 document.querySelectorAll('.overlay-descarga-formato').forEach(b => b.classList.remove('activo'));
                 btn.classList.add('activo');
                 formatoDescarga = btn.dataset.formato;
+                /* La tabla de referencia no aplica al DXF. */
+                checkDescargaReferencia.closest('label').style.display = formatoDescarga === 'dxf' ? 'none' : '';
             });
         });
 
@@ -3435,6 +3606,8 @@
                 const conReferencia = checkDescargaReferencia?.checked || false;
                 if (formatoDescarga === 'png') {
                     await descargarComoPNG(conReferencia);
+                } else if (formatoDescarga === 'dxf') {
+                    await descargarComoDXF();
                 } else {
                     await descargarComoPDF(conReferencia);
                 }
@@ -4739,6 +4912,25 @@
             const normalizar = texto => String(texto ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
             const contieneActual = planos => planos.some(p => p.id === PLANO_ACTUAL);
+
+            /* Anterior / siguiente: recorren todos los planos de la obra
+               en el mismo orden del árbol (grupo → subgrupo → plano),
+               pasando de un subgrupo/grupo al siguiente sin cortar. */
+            const secuencia = ARBOL.flatMap(g => g.subgrupos.flatMap(sg => sg.planos));
+            const indiceActual = secuencia.findIndex(p => p.id === PLANO_ACTUAL);
+            [
+                [document.getElementById('nav-planos-anterior'), secuencia[indiceActual - 1], 'Anterior'],
+                [document.getElementById('nav-planos-siguiente'), secuencia[indiceActual + 1], 'Siguiente'],
+            ].forEach(([boton, destino, etiqueta]) => {
+                if (indiceActual !== -1 && destino) {
+                    boton.href = destino.url;
+                    boton.title = `${etiqueta}: ${destino.nombre}`;
+                } else {
+                    boton.classList.add('deshabilitado');
+                    boton.setAttribute('aria-disabled', 'true');
+                    boton.title = etiqueta === 'Anterior' ? 'Es el primer plano' : 'Es el último plano';
+                }
+            });
 
             function itemCarpeta(clave, nombre, cantidad, { abierto, actual, grupo }) {
                 return `
