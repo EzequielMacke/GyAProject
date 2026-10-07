@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PresupuestoAprobadoMail;
+use App\Models\NotificacionUsuario;
 use App\Models\Obra;
 use App\Models\PresupuestoAprobado;
+use App\Services\NotificacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
 
@@ -84,8 +88,51 @@ class PresupuestoaprobadoController extends Controller
             'tipo_trabajo' => $request->tipo_trabajo,
         ]);
 
+        $presupuesto->load('obra', 'usuario');
+        app(NotificacionService::class)->enviar(
+            NotificacionUsuario::PRESUPUESTO_APROBADO,
+            new PresupuestoAprobadoMail($presupuesto)
+        );
+
         return redirect()->route('presupuesto_aprobado.index', $request->obra_id)->with('success', 'Presupuesto aprobado guardado exitosamente.');
     }
+    /**
+     * Elimina el presupuesto y todo lo que depende de él.
+     */
+    public function destroy($id)
+    {
+        $presupuesto = PresupuestoAprobado::findOrFail($id);
+        $obraId      = $presupuesto->obra_id;
+        $archivo     = $presupuesto->presupuesto;
+
+        DB::transaction(function () use ($id, $presupuesto) {
+            $facturaIds = DB::table('factura_ventas')->where('presupuesto_aprobado_id', $id)->pluck('id');
+            $pedidoIds  = DB::table('pedido_para_obras')->where('presupuesto_aprobado_id', $id)->pluck('id');
+
+            DB::table('recibo_ventas')
+                ->where('presupuesto_aprobado_id', $id)
+                ->orWhereIn('factura_id', $facturaIds)
+                ->delete();
+            DB::table('factura_ventas')->whereIn('id', $facturaIds)->delete();
+
+            DB::table('pedido_para_obra_detalles')->whereIn('pedido_para_obra_id', $pedidoIds)->delete();
+            DB::table('pedido_para_obras')->whereIn('id', $pedidoIds)->delete();
+
+            DB::table('agendamientos')->where('presupuesto_id', $id)->delete();
+            DB::table('contactos')->where('presupuesto_id', $id)->delete();
+            DB::table('control_gastos')->where('presupuesto_aprobado_id', $id)->delete();
+            DB::table('situacion_avances')->where('presupuesto_aprobado_id', $id)->delete();
+
+            $presupuesto->delete();
+        });
+
+        if ($archivo) {
+            Storage::delete('public/presupuestos/' . $archivo);
+        }
+
+        return redirect()->route('presupuesto_aprobado.index', $obraId)->with('success', 'Presupuesto eliminado junto con sus registros asociados.');
+    }
+
     private function mergePdfs($presupuestoPath, $conformidadPath, $outputPath)
     {
         $pdf = new Fpdi();

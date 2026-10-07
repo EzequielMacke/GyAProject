@@ -220,7 +220,9 @@
 
                 {{-- Version 7.0 - 2026-09-13
                 Se agrego la herramienta planilla
-                Las planillas disponibles hasta la fecha son ultrasonido indirecto, esclerometria, carbonatacion, medicion de fisuras
+                Las planillas disponibles hasta la fecha son ultrasonido indirecto, esclerometria, carbonatacion,
+                medicion de fisuras, cloruros y resistividad. Todas se guardan automaticamente y cada punto
+                se asocia a un elemento y a un nivel de la obra.
 
                 En cuanto a la planilla de ultrasonido indirecto, permite cargar 8 lecturas, y se calcula el promedio,
                 la desviación estándar y el coeficiente de variación. Se marca el punto para repetir el ensayo cuando
@@ -233,13 +235,41 @@
                 se le aplica una corrección según el ángulo de ensayo (0°, ±45°, ±90°) para obtener el N final. Si en
                 total se descartan más de 2 lecturas, se marca el punto para repetir el ensayo.
 
-                En cuanto a la planilla de carbonatacion, permite cargar el recubrimiento y el espesor carbonatado de
-                cada punto, y se calcula el % de sección afectada.
+                En cuanto a la planilla de carbonatacion, permite cargar el recubrimiento y 4 mediciones de espesor
+                carbonatado de cada punto. Se calcula el espesor carbonatado promedio y el % afectado
+                (espesor promedio / recubrimiento x 100).
 
                 En cuanto a la planilla de medicion de fisuras permite cargar  3 medidas de espesor y 3 medidas de profundidad
                 de cada fisura y el ancho del elemento. 
                 Se calcula el promedio de espesor y el promedio de profundidad, y el % de sección afectada. Si la fisura se 
                 marca como pasante, ese % se multiplica por 2.
+
+                En cuanto a la planilla de cloruros, permite cargar el recubrimiento y 4 mediciones de espesor
+                afectado por cloruros de cada punto. Se calcula el espesor afectado promedio y el % afectado
+                (espesor promedio / recubrimiento x 100).
+
+                En cuanto a la planilla de resistividad, permite cargar 4 lecturas del equipo (kΩ·cm) y la temperatura
+                del hormigon de cada punto. Se calcula el promedio de las lecturas y se corrige por temperatura
+                tomando 20 °C como referencia: corrección = promedio x 3% x (temperatura - 20). La resistividad
+                corregida es el promedio mas la corrección. Con ese valor se clasifica la velocidad de corrosion:
+                mayor a 20 despreciable, de 10 a 20 baja, de 5 a 10 moderada a alta, menor a 5 muy alta.
+
+                Se agrego la herramienta pachometria. Permite cargar el detalle de armaduras de vigas, pilares
+                (rectangulares o circulares) y losas, con sus medidas, recubrimiento, estribos y barras, y se dibuja
+                la seccion en proporcion real (en losas, planta de 1 m x 1 m y corte A-A). Cada pachometria se
+                nombra como PCH + numero. Se pueden exportar las pachometrias visibles a PDF (A4 vertical) y a DXF
+                en metros y a escala real, con cada cosa en su capa (hormigon, estribos, barras, cotas, ejes).
+
+                En los planos se agrego la descarga en DXF. Se descarga un ZIP con el .dxf, el plano como imagen
+                .png de fondo y el .pdf original como respaldo. En el DXF las anotaciones quedan como entidades
+                editables, cada herramienta en su propia capa, en milimetros y a tamaño real de la hoja. El archivo
+                se abre en AutoCAD y la imagen de fondo tiene que estar en la misma carpeta que el .dxf.
+
+                Se agregaron las notificaciones por correo. En Obras > Configuraciones > Notificaciones se eligen
+                los usuarios que reciben un aviso cuando se carga un presupuesto aprobado. Solo se pueden elegir
+                usuarios activos con correo registrado. El correo indica la obra, el nombre del presupuesto y la
+                observacion si la tiene. Si un correo no se puede enviar, el presupuesto se guarda igual y el error
+                queda en el log. Se agrego el campo correo a los usuarios, se carga desde la edicion del usuario.
                 --}}
 
 

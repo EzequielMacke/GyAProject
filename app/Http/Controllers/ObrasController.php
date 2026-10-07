@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Directorio;
+use App\Models\NotificacionUsuario;
 use App\Models\Obra;
 use App\Models\PresupuestoAprobado;
+use App\Models\Usuarios;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ObrasController extends Controller
 {
@@ -122,6 +126,58 @@ class ObrasController extends Controller
     {
         $obra = Obra::findOrFail($id);
         return view('obras.show', compact('obra'));
+    }
+
+    public function config()
+    {
+        $usuariosConCorreo = Usuarios::whereNotNull('correo')
+            ->where('correo', '!=', '')
+            ->where('estado', 1)
+            ->orderBy('nombre')
+            ->get();
+
+        $seleccionadosPresupuestos = NotificacionUsuario::where('tipo', NotificacionUsuario::PRESUPUESTO_APROBADO)
+            ->pluck('usuario_id')
+            ->all();
+
+        $destinatariosPresupuestos = Usuarios::whereIn('id', $seleccionadosPresupuestos)
+            ->orderBy('nombre')
+            ->get();
+
+        return view('obras.config', compact(
+            'usuariosConCorreo',
+            'seleccionadosPresupuestos',
+            'destinatariosPresupuestos'
+        ));
+    }
+
+    public function guardarNotificaciones(Request $request)
+    {
+        $request->validate([
+            'usuarios'   => 'nullable|array',
+            'usuarios.*' => [
+                'integer',
+                Rule::exists('usuarios', 'id')->whereNotNull('correo'),
+            ],
+        ]);
+
+        $tipo = NotificacionUsuario::PRESUPUESTO_APROBADO;
+        $ids  = array_map('intval', $request->input('usuarios', []));
+
+        DB::transaction(function () use ($tipo, $ids) {
+            NotificacionUsuario::where('tipo', $tipo)
+                ->whereNotIn('usuario_id', $ids)
+                ->delete();
+
+            foreach ($ids as $usuarioId) {
+                NotificacionUsuario::firstOrCreate([
+                    'tipo'       => $tipo,
+                    'usuario_id' => $usuarioId,
+                ]);
+            }
+        });
+
+        return redirect()->route('obras.config')->with('success', 'Destinatarios de notificaciones actualizados.');
     }
 
 

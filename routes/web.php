@@ -143,6 +143,8 @@ Route::middleware('permiso:obr,editar')->group(function () {
 });
 Route::middleware('permiso:obr,eliminar')->group(function () {
     Route::delete('/obras/{id}/destroy', [ObrasController::class, 'destroy'])->name('obras.destroy');
+    Route::get('/obras/configuraciones', [ObrasController::class, 'config'])->name('obras.config');
+    Route::post('/obras/configuraciones/notificaciones', [ObrasController::class, 'guardarNotificaciones'])->name('obras.config.notificaciones');
 });
 
 // ── Pedidos de obra ───────────────────────────────────────────────────────────
@@ -191,6 +193,9 @@ Route::middleware('permiso:pre_apr,agregar')->group(function () {
 Route::middleware('permiso:pre_apr,editar')->group(function () {
     Route::get('/presupuesto_aprobado/{id}/editar', [PresupuestoaprobadoController::class, 'edit'])->name('presupuesto_aprobado.edit');
     Route::put('/presupuesto_aprobado/{id}', [PresupuestoaprobadoController::class, 'update'])->name('presupuesto_aprobado.update');
+});
+Route::middleware('permiso:pre_apr,eliminar')->group(function () {
+    Route::delete('/presupuesto_aprobado/{id}', [PresupuestoaprobadoController::class, 'destroy'])->name('presupuesto_aprobado.destroy');
 });
 
 // ── Control de gastos ─────────────────────────────────────────────────────────

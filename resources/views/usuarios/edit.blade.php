@@ -263,6 +263,13 @@
                                                value="{{ old('nombre_completo', $usuario->nombre_completo) }}">
                                     </div>
 
+                                    <div class="field-full">
+                                        <label class="field-label" for="correo">Correo electrónico</label>
+                                        <input type="email" class="field-input" id="correo" name="correo"
+                                               autocomplete="off" placeholder="usuario@ejemplo.com"
+                                               value="{{ old('correo', $usuario->correo) }}">
+                                    </div>
+
                                     <div>
                                         <label class="field-label" for="contraseña">Nueva contraseña</label>
                                         <input type="password" class="field-input" id="contraseña" name="contraseña"

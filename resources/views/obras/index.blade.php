@@ -360,6 +360,11 @@
                             <i class="fas fa-plus"></i> Nueva obra
                         </a>
                         @endpermiso
+                        @permiso('obr', 'eliminar')
+                        <a href="{{ route('obras.config') }}" class="btn">
+                            <i class="fas fa-gear"></i> Configuraciones
+                        </a>
+                        @endpermiso
                         <a href="{{ route('home') }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>

@@ -371,6 +371,84 @@
 
         .card-fecha i { font-size: 0.6rem; }
 
+        .card-footer-right { display: flex; align-items: center; gap: 0.6rem; }
+
+        .delete-btn {
+            width: 28px; height: 28px;
+            border-radius: 0.4rem;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--muted);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s, border-color 0.12s;
+        }
+
+        .delete-btn:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
+
+        /* ── Modal eliminar ── */
+        .del-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .del-overlay.active { display: flex; }
+
+        .del-box {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: 0.85rem;
+            padding: 1.75rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+            animation: delIn 0.18s ease;
+        }
+
+        @keyframes delIn {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to   { opacity: 1; transform: none; }
+        }
+
+        .del-icon {
+            width: 44px; height: 44px;
+            border-radius: 0.6rem;
+            background: #fef2f2;
+            color: #dc2626;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .del-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 0.35rem; }
+        .del-sub { font-size: 0.82rem; color: var(--text2); line-height: 1.5; }
+
+        .del-list {
+            margin: 0.75rem 0 1.25rem;
+            padding: 0.75rem 0.9rem 0.75rem 1.9rem;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 0.5rem;
+            font-size: 0.78rem;
+            color: #991b1b;
+            line-height: 1.6;
+        }
+
+        .del-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+        .btn-danger {
+            background: #dc2626; border-color: #dc2626; color: #fff;
+        }
+
+        .btn-danger:hover { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+
         /* ── Empty / no results ── */
         .empty-state {
             grid-column: 1 / -1;
@@ -574,10 +652,20 @@
 
                         <div class="card-footer-row">
                             <span class="card-monto">{{ number_format($presupuesto->monto_total, 0, '', '.') }}</span>
-                            <span class="card-fecha">
-                                <i class="far fa-calendar"></i>
-                                {{ \Carbon\Carbon::parse($presupuesto->fecha_carga)->format('d/m/Y') }}
-                            </span>
+                            <div class="card-footer-right">
+                                <span class="card-fecha">
+                                    <i class="far fa-calendar"></i>
+                                    {{ \Carbon\Carbon::parse($presupuesto->fecha_carga)->format('d/m/Y') }}
+                                </span>
+                                @permiso('pre_apr', 'eliminar')
+                                <button type="button" class="delete-btn" title="Eliminar presupuesto"
+                                        data-url="{{ route('presupuesto_aprobado.destroy', $presupuesto->id) }}"
+                                        data-clave="{{ $presupuesto->clave }}"
+                                        onclick="event.preventDefault(); event.stopPropagation(); abrirEliminar(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                @endpermiso
+                            </div>
                         </div>
 
                     </a>
@@ -615,7 +703,51 @@
     </div>
 </div>
 
+{{-- Modal eliminar --}}
+@permiso('pre_apr', 'eliminar')
+<div class="del-overlay" id="modal-eliminar">
+    <form class="del-box" method="POST" id="form-eliminar">
+        @csrf
+        @method('DELETE')
+        <div class="del-icon"><i class="fas fa-trash"></i></div>
+        <div class="del-title">Eliminar presupuesto</div>
+        <div class="del-sub">
+            ¿Seguro que querés eliminar <strong id="del-clave"></strong>? También se van a eliminar todos sus registros asociados:
+        </div>
+        <ul class="del-list">
+            <li>Facturas y recibos de venta</li>
+            <li>Pedidos para obra y sus detalles</li>
+            <li>Agendamientos y contactos</li>
+            <li>Control de gastos y situación de avance</li>
+            <li>El archivo PDF del presupuesto</li>
+        </ul>
+        <div class="del-sub" style="margin-bottom:1.25rem;"><strong>Esta acción no se puede deshacer.</strong></div>
+        <div class="del-actions">
+            <button type="button" class="btn" onclick="cerrarEliminar()">Cancelar</button>
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash"></i> Eliminar
+            </button>
+        </div>
+    </form>
+</div>
+@endpermiso
+
 <script>
+// Modal eliminar
+function abrirEliminar(btn) {
+    document.getElementById('form-eliminar').action = btn.dataset.url;
+    document.getElementById('del-clave').textContent = btn.dataset.clave;
+    document.getElementById('modal-eliminar').classList.add('active');
+}
+
+function cerrarEliminar() {
+    document.getElementById('modal-eliminar').classList.remove('active');
+}
+
+document.getElementById('modal-eliminar')?.addEventListener('click', function (e) {
+    if (e.target === this) cerrarEliminar();
+});
+
 // PDF modal
 function abrirModal(src, titulo) {
     document.getElementById('pdf-modal-iframe').src = src;
@@ -633,7 +765,10 @@ document.getElementById('pdf-modal-backdrop').addEventListener('click', function
 });
 
 document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') cerrarModal();
+    if (e.key === 'Escape') {
+        cerrarModal();
+        if (document.getElementById('modal-eliminar')) cerrarEliminar();
+    }
 });
 
 // Search

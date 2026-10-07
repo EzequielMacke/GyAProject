@@ -311,6 +311,7 @@
                                 <th class="row-num">#</th>
                                 <th>Usuario</th>
                                 <th>Nombre completo</th>
+                                <th>Correo</th>
                                 <th>Área</th>
                                 <th>Estado</th>
                                 @permiso('usu', 'editar')<th></th>@endpermiso
@@ -322,7 +323,7 @@
                                 $on       = $usuario->estado == 1;
                                 $initials = mb_strtoupper(mb_substr($usuario->nombre, 0, 2));
                             @endphp
-                            <tr data-search="{{ strtolower($usuario->nombre . ' ' . ($usuario->area->descripcion ?? '')) }}"
+                            <tr data-search="{{ strtolower($usuario->nombre . ' ' . $usuario->correo . ' ' . ($usuario->area->descripcion ?? '')) }}"
                                 style="animation-delay:{{ $loop->index * 0.03 }}s">
                                 <td class="row-num">{{ str_pad($loop->iteration, 2, '0', STR_PAD_LEFT) }}</td>
                                 <td>
@@ -338,6 +339,16 @@
                                         <span class="nc-missing">
                                             <i class="fas fa-triangle-exclamation"></i>
                                             Sin nombre completo
+                                        </span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($usuario->correo)
+                                        {{ $usuario->correo }}
+                                    @else
+                                        <span class="nc-missing">
+                                            <i class="fas fa-triangle-exclamation"></i>
+                                            Sin correo
                                         </span>
                                     @endif
                                 </td>
@@ -363,7 +374,7 @@
                             </tr>
                             @empty
                             <tr class="empty-row">
-                                <td colspan="6">
+                                <td colspan="7">
                                     <i class="fas fa-users"></i>
                                     No hay usuarios registrados.
                                 </td>
@@ -371,7 +382,7 @@
                             @endforelse
 
                             <tr class="no-results-row" id="no-results">
-                                <td colspan="6">
+                                <td colspan="7">
                                     <i class="fas fa-search"></i>
                                     Sin resultados para tu búsqueda.
                                 </td>

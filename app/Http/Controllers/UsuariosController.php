@@ -51,6 +51,7 @@ class UsuariosController extends Controller
         $request->validate([
             'usuario'         => 'required|string|max:255|unique:usuarios,nombre,' . $id,
             'nombre_completo' => 'nullable|string|max:255',
+            'correo'          => 'nullable|email|max:255|unique:usuarios,correo,' . $id,
             'contraseña'      => 'nullable|string|min:4|same:rep_contraseña',
             'area_id'         => 'required|exists:areas,id',
             'estado'          => 'required|in:1,2',
@@ -59,6 +60,7 @@ class UsuariosController extends Controller
         $data = [
             'nombre'          => $request->usuario,
             'nombre_completo' => $request->nombre_completo,
+            'correo'          => $request->correo,
             'area_id'         => $request->area_id,
             'estado'          => $request->estado,
         ];
