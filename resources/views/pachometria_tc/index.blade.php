@@ -237,6 +237,9 @@
         .forma-opciones .tipo-btn { justify-content: center; padding: 0 0.5rem; }
         .forma-opciones.losa-opciones { grid-template-columns: repeat(4, 1fr); }
         .losa-opciones + .medidas-grid { margin-top: 0.75rem; }
+        .medidas-grid.con-modo { grid-template-columns: repeat(2, minmax(0, 160px)) minmax(0, 220px); }
+        .modo-altura { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.35rem; }
+        .modo-altura .tipo-btn { justify-content: center; padding: 0 0.4rem; font-size: 0.75rem; }
         .medidas-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 0.75rem; margin-top: 0.4rem; }
         .medidas-grid.tres { grid-template-columns: repeat(3, minmax(0, 160px)); }
         .sub-label { font-size: 0.72rem; font-weight: 700; color: var(--text2); margin-top: 0.85rem; display: block; }
@@ -296,6 +299,8 @@
         .rotulo-nombre { font-size: 0.95rem; font-weight: 700; color: var(--text); }
         .rotulo-tipo { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
         .lienzo-leyenda { font-size: 0.78rem; font-weight: 600; color: var(--muted); line-height: 1.35; }
+        .lienzo-comentario { font-style: italic; margin-top: 0.3rem; }
+        textarea.medida-input { resize: vertical; min-height: 64px; line-height: 1.4; }
         .pach-lienzo svg { width: 100%; max-width: 320px; height: auto; }
         .pach-card.expandida .pach-lienzo svg { max-width: 300px; }
         /* Zoom (solo con la tarjeta expandida): ruedita / dos dedos, y arrastrar para mover */
@@ -376,6 +381,8 @@
             .pach-grid { grid-template-columns: 1fr; }
             .pach-card, .pach-agregar { min-height: 300px; }
             .forma-opciones.losa-opciones { grid-template-columns: repeat(2, 1fr); }
+            .medidas-grid.con-modo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .medidas-grid.con-modo .modo-altura-campo { grid-column: 1 / -1; }
         }
         @media (max-width: 900px) {
             .pach-card.expandida .pach-body { flex-direction: column; }
@@ -496,7 +503,8 @@
        Pilar: rectangular (lado × ancho, en proporción real) o
               circular (diámetro). Sin medidas cargadas se dibuja
               un cuadrado / círculo genérico.
-       Losa: planta de 1 m × 1 m y corte A-A (ver más abajo). */
+       Losa: maciza, planta de 1 m × 1 m y corte A-A (ver más abajo);
+             RAP, planta y corte de un detalle típico, sin parámetros. */
     const ESTILO_SECCION = 'fill="#e9edf2" stroke="#445060" stroke-width="2"';
     const ESTILO_COTA = 'stroke="#8496aa" stroke-width="1"';
     const ESTILO_TEXTO_CARA = 'font-size="10" font-weight="700" fill="#2a6fdb" letter-spacing="0.3" font-family="Plus Jakarta Sans, sans-serif"';
@@ -856,11 +864,12 @@
     /* Cotas: la medida horizontal debajo y la vertical a la derecha.
        "corrimiento" aleja la cota vertical del borde (p. ej. para
        pasar por fuera de una losa); en ese caso se agregan líneas de
-       referencia hasta la cota. */
-    function cotasRectangulo({ x, y, w, h }, horizontal, vertical, corrimiento = 0) {
+       referencia hasta la cota. "refArriba" es el largo que cubre la
+       línea de referencia de arriba (sólo afuera de la losa, si la hay). */
+    function cotasRectangulo({ x, y, w, h }, horizontal, vertical, corrimiento = 0, refArriba = 0) {
         const xc = x + w + corrimiento;
         const referencias = corrimiento > 0 ? `
-            <line x1="${xc + 2}" y1="${y}" x2="${xc + 17}" y2="${y}" ${ESTILO_COTA}></line>
+            <line x1="${xc + 2 - refArriba}" y1="${y}" x2="${xc + 17}" y2="${y}" ${ESTILO_COTA}></line>
             <line x1="${x + w + 2}" y1="${y + h}" x2="${xc + 17}" y2="${y + h}" ${ESTILO_COTA}></line>
         ` : '';
         const cotaHorizontal = horizontal !== null ? `
@@ -918,13 +927,19 @@
         const sinMedidas = base === null && altura === null;
         const largoIzq = losas.izquierda ? LARGO_LOSA : 0;
         const largoDer = losas.derecha ? LARGO_LOSA : 0;
+        // "No incluye losa" con la losa cargada: cota del canto junto a la
+        // viga y, más afuera, la de la altura total. Sin losa a la derecha
+        // la total se corre para no pisar la del canto.
+        const cotaDoble = losas.soloCanto !== null && losas.altura !== null;
+        const corrimientoTotal = cotaDoble && ! largoDer ? 40 : largoDer;
+        const extraCota = corrimientoTotal - largoDer;
         const r = encuadrarRectangulo(
             sinMedidas ? 20 : base,
             sinMedidas ? 40 : altura,
-            Math.min(MAX_ANCHO_DIBUJO, ANCHO_VIGA_CON_LOSAS - largoIzq - largoDer)
+            Math.min(MAX_ANCHO_DIBUJO, ANCHO_VIGA_CON_LOSAS - largoIzq - largoDer - extraCota)
         );
-        // Se centra el conjunto viga + losas.
-        r.x = (320 - (r.w + largoIzq + largoDer)) / 2 + largoIzq;
+        // Se centra el conjunto viga + losas (+ la cota corrida).
+        r.x = (320 - (r.w + largoIzq + largoDer + extraCota)) / 2 + largoIzq;
 
         // Sin altura cargada, la losa se dibuja a un tercio de la viga.
         const t = losas.altura !== null ? Math.min(losas.altura * r.escala, r.h) : r.h / 3;
@@ -935,6 +950,17 @@
         const rotulosLosas =
             (largoIzq ? rotuloLosa(r.x - largoIzq / 2) : '') +
             (largoDer ? rotuloLosa(r.x + r.w + largoDer / 2) : '');
+        // Canto visible (debajo de la losa): cota corta junto a la cara
+        // derecha, entre la losa y la cota de la altura total. Con
+        // "soloCanto" la cota principal ya es la del canto.
+        const canto = ! losas.soloCanto && altura !== null && losas.altura !== null && losas.altura < altura ? altura - losas.altura : null;
+        const xCanto = r.x + r.w + 12;
+        const cotaCanto = largoDer && canto !== null ? `
+            <line x1="${xCanto}" y1="${r.y + t}" x2="${xCanto}" y2="${r.y + r.h}" ${ESTILO_COTA}></line>
+            <line x1="${xCanto - 5}" y1="${r.y + t}" x2="${xCanto + 5}" y2="${r.y + t}" ${ESTILO_COTA}></line>
+            <line x1="${xCanto - 5}" y1="${r.y + r.h}" x2="${xCanto + 5}" y2="${r.y + r.h}" ${ESTILO_COTA}></line>
+            <text x="${xCanto + 6}" y="${r.y + (t + r.h) / 2 + 3.5}" text-anchor="start" ${ESTILO_TEXTO_LOSA}>${formatearMedida(canto)}</text>
+        ` : '';
 
         // Las esquinas del estribo envuelven las barras de los extremos:
         // arriba las superiores y abajo las inferiores. Si falta una de
@@ -956,7 +982,12 @@
                     <path d="${contornoViga(r, t, largoIzq, largoDer)}" ${ESTILO_SECCION} stroke-linejoin="round"></path>
                     ${interior}
                     ${rotulosLosas}
-                    ${cotasRectangulo(r, base, altura, largoDer)}
+                    ${cotaCanto}
+                    ${cotaDoble
+                        ? cotasRectangulo(r, base, altura, corrimientoTotal, extraCota) + cotasRectangulo({ ...r, y: r.y + t, h: r.h - t }, null, losas.soloCanto)
+                        : losas.soloCanto !== null
+                        ? cotasRectangulo(r, base, null) + cotasRectangulo({ ...r, y: r.y + t, h: r.h - t }, null, losas.soloCanto, largoDer)
+                        : cotasRectangulo(r, base, altura, largoDer)}
                 </svg>`;
     }
 
@@ -1166,10 +1197,10 @@
     // Las inferiores arrancan a media separación del borde y las
     // negativas a una separación entera, así no quedan encimadas en
     // planta cuando tienen la misma separación.
-    function posicionesMalla(malla, negativa) {
+    function posicionesMalla(malla, negativa, ventana = VENTANA_LOSA) {
         if (! malla || malla.separacion < 1) return [];
         const posiciones = [];
-        for (let p = negativa ? malla.separacion : malla.separacion / 2; p < VENTANA_LOSA; p += malla.separacion) {
+        for (let p = negativa ? malla.separacion : malla.separacion / 2; p < ventana; p += malla.separacion) {
             posiciones.push(p);
         }
         return posiciones;
@@ -1185,14 +1216,14 @@
        anterior, lo que ocupan las dos (ancho(malla) = ancho dibujado de
        la barra), así se ven una al lado de la otra. Devuelve
        [{ malla, posiciones (cm), desplazamiento (unidades del dibujo) }]. */
-    function barrasDireccion(mallas, negativa, ancho) {
+    function barrasDireccion(mallas, negativa, ancho, ventana = VENTANA_LOSA) {
         const ultimaPorSeparacion = new Map();
         return mallas.map(malla => {
             const w = ancho(malla);
             const anterior = ultimaPorSeparacion.get(malla.separacion);
             const desplazamiento = anterior ? anterior.desplazamiento + anterior.w / 2 + w / 2 + 0.8 : 0;
             ultimaPorSeparacion.set(malla.separacion, { desplazamiento, w });
-            return { malla, posiciones: posicionesMalla(malla, negativa), desplazamiento };
+            return { malla, posiciones: posicionesMalla(malla, negativa, ventana), desplazamiento };
         });
     }
 
@@ -1211,10 +1242,10 @@
                 return posiciones.map(p => {
                     if (direccion === 'x') {
                         const y = y0 + S - p * escala - desplazamiento;
-                        return `<line x1="${x0}" y1="${y}" x2="${x0 + S}" y2="${y}" stroke="${color}" stroke-width="${g}" ${trazo}></line>`;
+                        return `<line x1="${x0}" y1="${y}" x2="${x0 + S}" y2="${y}" stroke="${color}" stroke-width="${g}" data-dxf="barra" ${trazo}></line>`;
                     }
                     const x = x0 + p * escala + desplazamiento;
-                    return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0 + S}" stroke="${color}" stroke-width="${g}" ${trazo}></line>`;
+                    return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0 + S}" stroke="${color}" stroke-width="${g}" data-dxf="barra" ${trazo}></line>`;
                 }).join('');
             }).join('');
         };
@@ -1257,36 +1288,6 @@
                 ${textoY}`;
         };
 
-        // Ejes con sus referencias: X abajo (hacia la derecha) e Y a la
-        // izquierda (hacia arriba).
-        const flecha = 'fill="#2a6fdb"';
-        const yEjeX = y0 + S + 14;
-        const xEjeY = x0 - 32; // separado: entre el eje y la planta va la marca del corte
-        const rotuloEje = (eje, referencia) => `${eje}${referencia ? ` · ${escaparHtml(referencia)}` : ''}`;
-        const ejes = `
-            <line x1="${x0}" y1="${yEjeX}" x2="${x0 + S}" y2="${yEjeX}" stroke="#2a6fdb" stroke-width="1.2"></line>
-            <polygon points="${x0 + S + 6},${yEjeX} ${x0 + S - 1},${yEjeX - 3.5} ${x0 + S - 1},${yEjeX + 3.5}" ${flecha}></polygon>
-            <text x="${x0 + S / 2}" y="${yEjeX + 15}" text-anchor="middle" ${ESTILO_TEXTO_CARA}>${rotuloEje('X', losa.referenciaX)}</text>
-            <line x1="${xEjeY}" y1="${y0 + S}" x2="${xEjeY}" y2="${y0}" stroke="#2a6fdb" stroke-width="1.2"></line>
-            <polygon points="${xEjeY},${y0 - 6} ${xEjeY - 3.5},${y0 + 1} ${xEjeY + 3.5},${y0 + 1}" ${flecha}></polygon>
-            <text x="${xEjeY - 9}" y="${y0 + S / 2}" text-anchor="middle" ${ESTILO_TEXTO_CARA}
-                  transform="rotate(-90 ${xEjeY - 9} ${y0 + S / 2})">${rotuloEje('Y', losa.referenciaY)}</text>
-        `;
-
-        // Línea del corte A-A (paralela a X, a media altura). Sale de la
-        // planta a los dos lados y las marcas con la "A" quedan afuera,
-        // así no se pierden entre las armaduras.
-        const yA = y0 + S / 2;
-        const salida = 22;
-        const estiloA = 'font-size="12" font-weight="800" fill="#2a6fdb" font-family="Plus Jakarta Sans, sans-serif"';
-        const corte = `
-            <line x1="${x0 - salida}" y1="${yA}" x2="${x0 + S + salida}" y2="${yA}" stroke="#2a6fdb" stroke-width="1.2" stroke-dasharray="9 3 2 3"></line>
-            <line x1="${x0 - salida}" y1="${yA}" x2="${x0 - 6}" y2="${yA}" stroke="#2a6fdb" stroke-width="2.5"></line>
-            <line x1="${x0 + S + 6}" y1="${yA}" x2="${x0 + S + salida}" y2="${yA}" stroke="#2a6fdb" stroke-width="2.5"></line>
-            <text x="${x0 - salida}" y="${yA - 5}" ${estiloA}>A</text>
-            <text x="${x0 + S + salida}" y="${yA - 5}" text-anchor="end" ${estiloA}>A</text>
-        `;
-
         return `<svg viewBox="0 0 320 214" data-escala="${escala}" aria-label="Planta de la losa">
                     <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Planta</text>
                     <rect x="${x0}" y="${y0}" width="${S}" height="${S}" fill="#e9edf2" stroke="#445060" stroke-width="1.5" stroke-dasharray="6 3"></rect>
@@ -1294,13 +1295,55 @@
                     ${lineas(losa.inferior.x, 'x', false)}
                     ${lineas(losa.negativa.y, 'y', true)}
                     ${lineas(losa.negativa.x, 'x', true)}
-                    ${corte}
+                    ${lineaCorteLosa(x0, y0, S)}
                     ${cotaSeparacion(losa.inferior.x, 'x', false)}
                     ${cotaSeparacion(losa.inferior.y, 'y', false)}
                     ${cotaSeparacion(losa.negativa.x, 'x', true)}
                     ${cotaSeparacion(losa.negativa.y, 'y', true)}
-                    ${ejes}
+                    ${ejesPlantaLosa(x0, y0, S, losa.referenciaX, losa.referenciaY)}
                 </svg>`;
+    }
+
+    // Ejes de la planta con sus referencias: X abajo (hacia la derecha)
+    // e Y a la izquierda (hacia arriba).
+    function ejesPlantaLosa(x0, y0, S, referenciaX, referenciaY) {
+        const flecha = 'fill="#2a6fdb"';
+        const yEjeX = y0 + S + 14;
+        const xEjeY = x0 - 32; // separado: entre el eje y la planta va la marca del corte
+        const rotuloEje = (eje, referencia) => `${eje}${referencia ? ` · ${escaparHtml(referencia)}` : ''}`;
+        return `
+            <line x1="${x0}" y1="${yEjeX}" x2="${x0 + S}" y2="${yEjeX}" stroke="#2a6fdb" stroke-width="1.2"></line>
+            <polygon points="${x0 + S + 6},${yEjeX} ${x0 + S - 1},${yEjeX - 3.5} ${x0 + S - 1},${yEjeX + 3.5}" ${flecha}></polygon>
+            <text x="${x0 + S / 2}" y="${yEjeX + 15}" text-anchor="middle" ${ESTILO_TEXTO_CARA}>${rotuloEje('X', referenciaX)}</text>
+            <line x1="${xEjeY}" y1="${y0 + S}" x2="${xEjeY}" y2="${y0}" stroke="#2a6fdb" stroke-width="1.2"></line>
+            <polygon points="${xEjeY},${y0 - 6} ${xEjeY - 3.5},${y0 + 1} ${xEjeY + 3.5},${y0 + 1}" ${flecha}></polygon>
+            <text x="${xEjeY - 9}" y="${y0 + S / 2}" text-anchor="middle" ${ESTILO_TEXTO_CARA}
+                  transform="rotate(-90 ${xEjeY - 9} ${y0 + S / 2})">${rotuloEje('Y', referenciaY)}</text>
+        `;
+    }
+
+    // Línea del corte A-A (paralela a X, a media altura). Sale de la
+    // planta a los dos lados y las marcas con la "A" quedan afuera,
+    // así no se pierden entre las armaduras.
+    function lineaCorteLosa(x0, y0, S) {
+        const yA = y0 + S / 2;
+        const salida = 22;
+        const estiloA = 'font-size="12" font-weight="800" fill="#2a6fdb" font-family="Plus Jakarta Sans, sans-serif"';
+        return `
+            <line x1="${x0 - salida}" y1="${yA}" x2="${x0 + S + salida}" y2="${yA}" stroke="#2a6fdb" stroke-width="1.2" stroke-dasharray="9 3 2 3"></line>
+            <line x1="${x0 - salida}" y1="${yA}" x2="${x0 - 6}" y2="${yA}" stroke="#2a6fdb" stroke-width="2.5"></line>
+            <line x1="${x0 + S + 6}" y1="${yA}" x2="${x0 + S + salida}" y2="${yA}" stroke="#2a6fdb" stroke-width="2.5"></line>
+            <text x="${x0 - salida}" y="${yA - 5}" ${estiloA}>A</text>
+            <text x="${x0 + S + salida}" y="${yA - 5}" text-anchor="end" ${estiloA}>A</text>
+        `;
+    }
+
+    // Extremo cortado de una sección (la losa sigue): línea quebrada.
+    function quiebreCorteLosa(xq, y0, h) {
+        const ym = y0 + h / 2;
+        const a = Math.min(4, h / 5);
+        return `<path d="M ${xq} ${y0} L ${xq} ${ym - a} L ${xq + a} ${ym - a / 3} L ${xq - a} ${ym + a / 3} L ${xq} ${ym + a} L ${xq} ${y0 + h}"
+                      fill="none" stroke="#445060" stroke-width="1"></path>`;
     }
 
     // Corte A-A: paralelo a X. Las barras en X se ven a lo largo (una
@@ -1324,7 +1367,7 @@
             if (! mallas.length) return yCara;
             const g = Math.max(...mallas.map(m => grosorBarraLosa(m, escala, 1.5)));
             const y = desdeAbajo ? yCara - g / 2 : yCara + g / 2;
-            capas += `<line x1="${x0}" y1="${y}" x2="${x0 + W}" y2="${y}" stroke="${negativa ? COLOR_NEGATIVA : COLOR_ESTRIBO}" stroke-width="${g}"></line>`;
+            capas += `<line x1="${x0}" y1="${y}" x2="${x0 + W}" y2="${y}" stroke="${negativa ? COLOR_NEGATIVA : COLOR_ESTRIBO}" stroke-width="${g}" data-dxf="barra"></line>`;
             return desdeAbajo ? yCara - g : yCara + g;
         };
         const capaPuntos = (mallas, desdeAbajo, yCara, negativa) => {
@@ -1343,14 +1386,6 @@
         const yArriba = capaLinea(losa.negativa.x, false, y0 + rec, true);
         capaPuntos(losa.negativa.y, false, yArriba, true);
 
-        // Extremos cortados (la losa sigue): línea quebrada en cada lado.
-        const quiebre = xq => {
-            const ym = y0 + h / 2;
-            const a = Math.min(4, h / 5);
-            return `<path d="M ${xq} ${y0} L ${xq} ${ym - a} L ${xq + a} ${ym - a / 3} L ${xq - a} ${ym + a / 3} L ${xq} ${ym + a} L ${xq} ${y0 + h}"
-                          fill="none" stroke="#445060" stroke-width="1"></path>`;
-        };
-
         const cota = losa.espesor !== null ? `
             <line x1="${x0 + W + 12}" y1="${y0}" x2="${x0 + W + 12}" y2="${y0 + h}" ${ESTILO_COTA}></line>
             <line x1="${x0 + W + 7}" y1="${y0}" x2="${x0 + W + 17}" y2="${y0}" ${ESTILO_COTA}></line>
@@ -1363,8 +1398,8 @@
                     <rect x="${x0}" y="${y0}" width="${W}" height="${h}" fill="#e9edf2"></rect>
                     <line x1="${x0}" y1="${y0}" x2="${x0 + W}" y2="${y0}" stroke="#445060" stroke-width="2"></line>
                     <line x1="${x0}" y1="${y0 + h}" x2="${x0 + W}" y2="${y0 + h}" stroke="#445060" stroke-width="2"></line>
-                    ${quiebre(x0)}
-                    ${quiebre(x0 + W)}
+                    ${quiebreCorteLosa(x0, y0, h)}
+                    ${quiebreCorteLosa(x0 + W, y0, h)}
                     ${capas}
                     ${cota}
                 </svg>`;
@@ -1385,7 +1420,543 @@
             : '';
     }
 
+    /* ─── Losa RAP ────────────────────────────────────────────
+       Detalle típico: viguetas (T invertida) paralelas al eje Y a la
+       separación cargada, bloques cerámicos entre ellas y capa de
+       compresión con malla de repartición. La separación es libre, de
+       borde a borde de los patines (38 cm si no se carga, o sea 50 cm
+       entre ejes). La vigueta se carga con su ancho (el del patín, la
+       base) y su altura total; el alma y el alto del patín salen como
+       proporción de esas medidas. Misma ventana de 1 m × 1 m que la
+       maciza; el corte A-A corta las viguetas. */
+    const RAP = {
+        separacion: 38,     // cm libres entre patines, si no se carga
+        patin: 12,          // ancho de la vigueta (patín), si no se carga
+        altoVigueta: 10,    // altura total de la vigueta, si no se carga
+        proporcionAlma: 0.5,       // ancho del alma / ancho del patín
+        proporcionAltoPatin: 0.4,  // alto del patín / altura de la vigueta
+        altoBloque: 12,     // mínimo; crece si la vigueta es más alta
+        sobreBloque: 2,     // cm que el bloque supera a la vigueta
+        capa: 5,            // carpeta (capa de compresión), si no se carga
+        largoBloque: 25,    // ancho del ladrillo, a lo largo de la vigueta (juntas en planta), si no se carga
+        anchoViga: 20,      // medido en el apoyo: ancho de la viga, si no se carga
+        // y lo que apoya la vigueta, si no se carga: la mitad de la viga
+    };
+    const COLOR_VIGA_APOYO = '#d5dbe3';
+    const COLOR_BLOQUE = '#f3e6d8';
+    const COLOR_VIGUETA = '#cfd6df';
+
+    // Medidas cargadas de la losa RAP; null en las que no se cargaron.
+    function leerLosaRap(card) {
+        const d = card.dataset;
+        const positiva = clave => {
+            const valor = leerMedida(d[clave]);
+            return valor !== null && valor > 0 ? valor : null;
+        };
+        return {
+            separacion: positiva('separacionViguetas'),
+            ancho: positiva('anchoVigueta'),
+            alto: positiva('altoVigueta'),
+            anchoLadrillo: positiva('anchoLadrillo'),
+            carpeta: positiva('alturaCarpeta'),
+            mallaX: leerMallas(card.rapMallaX),
+            mallaY: leerMallas(card.rapMallaY),
+            referenciaX: (d.referenciaX || '').trim(),
+            referenciaY: (d.referenciaY || '').trim(),
+            barras: leerBarras(card.barrasVigueta), // [] si no se cargó
+            superior: leerBarras(card.barrasSuperiorVigueta), // sobre la vigueta, entre ladrillos
+            transversal: leerBarras(card.barrasTransversalRap), // cruzando las anteriores, sobre los ladrillos
+            enApoyo: d.medidoApoyo === 'si',
+            anchoViga: positiva('anchoVigaApoyo'),
+            largoApoyo: positiva('apoyoVigueta'),
+            salidaSuperior: positiva('salidaSuperiorVigueta'), // cm que la armadura sobre la vigueta entra en la viga
+        };
+    }
+
+    /* Armadura superior: barras paralelas a la vigueta (la cantidad es
+       por vigueta), en el hueco entre ladrillos que queda sobre el alma,
+       debajo de la malla. Se reparten a lo ancho del alma, centradas en
+       la altura del hueco; si no entran en una fila, en varias hacia
+       arriba. Posiciones como las de la vigueta: cm respecto de su eje y
+       de la cara inferior de la losa. */
+    function posicionesArmaduraSuperior(geo) {
+        const diametros = geo.superior
+            .flatMap(b => Array(b.cantidad).fill(b.diametro))
+            .sort((a, b) => b - a);
+        if (! diametros.length) return [];
+        const util = Math.max(0, geo.alma - 2 * Math.max(...diametros) / 10);
+        const paso = Math.max(...diametros) / 10 * 1.5; // cm entre centros, como mínimo
+        const porFila = Math.max(1, Math.floor(util / paso) + 1);
+        const filas = Math.ceil(diametros.length / porFila);
+        const posiciones = [];
+        for (let f = 0; f < filas; f++) {
+            const fila = diametros.slice(f * porFila, (f + 1) * porFila);
+            const y = geo.altoVigueta + (geo.altoBloque - geo.altoVigueta) * (f + 1) / (filas + 1);
+            fila.forEach((diametro, i) => {
+                const x = fila.length === 1 ? 0 : -util / 2 + i * util / (fila.length - 1);
+                posiciones.push({ x, y, diametro });
+            });
+        }
+        return posiciones;
+    }
+
+    /* Armadura de la vigueta: se carga como cantidad y Ø, y se reparte
+       sola. La base lleva la mayoría y las más gruesas; al alma va una
+       de cada tres (ninguna con menos de tres barras). Sin armadura
+       cargada no se dibuja ninguna. */
+    function distribuirArmaduraVigueta(barras) {
+        const diametros = barras
+            .flatMap(b => Array(b.cantidad).fill(b.diametro))
+            .sort((a, b) => b - a);
+        const enAlma = diametros.length >= 3 ? Math.floor(diametros.length / 3) : 0;
+        return {
+            base: diametros.slice(0, diametros.length - enAlma),
+            alma: diametros.slice(diametros.length - enAlma),
+        };
+    }
+
+    /* Posición de cada barra (cm, respecto del eje de la vigueta y de su
+       cara inferior). En la base, repartidas a lo ancho del patín; si no
+       entran en una fila, en varias. En el alma, en columna, desde la
+       punta hacia el patín. */
+    function posicionesArmaduraVigueta(geo, armadura) {
+        const posiciones = [];
+        const base = armadura.base;
+        if (base.length) {
+            const margen = Math.max(1, geo.patin * 0.15);
+            const util = Math.max(0, geo.patin - 2 * margen);
+            const paso = Math.max(...base) / 10 * 1.5; // cm entre centros, como mínimo
+            const porFila = Math.max(1, Math.floor(util / paso) + 1);
+            const filas = Math.ceil(base.length / porFila);
+            for (let f = 0; f < filas; f++) {
+                const fila = base.slice(f * porFila, (f + 1) * porFila);
+                const y = geo.altoPatin * (f + 1) / (filas + 1);
+                fila.forEach((diametro, i) => {
+                    const x = fila.length === 1 ? 0 : -util / 2 + i * util / (fila.length - 1);
+                    posiciones.push({ x, y, diametro });
+                });
+            }
+        }
+        const alma = armadura.alma;
+        if (alma.length) {
+            const arriba = geo.altoVigueta - Math.min(1.5, geo.alma * 0.4);
+            const paso = (arriba - geo.altoPatin) / alma.length;
+            alma.forEach((diametro, i) => posiciones.push({ x: 0, y: arriba - i * paso, diametro }));
+        }
+        return posiciones;
+    }
+
+    // Geometría para dibujar: lo cargado o, si falta, el detalle típico.
+    function geometriaLosaRap(rap) {
+        const patin = rap.ancho ?? RAP.patin;
+        const altoVigueta = rap.alto ?? RAP.altoVigueta;
+        return {
+            separacion: rap.separacion ?? RAP.separacion,
+            patin,
+            alma: patin * RAP.proporcionAlma,
+            altoVigueta,
+            altoPatin: altoVigueta * RAP.proporcionAltoPatin,
+            altoBloque: Math.max(RAP.altoBloque, altoVigueta + RAP.sobreBloque),
+            largoBloque: rap.anchoLadrillo ?? RAP.largoBloque,
+            capa: rap.carpeta ?? RAP.capa,
+            // Las armaduras se dibujan sólo si se cargan.
+            mallaX: rap.mallaX,
+            mallaY: rap.mallaY,
+            barras: rap.barras,
+            superior: rap.superior,
+            transversal: rap.transversal,
+            apoyo: rap.enApoyo ? apoyoLosaRap(rap) : null,
+        };
+    }
+
+    // Medido en el apoyo: la viga donde apoyan las viguetas, cuánto
+    // entran en ella y cuánto entra la armadura sobre la vigueta (si no
+    // se carga, llega hasta la cara). Las dos pueden pasar al otro lado.
+    function apoyoLosaRap(rap) {
+        const ancho = rap.anchoViga ?? RAP.anchoViga;
+        return {
+            ancho,
+            largo: rap.largoApoyo ?? ancho / 2,
+            salida: rap.salidaSuperior ?? 0,
+        };
+    }
+
+    /* La ventana de la RAP se adapta a la separación: abarca dos
+       distancias entre ejes y queda centrada en la mitad de una
+       separación (con 30 cm libres, el centro del dibujo cae a 15 cm de
+       cada vigueta). Así siempre se ven dos viguetas enteras, en el
+       mismo lugar, sea cual sea la separación. Con separaciones muy
+       chicas se toma un mínimo para que no quede una ventana diminuta. */
+    const VENTANA_MINIMA_RAP = 60;
+    const interejesRap = geo => geo.separacion + geo.patin;
+    const ventanaRap = geo => Math.max(2 * interejesRap(geo), VENTANA_MINIMA_RAP);
+
+    // Planta y corte comparten la ubicación y el ancho en pantalla, así
+    // las viguetas del corte quedan debajo de las de la planta.
+    const MARCO_RAP = { x0: 60, ancho: 190 };
+
+    // Ejes de las viguetas que tocan la ventana, simétricos respecto del
+    // centro (incluye una de cada lado afuera, así los bloques de los
+    // extremos quedan entre dos viguetas).
+    function ejesViguetasRap(geo) {
+        const interejes = interejesRap(geo);
+        const ventana = ventanaRap(geo);
+        let c = ventana / 2 - interejes / 2;
+        while (c > -interejes) c -= interejes;
+        const ejes = [];
+        for (; c < ventana + interejes; c += interejes) ejes.push(c);
+        return ejes;
+    }
+
+    // Las dos viguetas a los lados del centro, donde van las cotas.
+    function viguetasCentralesRap(geo) {
+        const centro = ventanaRap(geo) / 2;
+        const interejes = interejesRap(geo);
+        return [centro - interejes / 2, centro + interejes / 2];
+    }
+
+    // Sólo se acotan las medidas cargadas (rap); lo que sale del
+    // detalle típico se dibuja sin cota.
+    function dibujarLosaRapPlanta(geo, rap) {
+        const S = MARCO_RAP.ancho;
+        const x0 = MARCO_RAP.x0;
+        const y0 = 24;
+        const ventana = ventanaRap(geo);
+        const escala = S / ventana;
+        const X = v => x0 + Math.min(ventana, Math.max(0, v)) * escala;
+        const ejes = ejesViguetasRap(geo);
+
+        // Medido en el apoyo: la viga va arriba (paralela a X) y los
+        // ladrillos arrancan en su cara. Si la vigueta o su armadura pasan
+        // al otro lado, la viga baja para dejar lugar a lo que sobresale.
+        // Viga y sobresaliente se limitan a una parte de la ventana para
+        // que el corte A-A siga cortando la losa.
+        const anchoViga = geo.apoyo ? Math.min(geo.apoyo.ancho, ventana / 3) : 0;
+        const pasa = geo.apoyo ? Math.max(0, Math.max(geo.apoyo.largo, geo.apoyo.salida) - geo.apoyo.ancho) : 0;
+        const margen = Math.min(pasa, Math.max(0, ventana * 0.45 - anchoViga));
+        const fondo = margen + anchoViga; // de la cara de la viga al borde de arriba
+        const largoApoyo = geo.apoyo ? Math.min(geo.apoyo.largo, fondo) : 0;
+        const yViga = y0 + margen * escala;
+        const yCara = y0 + fondo * escala;
+        const viga = geo.apoyo
+            ? `<rect x="${x0}" y="${yViga}" width="${S}" height="${yCara - yViga}" fill="${COLOR_VIGA_APOYO}" stroke="#445060" stroke-width="1.5"></rect>`
+            : '';
+
+        // Bloques entre patines, con las juntas cada ancho de ladrillo.
+        let bloques = '';
+        for (let i = 0; i < ejes.length - 1; i++) {
+            const xa = X(ejes[i] + geo.patin / 2);
+            const xb = X(ejes[i + 1] - geo.patin / 2);
+            if (xb - xa < 1) continue;
+            bloques += `<rect x="${xa}" y="${yCara}" width="${xb - xa}" height="${y0 + S - yCara}" fill="${COLOR_BLOQUE}" stroke="#445060" stroke-width="0.8" data-capa="PCH-LADRILLOS"></rect>`;
+            for (let p = fondo + geo.largoBloque; p < ventana; p += geo.largoBloque) {
+                bloques += `<line x1="${xa}" y1="${y0 + p * escala}" x2="${xb}" y2="${y0 + p * escala}" stroke="#445060" stroke-width="0.8" data-capa="PCH-LADRILLOS"></line>`;
+            }
+        }
+        // Las viguetas; en el apoyo, el tramo metido en la viga va de
+        // trazos y lo que sobresale del otro lado, lleno.
+        const enViga = Math.min(largoApoyo, anchoViga);
+        const viguetas = ejes
+            .filter(c => c > 0 && c < ventana)
+            .map(c => `<rect x="${X(c - geo.patin / 2)}" y="${yCara}" width="${geo.patin * escala}" height="${y0 + S - yCara}" fill="${COLOR_VIGUETA}" stroke="#445060" stroke-width="1.2"></rect>
+                ${enViga > 0 ? `<rect x="${X(c - geo.patin / 2)}" y="${yCara - enViga * escala}" width="${geo.patin * escala}" height="${enViga * escala}" fill="none" stroke="#445060" stroke-width="1" stroke-dasharray="3 2"></rect>` : ''}
+                ${largoApoyo > anchoViga ? `<rect x="${X(c - geo.patin / 2)}" y="${yCara - largoApoyo * escala}" width="${geo.patin * escala}" height="${(largoApoyo - anchoViga) * escala}" fill="${COLOR_VIGUETA}" stroke="#445060" stroke-width="1.2"></rect>` : ''}`)
+            .join('');
+
+        // Armadura sobre la vigueta: a lo largo de cada una, con la misma
+        // ubicación que en el corte; en el apoyo entra en la viga lo
+        // cargado (y puede pasar al otro lado).
+        const salida = geo.apoyo ? Math.min(geo.apoyo.salida, fondo) : 0;
+        const ySalida = yCara - salida * escala;
+        const barrasSuperior = posicionesArmaduraSuperior(geo);
+        const superiorSvg = ejes.filter(c => c > 0 && c < ventana).map(c => barrasSuperior
+            .map(b => `<line x1="${X(c + b.x)}" y1="${ySalida}" x2="${X(c + b.x)}" y2="${y0 + S}" stroke="${COLOR_ESTRIBO}" stroke-width="${grosorBarraLosa(b, escala, 1.2)}" data-dxf="barra"></line>`)
+            .join('')).join('');
+
+        // Cota de la separación libre, arriba, de borde a borde de los
+        // patines de las dos viguetas del centro.
+        const [ca, cb] = viguetasCentralesRap(geo);
+        const yc = y0 - 6;
+        const xa = X(ca + geo.patin / 2), xb = X(cb - geo.patin / 2);
+        const cota = rap.separacion === null ? '' : `
+            <line x1="${xa}" y1="${yc}" x2="${xb}" y2="${yc}" ${ESTILO_COTA}></line>
+            <line x1="${xa}" y1="${yc - 3}" x2="${xa}" y2="${yc + 3}" ${ESTILO_COTA}></line>
+            <line x1="${xb}" y1="${yc - 3}" x2="${xb}" y2="${yc + 3}" ${ESTILO_COTA}></line>
+            <text x="${xb + 5}" y="${yc + 3.5}" ${ESTILO_TEXTO_LOSA}>${formatearMedida(geo.separacion)}</text>`;
+
+        // Cotas verticales a la derecha, encadenadas: el ancho de la viga
+        // (si se midió en el apoyo) y el del ladrillo, de la cara de la
+        // viga (o del borde de arriba) hasta la primera junta.
+        const xl = x0 + S + 10;
+        const cotaDerecha = (ya, yb, texto) => `
+            <line x1="${xl}" y1="${ya}" x2="${xl}" y2="${yb}" ${ESTILO_COTA}></line>
+            <line x1="${xl - 3}" y1="${ya}" x2="${xl + 3}" y2="${ya}" ${ESTILO_COTA}></line>
+            <line x1="${xl - 3}" y1="${yb}" x2="${xl + 3}" y2="${yb}" ${ESTILO_COTA}></line>
+            <text x="${xl + 5}" y="${(ya + yb) / 2 + 3.5}" ${ESTILO_TEXTO_LOSA}>${texto}</text>`;
+        const yl = y0 + Math.min(fondo + geo.largoBloque, ventana) * escala;
+        let cotaLadrillo = rap.anchoLadrillo === null ? '' : cotaDerecha(yCara, yl, formatearMedida(geo.largoBloque));
+        if (geo.apoyo && rap.anchoViga !== null) cotaLadrillo += cotaDerecha(yViga, yCara, formatearMedida(geo.apoyo.ancho));
+
+        // Lo que apoya la vigueta, sobre la viga, al lado de la primera
+        // vigueta del centro (de la cara de la viga a la punta).
+        const xap = X(ca + geo.patin / 2) + 4;
+        const yap = yCara - largoApoyo * escala;
+        const cotaApoyo = geo.apoyo && rap.largoApoyo !== null && largoApoyo > 0 ? `
+            <line x1="${xap}" y1="${yap}" x2="${xap}" y2="${yCara}" ${ESTILO_COTA}></line>
+            <line x1="${xap - 3}" y1="${yap}" x2="${xap + 3}" y2="${yap}" ${ESTILO_COTA}></line>
+            <line x1="${xap - 3}" y1="${yCara}" x2="${xap + 3}" y2="${yCara}" ${ESTILO_COTA}></line>
+            <text x="${xap + 5}" y="${(yap + yCara) / 2 + 3.5}" ${ESTILO_TEXTO_LOSA}>${formatearMedida(geo.apoyo.largo)}</text>` : '';
+
+        // Lo que la armadura sobre la vigueta entra en la viga, al lado
+        // de la segunda vigueta del centro.
+        const xsa = X(cb + geo.patin / 2) + 4;
+        const cotaSalida = geo.apoyo && barrasSuperior.length && rap.salidaSuperior !== null && salida > 0 ? `
+            <line x1="${xsa}" y1="${ySalida}" x2="${xsa}" y2="${yCara}" ${ESTILO_COTA}></line>
+            <line x1="${xsa - 3}" y1="${ySalida}" x2="${xsa + 3}" y2="${ySalida}" ${ESTILO_COTA}></line>
+            <line x1="${xsa - 3}" y1="${yCara}" x2="${xsa + 3}" y2="${yCara}" ${ESTILO_COTA}></line>
+            <text x="${xsa + 5}" y="${(ySalida + yCara) / 2 + 3.5}" ${ESTILO_TEXTO_LOSA}>${formatearMedida(geo.apoyo.salida)}</text>` : '';
+
+        return `<svg viewBox="0 0 320 ${y0 + S + 34}" data-escala="${escala}" aria-label="Planta de la losa RAP">
+                    <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Planta</text>
+                    <rect x="${x0}" y="${y0}" width="${S}" height="${S}" fill="#e9edf2" stroke="#445060" stroke-width="1.5" stroke-dasharray="6 3"></rect>
+                    ${viga}
+                    ${bloques}
+                    ${viguetas}
+                    ${superiorSvg}
+                    ${lineaCorteLosa(x0, y0, S)}
+                    ${cota}
+                    ${cotaLadrillo}
+                    ${cotaApoyo}
+                    ${cotaSalida}
+                    ${ejesPlantaLosa(x0, y0, S, rap.referenciaX, rap.referenciaY)}
+                </svg>`;
+    }
+
+    // Corte A-A: viguetas de punta (T invertida con sus alambres),
+    // bloques huecos entre ellas y la capa de compresión con la malla.
+    function dibujarLosaRapCorte(geo, rap) {
+        const espesor = geo.altoBloque + geo.capa;
+        // Misma escala y ubicación que la planta: las viguetas quedan alineadas.
+        const ventana = ventanaRap(geo);
+        const W = MARCO_RAP.ancho;
+        const escala = W / ventana;
+        const h = espesor * escala;
+        const x0 = MARCO_RAP.x0; // a la izquierda va la cota de la altura de la vigueta
+        const y0 = 28;
+        const X = v => x0 + Math.min(ventana, Math.max(0, v)) * escala;
+        const Y = v => y0 + h - v * escala; // v en cm desde la cara inferior
+        const ejes = ejesViguetasRap(geo);
+        const contorno = puntos => `M ${puntos.map(([x, y]) => `${X(x)} ${Y(y)}`).join(' L ')} Z`;
+
+        // Bloques: parte de abajo entre patines y de arriba entre almas,
+        // con tres huecos.
+        let bloques = '';
+        for (let i = 0; i < ejes.length - 1; i++) {
+            const abajoA = ejes[i] + geo.patin / 2, abajoB = ejes[i + 1] - geo.patin / 2;
+            const arribaA = ejes[i] + geo.alma / 2, arribaB = ejes[i + 1] - geo.alma / 2;
+            if (X(arribaB) - X(arribaA) < 1) continue;
+            bloques += `<path d="${contorno([
+                [abajoA, 0], [abajoB, 0], [abajoB, geo.altoPatin], [arribaB, geo.altoPatin],
+                [arribaB, geo.altoBloque], [arribaA, geo.altoBloque], [arribaA, geo.altoPatin], [abajoA, geo.altoPatin],
+            ])}" fill="${COLOR_BLOQUE}" stroke="#445060" stroke-width="1" data-capa="PCH-LADRILLOS"></path>`;
+            const pared = 1.5;
+            const ancho = (arribaB - arribaA - 4 * pared) / 3;
+            for (let k = 0; k < 3; k++) {
+                const xa = X(arribaA + pared + k * (ancho + pared));
+                const xb = X(arribaA + pared + k * (ancho + pared) + ancho);
+                if (xb - xa < 1) continue;
+                bloques += `<rect x="${xa}" y="${Y(geo.altoBloque - pared)}" width="${xb - xa}" height="${(geo.altoBloque - geo.altoPatin - 2 * pared) * escala}"
+                                  fill="#ffffff" stroke="#445060" stroke-width="0.8" data-capa="PCH-LADRILLOS"></rect>`;
+            }
+        }
+
+        // Viguetas de punta, con su armadura repartida en base y alma.
+        const barrasVigueta = posicionesArmaduraVigueta(geo, distribuirArmaduraVigueta(geo.barras));
+        const viguetas = ejes.filter(c => c > 0 && c < ventana).map(c => `
+            <path d="${contorno([
+                [c - geo.patin / 2, 0], [c + geo.patin / 2, 0], [c + geo.patin / 2, geo.altoPatin], [c + geo.alma / 2, geo.altoPatin],
+                [c + geo.alma / 2, geo.altoVigueta], [c - geo.alma / 2, geo.altoVigueta], [c - geo.alma / 2, geo.altoPatin], [c - geo.patin / 2, geo.altoPatin],
+            ])}" fill="${COLOR_VIGUETA}" stroke="#445060" stroke-width="1.2"></path>
+            ${barrasVigueta.map(b => `<circle cx="${X(c + b.x)}" cy="${Y(b.y)}" r="${radioBarraLosa(b, escala)}" fill="${COLOR_ESTRIBO}"></circle>`).join('')}
+        `).join('');
+
+        // Armadura superior, de punta sobre cada vigueta, entre ladrillos.
+        const barrasSuperior = posicionesArmaduraSuperior(geo);
+        const superiorSvg = ejes.filter(c => c > 0 && c < ventana).map(c => barrasSuperior
+            .map(b => `<circle cx="${X(c + b.x)}" cy="${Y(b.y)}" r="${radioBarraLosa(b, escala)}" fill="${COLOR_ESTRIBO}"></circle>`)
+            .join('')).join('');
+
+        // Armadura transversal (paralela a X): se ve a lo largo, apoyada
+        // sobre los ladrillos, debajo de la malla. Una línea del grosor
+        // de la más gruesa.
+        const gt = geo.transversal.length ? Math.max(...geo.transversal.map(m => grosorBarraLosa(m, escala, 1.5))) : 0;
+        const transversalSvg = gt
+            ? `<line x1="${x0}" y1="${Y(geo.altoBloque) - gt / 2}" x2="${x0 + W}" y2="${Y(geo.altoBloque) - gt / 2}" stroke="${COLOR_ESTRIBO}" stroke-width="${gt}" data-dxf="barra"></line>`
+            : '';
+
+        // Malla de la carpeta, a media altura: las barras en X se ven a lo
+        // largo (una línea, del grosor de la más gruesa) y las en Y de
+        // punta, debajo; las de igual separación, una al lado de la otra.
+        const yMalla = Y(espesor - geo.capa / 2);
+        const g = geo.mallaX.length ? Math.max(...geo.mallaX.map(m => grosorBarraLosa(m, escala, 1.5))) : 0;
+        let mallaSvg = g ? `<line x1="${x0}" y1="${yMalla}" x2="${x0 + W}" y2="${yMalla}" stroke="${COLOR_ESTRIBO}" stroke-width="${g}" data-dxf="barra"></line>` : '';
+        const radio = m => radioBarraLosa(m, escala);
+        barrasDireccion(geo.mallaY, false, m => 2 * radio(m) / escala, ventana).forEach(({ malla, posiciones, desplazamiento }) => {
+            const r = radio(malla);
+            mallaSvg += posiciones.map(p => `<circle cx="${X(p + desplazamiento)}" cy="${yMalla + g / 2 + r}" r="${r}" fill="${COLOR_ESTRIBO}"></circle>`).join('');
+        });
+
+        // Cotas: sólo las de las medidas cargadas.
+        const cotaVertical = (xc, ya, yb, texto, ancla) => `
+            <line x1="${xc}" y1="${ya}" x2="${xc}" y2="${yb}" ${ESTILO_COTA}></line>
+            <line x1="${xc - 5}" y1="${ya}" x2="${xc + 5}" y2="${ya}" ${ESTILO_COTA}></line>
+            <line x1="${xc - 5}" y1="${yb}" x2="${xc + 5}" y2="${yb}" ${ESTILO_COTA}></line>
+            <text x="${ancla === 'end' ? xc - 8 : xc + 8}" y="${(ya + yb) / 2 + 4}" text-anchor="${ancla}" ${ESTILO_TEXTO_COTA}>${texto}</text>`;
+
+        // Cotas de la vigueta, sobre las dos del centro: abajo el ancho
+        // de la base y la separación libre entre ellas; a la izquierda,
+        // debajo de la capa, la altura de la vigueta (con una línea de
+        // referencia desde la punta del alma).
+        const cotaHorizontal = (xa, xb, yc, texto) => `
+            <line x1="${xa}" y1="${yc}" x2="${xb}" y2="${yc}" ${ESTILO_COTA}></line>
+            <line x1="${xa}" y1="${yc - 4}" x2="${xa}" y2="${yc + 4}" ${ESTILO_COTA}></line>
+            <line x1="${xb}" y1="${yc - 4}" x2="${xb}" y2="${yc + 4}" ${ESTILO_COTA}></line>
+            <text x="${(xa + xb) / 2}" y="${yc + 13}" text-anchor="middle" ${ESTILO_TEXTO_LOSA}>${texto}</text>`;
+        const [ca, cb] = viguetasCentralesRap(geo);
+        const yCotas = y0 + h + 10;
+        const cotasVigueta = `
+            ${rap.ancho !== null ? cotaHorizontal(X(ca - geo.patin / 2), X(ca + geo.patin / 2), yCotas, formatearMedida(geo.patin)) : ''}
+            ${rap.separacion !== null ? cotaHorizontal(X(ca + geo.patin / 2), X(cb - geo.patin / 2), yCotas, formatearMedida(geo.separacion)) : ''}
+            ${rap.alto !== null ? `
+                <line x1="${x0 - 13}" y1="${Y(geo.altoVigueta)}" x2="${X(ca - geo.alma / 2)}" y2="${Y(geo.altoVigueta)}" ${ESTILO_COTA} stroke-dasharray="2 2"></line>
+                ${cotaVertical(x0 - 8, Y(geo.altoVigueta), Y(0), formatearMedida(geo.altoVigueta), 'end')}` : ''}`;
+        const hayCotasAbajo = rap.ancho !== null || rap.separacion !== null;
+
+        // Carpeta a la izquierda, arriba de la altura de la vigueta; y la
+        // separación de la malla en Y (la primera cargada) sobre el corte.
+        let cotasCarpeta = rap.carpeta !== null
+            ? cotaVertical(x0 - 8, y0, Y(geo.altoBloque), formatearMedida(geo.capa), 'end')
+            : '';
+        const psMallaY = rap.mallaY.length ? posicionesMalla(rap.mallaY[0], false, ventana) : [];
+        if (psMallaY.length >= 2) {
+            const [xa, xb] = [X(psMallaY[0]), X(psMallaY[1])];
+            const yc = y0 - 6;
+            cotasCarpeta += `
+                <line x1="${xa}" y1="${yc}" x2="${xb}" y2="${yc}" ${ESTILO_COTA}></line>
+                <line x1="${xa}" y1="${yc - 3}" x2="${xa}" y2="${yc + 3}" ${ESTILO_COTA}></line>
+                <line x1="${xb}" y1="${yc - 3}" x2="${xb}" y2="${yc + 3}" ${ESTILO_COTA}></line>
+                <text x="${xb + 5}" y="${yc + 3.5}" ${ESTILO_TEXTO_LOSA}>c/${Number(rap.mallaY[0].separacion.toFixed(2))}</text>`;
+        }
+
+        return `<svg viewBox="0 0 320 ${Math.ceil(hayCotasAbajo ? yCotas + 18 : y0 + h + 14)}" data-escala="${escala}" aria-label="Corte A-A de la losa RAP">
+                    <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Corte A-A</text>
+                    <rect x="${x0}" y="${y0}" width="${W}" height="${h}" fill="#e9edf2"></rect>
+                    ${bloques}
+                    ${viguetas}
+                    <line x1="${x0}" y1="${y0}" x2="${x0 + W}" y2="${y0}" stroke="#445060" stroke-width="2"></line>
+                    <line x1="${x0}" y1="${Y(geo.altoBloque)}" x2="${x0 + W}" y2="${Y(geo.altoBloque)}" stroke="#445060" stroke-width="0.6" stroke-dasharray="4 3"></line>
+                    ${mallaSvg}
+                    ${superiorSvg}
+                    ${transversalSvg}
+                    ${quiebreCorteLosa(x0, y0, h)}
+                    ${quiebreCorteLosa(x0 + W, y0, h)}
+                    ${cotasVigueta}
+                    ${cotasCarpeta}
+                </svg>`;
+    }
+
+    // "Malla X: Ø6mm c/25cm + Ø8mm c/25cm" (vacío si no hay malla).
+    function textoMallasRap(direccion, mallas) {
+        if (! mallas.length) return '';
+        const texto = mallas
+            .map(m => `${m.diametro !== null ? `Ø${Number(m.diametro.toFixed(2))}mm ` : ''}c/${Number(m.separacion.toFixed(2))}cm`)
+            .join(' + ');
+        return `<div>Malla ${direccion}: ${texto}</div>`;
+    }
+
+    // "Base: 2 Ø6mm + 1 Ø5mm · Alma: 1 Ø4mm"
+    function textoArmaduraVigueta(armadura) {
+        const grupos = diametros => {
+            const conteo = new Map();
+            diametros.forEach(d => conteo.set(d, (conteo.get(d) || 0) + 1));
+            return [...conteo].map(([d, n]) => `${n} Ø${Number(d.toFixed(2))}mm`).join(' + ');
+        };
+        const partes = [`Base: ${grupos(armadura.base)}`];
+        if (armadura.alma.length) partes.push(`Alma: ${grupos(armadura.alma)}`);
+        return partes.join(' · ');
+    }
+
+    function leyendaLosaRap(rap, geo) {
+        const cm = v => `${Number(v.toFixed(2))}cm`;
+        const faltan = [
+            rap.separacion === null && 'separación',
+            rap.ancho === null && 'ancho de vigueta',
+            rap.alto === null && 'altura de vigueta',
+            rap.anchoLadrillo === null && 'ancho de ladrillo',
+            rap.carpeta === null && 'carpeta',
+            rap.enApoyo && rap.anchoViga === null && 'ancho de viga',
+            rap.enApoyo && rap.largoApoyo === null && 'apoyo de vigueta',        ].filter(Boolean);
+        return `<div class="lienzo-leyenda">
+                    ${faltan.length ? `<div>Detalle típico (sin cargar: ${faltan.join(', ')})</div>` : ''}
+                    ${geo.apoyo ? `<div>Medido en el apoyo: viga de ${cm(geo.apoyo.ancho)}, la vigueta apoya ${cm(geo.apoyo.largo)}${rap.superior.length && geo.apoyo.salida > 0 ? `, la armadura sobre la vigueta entra ${cm(geo.apoyo.salida)}` : ''}</div>` : ''}
+                    <div>Viguetas a ${cm(geo.separacion)} libres (borde a borde)</div>
+                    <div>Vigueta ${cm(geo.patin)} de ancho × ${cm(geo.altoVigueta)} de alto</div>
+                    <div>Ladrillos ${cm(geo.largoBloque)} de ancho × ${cm(geo.altoBloque)} de alto</div>
+                    ${rap.barras.length ? `<div>${textoArmaduraVigueta(distribuirArmaduraVigueta(rap.barras))}</div>` : ''}
+                    ${rap.superior.length ? `<div>Sobre vigueta: ${rap.superior.map(b => `${b.cantidad} Ø${Number(b.diametro.toFixed(2))}mm`).join(' + ')} por vigueta</div>` : ''}
+                    ${geo.transversal.length ? `<div>Transversal: ${geo.transversal.map(b => `${b.cantidad} Ø${Number(b.diametro.toFixed(2))}mm`).join(' + ')}</div>` : ''}
+                    <div>Carpeta ${cm(geo.capa)}</div>
+                    ${textoMallasRap('X', geo.mallaX)}
+                    ${textoMallasRap('Y', geo.mallaY)}
+                </div>`;
+    }
+
+    /* Altura total de la viga. Con losas, la altura cargada puede
+       incluir la losa ("total": 50 con losa de 10 → canto visible 40)
+       o ser sólo el canto bajo la losa ("bajoLosa": 50 + 10 → 60). */
+    function alturaTotalViga(d) {
+        const altura = leerMedida(d.altura);
+        const losa = leerMedida(d.alturaLosa);
+        const conLosas = (d.losas || 'ninguna') !== 'ninguna';
+        return altura !== null && conLosas && d.modoAltura === 'bajoLosa' && losa !== null
+            ? altura + losa
+            : altura;
+    }
+
+    /* Comentario libre debajo de la leyenda. Va como renglones de la
+       leyenda (así lo toman el PDF y el DXF), cortado en renglones de
+       hasta ~50 caracteres para que entre en el ancho del detalle. */
+    const LARGO_RENGLON_COMENTARIO = 50;
+
+    function partirRenglones(texto, largo) {
+        return texto.split(/\r?\n/).flatMap(parrafo => {
+            const renglones = [];
+            let actual = '';
+            parrafo.split(/\s+/).filter(Boolean).forEach(palabra => {
+                if (actual && (actual + ' ' + palabra).length > largo) {
+                    renglones.push(actual);
+                    actual = palabra;
+                } else {
+                    actual = actual ? `${actual} ${palabra}` : palabra;
+                }
+            });
+            return actual ? [...renglones, actual] : renglones;
+        });
+    }
+
+    function comentarioLienzo(card) {
+        const comentario = (card.dataset.comentario || '').trim();
+        if (! comentario) return '';
+        const renglones = partirRenglones(`Obs.: ${comentario}`, LARGO_RENGLON_COMENTARIO);
+        return `<div class="lienzo-leyenda lienzo-comentario">${renglones.map(r => `<div>${escaparHtml(r)}</div>`).join('')}</div>`;
+    }
+
     function dibujarSeccion(card) {
+        const seccion = dibujarSeccionTipo(card);
+        return TIPOS[card.dataset.tipo] ? seccion + comentarioLienzo(card) : seccion;
+    }
+
+    function dibujarSeccionTipo(card) {
         const d = card.dataset;
         if (d.tipo === 'viga') {
             const armadura = leerArmadura(card);
@@ -1393,8 +1964,18 @@
                 izquierda: d.losas === 'izquierda' || d.losas === 'ambas',
                 derecha: d.losas === 'derecha' || d.losas === 'ambas',
                 altura: leerMedida(d.alturaLosa),
+                soloCanto: null,
             };
-            return dibujarViga(leerMedida(d.base), leerMedida(d.altura), armadura, losas) + leyendaArmadura(armadura, 'viga');
+            // "No incluye losa": la cota muestra sólo el canto cargado. Sin
+            // altura de losa, se dibuja una de medio canto (el mismo tercio
+            // del total que usa dibujarViga), así el canto queda a escala.
+            let alturaDibujo = alturaTotalViga(d);
+            const altura = leerMedida(d.altura);
+            if ((losas.izquierda || losas.derecha) && d.modoAltura === 'bajoLosa' && altura !== null) {
+                losas.soloCanto = altura;
+                alturaDibujo = altura + (losas.altura ?? altura / 2);
+            }
+            return dibujarViga(leerMedida(d.base), alturaDibujo, armadura, losas) + leyendaArmadura(armadura, 'viga');
         }
         if (d.tipo === 'pilar') {
             const armadura = leerArmadura(card);
@@ -1403,9 +1984,14 @@
                 : dibujarPilarRectangular(leerMedida(d.lado), leerMedida(d.ancho), armadura);
             return dibujo + leyendaArmadura(armadura, d.forma === 'circular' ? 'circular' : 'rectangular');
         }
-        if (d.tipo === 'losa') {
+        if (d.tipo === 'losa' && d.tipoLosa !== 'rap') {
             const losa = leerLosa(card);
             return dibujarLosaPlanta(losa) + dibujarLosaCorte(losa) + leyendaLosa(losa);
+        }
+        if (d.tipo === 'losa') {
+            const rap = leerLosaRap(card);
+            const geo = geometriaLosaRap(rap);
+            return dibujarLosaRapPlanta(geo, rap) + dibujarLosaRapCorte(geo, rap) + leyendaLosaRap(rap, geo);
         }
         return `<div class="lienzo-mensaje"><i class="fas fa-hand-pointer"></i>Seleccioná el tipo de elemento para dibujarlo.</div>`;
     }
@@ -1461,10 +2047,10 @@
         }
         if (d.tipo === 'viga') {
             const base = leerMedida(d.base);
-            const altura = leerMedida(d.altura);
+            const altura = alturaTotalViga(d);
             return base !== null || altura !== null ? ` (${cm(base)} x ${cm(altura)})` : '';
         }
-        if (d.tipo === 'losa') {
+        if (d.tipo === 'losa' && d.tipoLosa !== 'rap') {
             const espesor = leerMedida(d.espesor);
             return espesor !== null ? ` (e = ${cm(espesor)})` : '';
         }
@@ -1652,6 +2238,19 @@
         `;
     }
 
+    // Comentario libre: igual para todos los tipos.
+    function campoComentario(d) {
+        return `
+            <div>
+                <span class="tipo-label">Comentario</span>
+                <label class="medida-campo" style="margin-top:0.4rem">
+                    <textarea maxlength="255" rows="2" class="medida-input" data-medida="comentario"
+                              placeholder="Ej: Armadura corroída en la cara inferior">${escaparHtml(d.comentario ?? '')}</textarea>
+                </label>
+            </div>
+        `;
+    }
+
     // Recubrimiento y estribos: iguales para pilar y viga.
     function camposEstribo(d) {
         return `
@@ -1671,7 +2270,7 @@
        el resto, cantidad y Ø. */
     const LISTAS_PIEL = ['barrasPiel'];
     const LISTAS_CAMADA = ['barrasCamadas']; // cantidad, Ø y altura
-    const LISTAS_MALLA = ['losaInfX', 'losaInfY', 'losaNegX', 'losaNegY']; // losa: Ø y separación
+    const LISTAS_MALLA = ['losaInfX', 'losaInfY', 'losaNegX', 'losaNegY', 'rapMallaX', 'rapMallaY']; // losa: Ø y separación
 
     function filaVacia(clave) {
         if (LISTAS_CAMADA.includes(clave)) return { cantidad: '', diametro: '', altura: '' };
@@ -1745,6 +2344,13 @@
 
         if (d.tipo === 'viga') {
             const losas = d.losas || 'ninguna';
+            const modoAltura = d.modoAltura === 'bajoLosa' ? 'bajoLosa' : 'total';
+            const botonesModo = [
+                ['total', 'Incluye losa', 'La altura cargada es la total de la viga, con la losa incluida (50 con losa de 10 → canto visible 40)'],
+                ['bajoLosa', 'No incluye losa', 'La altura cargada es sólo el canto visible bajo la losa (50 + losa de 10 → altura total 60)'],
+            ].map(([clave, nombre, ayuda]) => `
+                <button type="button" class="tipo-btn modo-btn ${modoAltura === clave ? 'activo' : ''}" data-modo="${clave}" title="${ayuda}">${nombre}</button>
+            `).join('');
             const botonesLosa = Object.entries(OPCIONES_LOSA).map(([clave, op]) => `
                 <button type="button" class="tipo-btn losa-btn ${losas === clave ? 'activo' : ''}" data-losas="${clave}">
                     <i class="fas ${op.icono}"></i> ${op.nombre}
@@ -1754,9 +2360,15 @@
             contenedor.innerHTML = `
                 <div>
                     <span class="tipo-label">Medidas</span>
-                    <div class="medidas-grid">
+                    <div class="medidas-grid ${losas !== 'ninguna' ? 'con-modo' : ''}">
                         ${campoMedida('base', 'Base (cm)', d.base)}
                         ${campoMedida('altura', 'Altura (cm)', d.altura)}
+                        ${losas !== 'ninguna' ? `
+                            <div class="medida-campo modo-altura-campo">
+                                <span>La altura…</span>
+                                <div class="modo-altura">${botonesModo}</div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 <div>
@@ -1786,10 +2398,18 @@
                     <span class="sub-label">Una barra por cara lateral <small>· altura al centro de la barra, medida desde abajo</small></span>
                     ${listaBarrasHTML(card, 'barrasPiel')}
                 </div>
+                ${campoComentario(d)}
             `;
             contenedor.querySelectorAll('.losa-btn').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     card.dataset.losas = btn.dataset.losas;
+                    renderParametros(card);
+                    redibujar(card);
+                });
+            });
+            contenedor.querySelectorAll('.modo-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    card.dataset.modoAltura = btn.dataset.modo;
                     renderParametros(card);
                     redibujar(card);
                 });
@@ -1800,6 +2420,104 @@
         }
 
         if (d.tipo === 'losa') {
+            const tipoLosa = d.tipoLosa === 'rap' ? 'rap' : 'maciza';
+            const selectorLosa = `
+                <div>
+                    <span class="tipo-label">Tipo de losa</span>
+                    <div class="forma-opciones">
+                        <button type="button" class="tipo-btn tipo-losa-btn ${tipoLosa === 'maciza' ? 'activo' : ''}" data-tipo-losa="maciza">
+                            <i class="fas fa-square"></i> Maciza
+                        </button>
+                        <button type="button" class="tipo-btn tipo-losa-btn ${tipoLosa === 'rap' ? 'activo' : ''}" data-tipo-losa="rap">
+                            <i class="fas fa-bars"></i> RAP
+                        </button>
+                    </div>
+                </div>
+            `;
+            const escucharTipoLosa = () => contenedor.querySelectorAll('.tipo-losa-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    card.dataset.tipoLosa = btn.dataset.tipoLosa;
+                    renderParametros(card);
+                    redibujar(card);
+                });
+            });
+
+            // Losa RAP: separación y medidas de las viguetas.
+            if (tipoLosa === 'rap') {
+                const enApoyo = d.medidoApoyo === 'si';
+                contenedor.innerHTML = `
+                    ${selectorLosa}
+                    <div>
+                        <span class="tipo-label">¿Se midió en el apoyo?</span>
+                        <div class="forma-opciones">
+                            <button type="button" class="tipo-btn apoyo-btn ${enApoyo ? '' : 'activo'}" data-apoyo="no">No</button>
+                            <button type="button" class="tipo-btn apoyo-btn ${enApoyo ? 'activo' : ''}" data-apoyo="si">Sí, sobre la viga</button>
+                        </div>
+                        ${enApoyo ? `
+                            <div class="medidas-grid">
+                                ${campoMedida('anchoVigaApoyo', 'Ancho de la viga (cm)', d.anchoVigaApoyo)}
+                                ${campoMedida('apoyoVigueta', 'Apoyo de la vigueta (cm)', d.apoyoVigueta)}
+                                ${campoMedida('salidaSuperiorVigueta', 'Armadura sobre vigueta: entra en la viga (cm)', d.salidaSuperiorVigueta)}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div>
+                        <span class="tipo-label">Viguetas</span>
+                        <div class="medidas-grid" style="grid-template-columns:minmax(0, 220px)">
+                            ${campoMedida('separacionViguetas', 'Separación (cm) · borde a borde', d.separacionViguetas)}
+                        </div>
+                        <span class="sub-label">Sección de la vigueta <small>· el alma es la mitad del ancho y el patín, el 40% de la altura</small></span>
+                        <div class="medidas-grid">
+                            ${campoMedida('anchoVigueta', 'Ancho de la base (cm)', d.anchoVigueta)}
+                            ${campoMedida('altoVigueta', 'Altura total (cm)', d.altoVigueta)}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="tipo-label">Ladrillos</span>
+                        <div class="medidas-grid" style="grid-template-columns:minmax(0, 220px)">
+                            ${campoMedida('anchoLadrillo', 'Ancho del ladrillo (cm)', d.anchoLadrillo)}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="tipo-label">Carpeta</span>
+                        <div class="medidas-grid" style="grid-template-columns:minmax(0, 220px)">
+                            ${campoMedida('alturaCarpeta', 'Altura de la carpeta (cm)', d.alturaCarpeta)}
+                        </div>
+                        <span class="sub-label">Malla dirección X <small>· barras paralelas al eje X</small></span>
+                        ${listaBarrasHTML(card, 'rapMallaX')}
+                        <span class="sub-label">Malla dirección Y <small>· barras paralelas al eje Y</small></span>
+                        ${listaBarrasHTML(card, 'rapMallaY')}
+                    </div>
+                    <div>
+                        <span class="tipo-label">Referencias</span>
+                        <div class="medidas-grid">
+                            ${campoTexto('referenciaX', 'Referencia X', d.referenciaX, 'Ej: Calle Mitre')}
+                            ${campoTexto('referenciaY', 'Referencia Y', d.referenciaY, 'Ej: Calle Tango')}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="tipo-label">Armadura de la vigueta</span>
+                        <span class="sub-label">Se reparte sola <small>· la base lleva la mayoría y las más gruesas; al alma va una de cada tres</small></span>
+                        ${listaBarrasHTML(card, 'barrasVigueta')}
+                        <span class="sub-label">Armadura sobre la vigueta <small>· paralela a la vigueta, entre ladrillos bajo la malla; cantidad por vigueta</small></span>
+                        ${listaBarrasHTML(card, 'barrasSuperiorVigueta')}
+                        <span class="sub-label">Armadura transversal <small>· perpendicular a la vigueta (paralela a X), sobre los ladrillos bajo la malla</small></span>
+                        ${listaBarrasHTML(card, 'barrasTransversalRap')}
+                    </div>
+                `;
+                escucharTipoLosa();
+                contenedor.querySelectorAll('.apoyo-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        card.dataset.medidoApoyo = btn.dataset.apoyo;
+                        renderParametros(card);
+                        redibujar(card);
+                    });
+                });
+                escucharListasBarras(card, contenedor);
+                escucharMedidas(card, contenedor);
+                return;
+            }
+
             // Una lista por dirección: cada fila, Ø y separación. Las de
             // igual separación se dibujan juntas (p. ej. Ø10 + Ø8 c/15).
             const malla = (clave, direccion, detalle) => `
@@ -1807,6 +2525,7 @@
                 ${listaBarrasHTML(card, clave)}
             `;
             contenedor.innerHTML = `
+                ${selectorLosa}
                 <div>
                     <span class="tipo-label">Medidas</span>
                     <div class="medidas-grid">
@@ -1831,7 +2550,9 @@
                     ${malla('losaNegX', 'X', 'barras paralelas al eje X')}
                     ${malla('losaNegY', 'Y', 'barras paralelas al eje Y')}
                 </div>
+                ${campoComentario(d)}
             `;
+            escucharTipoLosa();
             escucharListasBarras(card, contenedor);
             escucharMedidas(card, contenedor);
             return;
@@ -1880,6 +2601,7 @@
                 <span class="tipo-label">Armadura principal</span>
                 ${armaduraPrincipal}
             </div>
+            ${campoComentario(d)}
         `;
 
         escucharListasBarras(card, contenedor);
@@ -2081,6 +2803,8 @@
             btn.addEventListener('click', function () {
                 const tipo = btn.dataset.tipo;
                 card.dataset.tipo = tipo;
+                // Por defecto la viga lleva losa a ambos lados.
+                if (tipo === 'viga' && ! card.dataset.losas) card.dataset.losas = 'ambas';
                 botonesTipoEl.forEach(b => b.classList.toggle('activo', b === btn));
                 card.querySelector('.elemento-input').placeholder = `Ej: ${TIPOS[tipo].nombre} 1`;
                 actualizarSubtitulo(card);
@@ -2247,6 +2971,7 @@
     const LISTAS_GUARDADAS = [
         'barras', 'barrasX', 'barrasY',
         'barrasSuperior', 'barrasInferior', 'barrasCamadas', 'barrasPiel',
+        'barrasVigueta', 'barrasSuperiorVigueta', 'barrasTransversalRap',
         ...LISTAS_MALLA,
     ];
 
@@ -2603,6 +3328,7 @@
        mayoría de los programas de CAD. */
     const CAPAS_DXF = {
         'PCH-HORMIGON':  { color: 7, tipo: 'CONTINUOUS' },
+        'PCH-LADRILLOS': { color: 30, tipo: 'CONTINUOUS' },
         'PCH-ESTRIBOS':  { color: 3, tipo: 'CONTINUOUS' },
         'PCH-BARRAS':    { color: 2, tipo: 'CONTINUOUS' },
         'PCH-NEGATIVAS': { color: 1, tipo: 'CONTINUOUS' },
@@ -2612,8 +3338,10 @@
     };
     const SEPARACION_DXF = 0.4; // m entre una pachometría y la siguiente
 
-    // Capa según el color del trazo / relleno con que se dibuja en pantalla.
+    // Capa según el color del trazo / relleno con que se dibuja en pantalla,
+    // salvo que el elemento la indique en data-capa (p. ej. los ladrillos).
     function capaDxf(el) {
+        if (el.dataset.capa && CAPAS_DXF[el.dataset.capa]) return el.dataset.capa;
         const color = (el.getAttribute('stroke') || el.getAttribute('fill') || '').toLowerCase();
         const ancho = parseFloat(el.getAttribute('stroke-width')) || 0;
         if (el.tagName === 'text') return 'PCH-TEXTOS';
@@ -2730,6 +3458,17 @@
                 if (! conTrazo) return;
                 tramosPath(el.getAttribute('d')).forEach(t =>
                     t.tipo === 'linea' ? linea(capa, t.a, t.b, tipo) : arco(capa, t));
+            } else if (etiqueta === 'line' && el.dataset.dxf === 'barra') {
+                // Barra de losa vista a lo largo: dos líneas paralelas
+                // separadas su diámetro (el grosor del trazo, a escala real).
+                const a = { x: num(el, 'x1'), y: num(el, 'y1') };
+                const b = { x: num(el, 'x2'), y: num(el, 'y2') };
+                const medio = num(el, 'stroke-width') / 2;
+                const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+                const n = { x: -(b.y - a.y) / l * medio, y: (b.x - a.x) / l * medio };
+                const capaBarra = el.getAttribute('stroke').toLowerCase() === COLOR_NEGATIVA.toLowerCase() ? 'PCH-NEGATIVAS' : 'PCH-BARRAS';
+                [1, -1].forEach(s => linea(capaBarra,
+                    { x: a.x + s * n.x, y: a.y + s * n.y }, { x: b.x + s * n.x, y: b.y + s * n.y }, tipo));
             } else if (etiqueta === 'line') {
                 linea(capa, { x: num(el, 'x1'), y: num(el, 'y1') }, { x: num(el, 'x2'), y: num(el, 'y2') }, tipo);
             } else if (etiqueta === 'rect') {
@@ -2933,8 +3672,13 @@
                 const entidades = entidadesSvg(svg);
                 if (! entidades.length) return;
                 const l = limites(entidades);
+                // Borde: el del fondo de la losa (el rect gris), así la línea
+                // quebrada del corte, que asoma un poco, no lo corre.
+                const fondo = svg.querySelector('rect[fill="#e9edf2"]');
                 const hormigon = entidades.filter(en => en.capa === 'PCH-HORMIGON');
-                const xBorde = hormigon.length ? limites(hormigon).minX : l.minX;
+                const xBorde = fondo
+                    ? parseFloat(fondo.getAttribute('x')) / (parseFloat(svg.dataset.escala) * 100)
+                    : hormigon.length ? limites(hormigon).minX : l.minX;
                 moverEntidades(entidades, -xBorde, y - l.maxY);
                 y -= (l.maxY - l.minY) + 2 * alto;
                 detalle.push(...entidades);
