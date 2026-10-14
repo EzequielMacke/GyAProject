@@ -1886,29 +1886,32 @@
         return partes.join(' · ');
     }
 
+    // Sólo lo cargado: sin medidas ni armaduras no queda leyenda.
     function leyendaLosaRap(rap, geo) {
         const cm = v => `${Number(v.toFixed(2))}cm`;
-        const faltan = [
-            rap.separacion === null && 'separación',
-            rap.ancho === null && 'ancho de vigueta',
-            rap.alto === null && 'altura de vigueta',
-            rap.anchoLadrillo === null && 'ancho de ladrillo',
-            rap.carpeta === null && 'carpeta',
-            rap.enApoyo && rap.anchoViga === null && 'ancho de viga',
-            rap.enApoyo && rap.largoApoyo === null && 'apoyo de vigueta',        ].filter(Boolean);
-        return `<div class="lienzo-leyenda">
-                    ${faltan.length ? `<div>Detalle típico (sin cargar: ${faltan.join(', ')})</div>` : ''}
-                    ${geo.apoyo ? `<div>Medido en el apoyo: viga de ${cm(geo.apoyo.ancho)}, la vigueta apoya ${cm(geo.apoyo.largo)}${rap.superior.length && geo.apoyo.salida > 0 ? `, la armadura sobre la vigueta entra ${cm(geo.apoyo.salida)}` : ''}</div>` : ''}
-                    <div>Viguetas a ${cm(geo.separacion)} libres (borde a borde)</div>
-                    <div>Vigueta ${cm(geo.patin)} de ancho × ${cm(geo.altoVigueta)} de alto</div>
-                    <div>Ladrillos ${cm(geo.largoBloque)} de ancho × ${cm(geo.altoBloque)} de alto</div>
-                    ${rap.barras.length ? `<div>${textoArmaduraVigueta(distribuirArmaduraVigueta(rap.barras))}</div>` : ''}
-                    ${rap.superior.length ? `<div>Sobre vigueta: ${rap.superior.map(b => `${b.cantidad} Ø${Number(b.diametro.toFixed(2))}mm`).join(' + ')} por vigueta</div>` : ''}
-                    ${geo.transversal.length ? `<div>Transversal: ${geo.transversal.map(b => `${b.cantidad} Ø${Number(b.diametro.toFixed(2))}mm`).join(' + ')}</div>` : ''}
-                    <div>Carpeta ${cm(geo.capa)}</div>
-                    ${textoMallasRap('X', geo.mallaX)}
-                    ${textoMallasRap('Y', geo.mallaY)}
-                </div>`;
+        const barras = lista => lista.map(b => `${b.cantidad} Ø${Number(b.diametro.toFixed(2))}mm`).join(' + ');
+        const apoyo = [
+            rap.anchoViga !== null && `viga de ${cm(rap.anchoViga)}`,
+            rap.largoApoyo !== null && `la vigueta apoya ${cm(rap.largoApoyo)}`,
+            rap.superior.length && rap.salidaSuperior !== null && `la armadura sobre la vigueta entra ${cm(rap.salidaSuperior)}`,
+        ].filter(Boolean);
+        const vigueta = [
+            rap.ancho !== null && `${cm(rap.ancho)} de ancho`,
+            rap.alto !== null && `${cm(rap.alto)} de alto`,
+        ].filter(Boolean);
+        const renglones = [
+            rap.enApoyo && apoyo.length && `Medido en el apoyo: ${apoyo.join(', ')}`,
+            rap.separacion !== null && `Viguetas a ${cm(rap.separacion)} libres (borde a borde)`,
+            vigueta.length && `Vigueta ${vigueta.join(' × ')}`,
+            rap.anchoLadrillo !== null && `Ladrillos ${cm(rap.anchoLadrillo)} de ancho`,
+            rap.barras.length && textoArmaduraVigueta(distribuirArmaduraVigueta(rap.barras)),
+            rap.superior.length && `Sobre vigueta: ${barras(rap.superior)} por vigueta`,
+            rap.transversal.length && `Transversal: ${barras(rap.transversal)}`,
+            rap.carpeta !== null && `Carpeta ${cm(rap.carpeta)}`,
+        ].filter(Boolean).map(r => `<div>${r}</div>`);
+        const mallas = textoMallasRap('X', rap.mallaX) + textoMallasRap('Y', rap.mallaY);
+        if (! renglones.length && ! mallas) return '';
+        return `<div class="lienzo-leyenda">${renglones.join('')}${mallas}</div>`;
     }
 
     /* Altura total de la viga. Con losas, la altura cargada puede
@@ -2504,6 +2507,7 @@
                         <span class="sub-label">Armadura transversal <small>· perpendicular a la vigueta (paralela a X), sobre los ladrillos bajo la malla</small></span>
                         ${listaBarrasHTML(card, 'barrasTransversalRap')}
                     </div>
+                    ${campoComentario(d)}
                 `;
                 escucharTipoLosa();
                 contenedor.querySelectorAll('.apoyo-btn').forEach(function (btn) {
