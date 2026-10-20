@@ -3839,6 +3839,28 @@
                     const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
                     return { x: -(b.y - a.y) / l * medio, y: (b.x - a.x) / l * medio };
                 };
+                // Sólo rectas con esquinas (el estribo en U del nervio): el
+                // contorno va como una sola polilínea cerrada, con las
+                // esquinas en inglete, así queda unido.
+                const tapasPath = el.dataset.tapas || '';
+                if (tramos.length && tramos.every(t => t.tipo === 'linea') && tapasPath.includes('inicio') && tapasPath.includes('fin')) {
+                    const pts = [tramos[0].a, ...tramos.map(t => t.b)];
+                    const lado = s => pts.map((p, j) => {
+                        const n1 = j > 0 ? normal(pts[j - 1], p) : null;
+                        const n2 = j < pts.length - 1 ? normal(p, pts[j + 1]) : null;
+                        if (! n1 || ! n2) {
+                            const n = n1 || n2;
+                            return { x: p.x + s * n.x, y: p.y + s * n.y };
+                        }
+                        // Inglete: suma de las normales, estirada para que
+                        // quede a medio Ø de los dos tramos.
+                        const coseno = (n1.x * n2.x + n1.y * n2.y) / (medio * medio);
+                        const f = 1 / Math.max(0.1, 1 + coseno);
+                        return { x: p.x + s * (n1.x + n2.x) * f, y: p.y + s * (n1.y + n2.y) * f };
+                    });
+                    entidades.push({ e: 'polilinea', capa: 'PCH-ESTRIBOS', v: [...lado(1), ...lado(-1).reverse()].map(P) });
+                    return;
+                }
                 tramos.forEach(t => {
                     if (t.tipo === 'linea') {
                         const n = normal(t.a, t.b);
@@ -3921,7 +3943,7 @@
             case 'linea': return [en.a, en.b];
             case 'arco': case 'circulo':
                 return [{ x: en.c.x - en.r, y: en.c.y - en.r }, { x: en.c.x + en.r, y: en.c.y + en.r }];
-            case 'solido': return en.v;
+            case 'solido': case 'polilinea': return en.v;
             case 'texto': {
                 const largo = en.texto.length * en.alto * 0.62;
                 const desde = -largo * en.anclaje / 2;
@@ -4031,6 +4053,11 @@
                 // SOLID toma los vértices en "Z": 1, 2, 4, 3.
                 g(0, 'SOLID'); g(8, en.capa);
                 punto(0, en.v[0]); punto(1, en.v[1]); punto(2, en.v[3]); punto(3, en.v[2]);
+            } else if (en.e === 'polilinea') {
+                // Polilínea cerrada (R12: POLYLINE + VERTEX + SEQEND).
+                g(0, 'POLYLINE'); g(8, en.capa); g(66, 1); punto(0, { x: 0, y: 0 }); g(70, 1);
+                en.v.forEach(p => { g(0, 'VERTEX'); g(8, en.capa); punto(0, p); });
+                g(0, 'SEQEND'); g(8, en.capa);
             } else if (en.e === 'texto') {
                 g(0, 'TEXT'); g(8, en.capa); punto(0, en.p); g(40, n(en.alto)); g(1, textoDxf(en.texto));
                 if (en.rotacion) g(50, n(en.rotacion));
