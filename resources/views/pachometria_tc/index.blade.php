@@ -237,6 +237,9 @@
         .forma-opciones .tipo-btn { justify-content: center; padding: 0 0.5rem; }
         .forma-opciones.losa-opciones { grid-template-columns: repeat(4, 1fr); }
         .losa-opciones + .medidas-grid { margin-top: 0.75rem; }
+        .forma-opciones.tipo-losa-opciones { grid-template-columns: repeat(3, 1fr); gap: 0.35rem; }
+        .tipo-losa-opciones .tipo-btn { height: 32px; padding: 0 0.4rem; gap: 0.35rem; }
+        .tipo-losa-opciones .tipo-btn i { width: auto; }
         .medidas-grid.con-modo { grid-template-columns: repeat(2, minmax(0, 160px)) minmax(0, 220px); }
         .modo-altura { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.35rem; }
         .modo-altura .tipo-btn { justify-content: center; padding: 0 0.4rem; font-size: 0.75rem; }
@@ -504,7 +507,8 @@
               circular (diámetro). Sin medidas cargadas se dibuja
               un cuadrado / círculo genérico.
        Losa: maciza, planta de 1 m × 1 m y corte A-A (ver más abajo);
-             RAP, planta y corte de un detalle típico, sin parámetros. */
+             RAP, planta y corte de un detalle típico, sin parámetros;
+             casetonada, ídem (nervios en las dos direcciones). */
     const ESTILO_SECCION = 'fill="#e9edf2" stroke="#445060" stroke-width="2"';
     const ESTILO_COTA = 'stroke="#8496aa" stroke-width="1"';
     const ESTILO_TEXTO_CARA = 'font-size="10" font-weight="700" fill="#2a6fdb" letter-spacing="0.3" font-family="Plus Jakarta Sans, sans-serif"';
@@ -1435,7 +1439,7 @@
         altoVigueta: 10,    // altura total de la vigueta, si no se carga
         proporcionAlma: 0.5,       // ancho del alma / ancho del patín
         proporcionAltoPatin: 0.4,  // alto del patín / altura de la vigueta
-        altoBloque: 12,     // mínimo; crece si la vigueta es más alta
+        altoBloque: 12,     // si no se carga: mínimo; crece si la vigueta es más alta
         sobreBloque: 2,     // cm que el bloque supera a la vigueta
         capa: 5,            // carpeta (capa de compresión), si no se carga
         largoBloque: 25,    // ancho del ladrillo, a lo largo de la vigueta (juntas en planta), si no se carga
@@ -1458,6 +1462,7 @@
             ancho: positiva('anchoVigueta'),
             alto: positiva('altoVigueta'),
             anchoLadrillo: positiva('anchoLadrillo'),
+            altoLadrillo: positiva('alturaLadrillo'),
             carpeta: positiva('alturaCarpeta'),
             mallaX: leerMallas(card.rapMallaX),
             mallaY: leerMallas(card.rapMallaY),
@@ -1556,7 +1561,11 @@
             alma: patin * RAP.proporcionAlma,
             altoVigueta,
             altoPatin: altoVigueta * RAP.proporcionAltoPatin,
-            altoBloque: Math.max(RAP.altoBloque, altoVigueta + RAP.sobreBloque),
+            // La altura cargada del ladrillo manda (nunca por debajo de la
+            // vigueta); si no se pudo medir, la del detalle típico.
+            altoBloque: rap.altoLadrillo !== null
+                ? Math.max(rap.altoLadrillo, altoVigueta)
+                : Math.max(RAP.altoBloque, altoVigueta + RAP.sobreBloque),
             largoBloque: rap.anchoLadrillo ?? RAP.largoBloque,
             capa: rap.carpeta ?? RAP.capa,
             // Las armaduras se dibujan sólo si se cargan.
@@ -1837,6 +1846,11 @@
         let cotasCarpeta = rap.carpeta !== null
             ? cotaVertical(x0 - 8, y0, Y(geo.altoBloque), formatearMedida(geo.capa), 'end')
             : '';
+        // Altura del ladrillo a la derecha (a la izquierda ya están la
+        // vigueta y la carpeta).
+        if (rap.altoLadrillo !== null) {
+            cotasCarpeta += cotaVertical(x0 + W + 10, Y(geo.altoBloque), Y(0), formatearMedida(geo.altoBloque), 'start');
+        }
         const psMallaY = rap.mallaY.length ? posicionesMalla(rap.mallaY[0], false, ventana) : [];
         if (psMallaY.length >= 2) {
             const [xa, xb] = [X(psMallaY[0]), X(psMallaY[1])];
@@ -1899,11 +1913,15 @@
             rap.ancho !== null && `${cm(rap.ancho)} de ancho`,
             rap.alto !== null && `${cm(rap.alto)} de alto`,
         ].filter(Boolean);
+        const ladrillo = [
+            rap.anchoLadrillo !== null && `${cm(rap.anchoLadrillo)} de ancho`,
+            rap.altoLadrillo !== null && `${cm(rap.altoLadrillo)} de alto`,
+        ].filter(Boolean);
         const renglones = [
             rap.enApoyo && apoyo.length && `Medido en el apoyo: ${apoyo.join(', ')}`,
             rap.separacion !== null && `Viguetas a ${cm(rap.separacion)} libres (borde a borde)`,
             vigueta.length && `Vigueta ${vigueta.join(' × ')}`,
-            rap.anchoLadrillo !== null && `Ladrillos ${cm(rap.anchoLadrillo)} de ancho`,
+            ladrillo.length && `Ladrillos ${ladrillo.join(' × ')}`,
             rap.barras.length && textoArmaduraVigueta(distribuirArmaduraVigueta(rap.barras)),
             rap.superior.length && `Sobre vigueta: ${barras(rap.superior)} por vigueta`,
             rap.transversal.length && `Transversal: ${barras(rap.transversal)}`,
@@ -1912,6 +1930,335 @@
         const mallas = textoMallasRap('X', rap.mallaX) + textoMallasRap('Y', rap.mallaY);
         if (! renglones.length && ! mallas) return '';
         return `<div class="lienzo-leyenda">${renglones.join('')}${mallas}</div>`;
+    }
+
+    /* ─── Losa casetonada ─────────────────────────────────────
+       Detalle típico: nervios en las dos direcciones a la misma
+       separación, casetones (huecos) entre ellos y carpeta arriba. El
+       casetón es más angosto arriba que abajo (el nervio se ensancha
+       hacia la carpeta). La planta se ve desde abajo: los casetones
+       con su fondo y las aristas inclinadas.
+       Se mide el ancho del nervio (abajo), su altura y la separación
+       libre entre nervios abajo y arriba: si son iguales el nervio es
+       recto; si arriba es menor, inclinado. */
+    const CASETON = {
+        libre: 60,          // separación libre abajo, si no se carga
+        nervioBase: 10,     // ancho del nervio abajo, si no se carga
+        ensanche: 2.5,      // lo que se angosta el casetón arriba, por lado, si no se carga la separación de arriba
+        alto: 25,           // altura del nervio, si no se carga
+        capa: 5,            // carpeta, si no se carga
+    };
+    const COLOR_CASETON = '#ffffff';
+
+    // Medidas cargadas de la losa casetonada; null en las que no se cargaron.
+    function leerLosaCasetonado(card) {
+        const d = card.dataset;
+        const positiva = clave => {
+            const valor = leerMedida(d[clave]);
+            return valor !== null && valor > 0 ? valor : null;
+        };
+        return {
+            anchoNervio: positiva('anchoNervio'),
+            alturaNervio: positiva('alturaNervio'),
+            separacionAbajo: positiva('separacionAbajo'),
+            separacionArriba: positiva('separacionArriba'),
+            carpeta: positiva('alturaCarpeta'),
+            barras: leerBarras(card.barrasNervio), // armadura principal, por nervio
+            estribo: positiva('estribo'),          // Ø en mm
+            separacionEstribo: positiva('separacion'),
+            recubrimientoMm: positiva('recubrimiento'),
+            referenciaX: (d.referenciaX || '').trim(),
+            referenciaY: (d.referenciaY || '').trim(),
+        };
+    }
+
+    /* Armadura del nervio vista de punta en el corte (cm, respecto del
+       eje del nervio y de la cara inferior). El estribo es una U abierta
+       arriba con una patita doblada hacia afuera en cada punta. Respeta
+       el recubrimiento contra todas las caras: abajo, a los costados
+       del nervio (las patas siguen la inclinación de las caras, o van
+       verticales si el nervio es recto) y arriba de la carpeta, donde
+       van las patitas. Las barras principales van abajo, apoyadas en el
+       estribo, repartidas a lo ancho; si no entran en una fila, en
+       varias hacia arriba. Sin recubrimiento cargado se toman 2 cm. */
+    function armaduraNervio(geo, losa) {
+        const rec = (losa.recubrimientoMm ?? 20) / 10;
+        const e = (losa.estribo ?? 0) / 10;
+        const espesor = geo.alto + geo.capa;
+        // Eje de la pata a la altura y: la cara del nervio corrida hacia
+        // adentro el recubrimiento más medio Ø, medido perpendicular a
+        // la cara. Nunca cruza el eje del nervio.
+        const pendiente = geo.ensanche / geo.alto; // cm hacia afuera por cm de altura
+        const corrimiento = (rec + e / 2) * Math.sqrt(1 + pendiente * pendiente);
+        const pata = y => Math.max(0.5, geo.nervioBase / 2 + pendiente * y - corrimiento);
+        const abajo = rec + e / 2;
+        const arriba = Math.max(abajo + 1, espesor - rec - e / 2);
+        const estribo = losa.estribo !== null || losa.separacionEstribo !== null
+            ? {
+                abajo,
+                arriba,
+                xAbajo: pata(abajo),
+                xArriba: pata(arriba),
+                patita: e ? Math.max(3, 10 * e) : 4, // cm hacia afuera, en la carpeta
+                diametro: losa.estribo,
+            }
+            : null;
+        const diametros = losa.barras.flatMap(b => Array(b.cantidad).fill(b.diametro)).sort((a, b) => b - a);
+        const barras = [];
+        if (diametros.length) {
+            const mayor = Math.max(...diametros) / 10;
+            // Entre las patas del estribo, a la altura de la primera fila.
+            const util = Math.max(0, 2 * (pata(rec + e + mayor / 2) - e / 2) - mayor);
+            const paso = mayor * 1.5; // cm entre centros, como mínimo
+            const porFila = Math.max(1, Math.floor(util / paso) + 1);
+            for (let f = 0; f * porFila < diametros.length; f++) {
+                const fila = diametros.slice(f * porFila, (f + 1) * porFila);
+                const y = rec + e + mayor / 2 + f * paso;
+                fila.forEach((diametro, i) => {
+                    const x = fila.length === 1 ? 0 : -util / 2 + i * util / (fila.length - 1);
+                    barras.push({ x, y, diametro });
+                });
+            }
+        }
+        return { estribo, barras };
+    }
+
+    // Geometría para dibujar: lo cargado o, si falta, el detalle típico.
+    function geometriaCasetonado(losa) {
+        const nervioBase = losa.anchoNervio ?? CASETON.nervioBase;
+        const libre = losa.separacionAbajo ?? CASETON.libre;
+        // La separación de arriba no puede comerse todo el interejes:
+        // siempre queda algo de nervio contra la carpeta.
+        const libreArriba = Math.min(losa.separacionArriba ?? libre - 2 * CASETON.ensanche, libre + nervioBase * 0.9);
+        return {
+            nervioBase,
+            libre,
+            libreArriba,
+            ensanche: (libre - libreArriba) / 2, // por lado; 0 si el nervio es recto
+            alto: losa.alturaNervio ?? CASETON.alto,
+            capa: losa.carpeta ?? CASETON.capa,
+        };
+    }
+
+    // Ventana de dos distancias entre ejes, centrada en un casetón: se
+    // ven dos nervios enteros en cada dirección y el corte A-A pasa por
+    // el medio de los casetones.
+    const interejesCasetonado = geo => geo.libre + geo.nervioBase;
+    const ventanaCasetonado = geo => 2 * interejesCasetonado(geo);
+
+    function ejesNerviosCasetonado(geo) {
+        const interejes = interejesCasetonado(geo);
+        const ventana = ventanaCasetonado(geo);
+        const ejes = [];
+        for (let c = ventana / 2 - interejes / 2 - interejes; c < ventana + interejes; c += interejes) ejes.push(c);
+        return ejes;
+    }
+
+    // Tramos libres entre nervios (abajo) a lo largo de una dirección.
+    function casetonesCasetonado(geo) {
+        const ejes = ejesNerviosCasetonado(geo);
+        return ejes.slice(0, -1).map((c, i) => [c + geo.nervioBase / 2, ejes[i + 1] - geo.nervioBase / 2]);
+    }
+
+    function dibujarCasetonadoPlanta(geo, losa) {
+        const S = MARCO_RAP.ancho;
+        const x0 = MARCO_RAP.x0;
+        const y0 = 24;
+        const ventana = ventanaCasetonado(geo);
+        const escala = S / ventana;
+        const X = v => x0 + Math.min(ventana, Math.max(0, v)) * escala;
+        const Y = v => y0 + Math.min(ventana, Math.max(0, v)) * escala;
+        const ensanche = geo.ensanche;
+
+        // Cada casetón: el contorno de abajo, el fondo (más chico) y las
+        // aristas de esquina a esquina.
+        const tramos = casetonesCasetonado(geo);
+        let casetones = '';
+        tramos.forEach(([xa, xb]) => tramos.forEach(([ya, yb]) => {
+            const afuera = [[xa, ya], [xb, ya], [xb, yb], [xa, yb]];
+            const adentro = [[xa + ensanche, ya + ensanche], [xb - ensanche, ya + ensanche], [xb - ensanche, yb - ensanche], [xa + ensanche, yb - ensanche]];
+            const poligono = puntos => puntos.map(([x, y]) => `${X(x)},${Y(y)}`).join(' ');
+            // Con el nervio recto el fondo coincide con el contorno.
+            // En el DXF van sólo como contorno, sin relleno.
+            casetones += `<polygon points="${poligono(afuera)}" fill="${COLOR_CASETON}" stroke="#445060" stroke-width="1" data-dxf="contorno"></polygon>
+                ${ensanche !== 0 ? `<polygon points="${poligono(adentro)}" fill="none" stroke="#445060" stroke-width="0.7" data-dxf="contorno"></polygon>
+                ${afuera.map(([x, y], i) => `<line x1="${X(x)}" y1="${Y(y)}" x2="${X(adentro[i][0])}" y2="${Y(adentro[i][1])}" stroke="#445060" stroke-width="0.7"></line>`).join('')}` : ''}`;
+        }));
+
+        // Cotas, sólo de lo cargado. Arriba, encadenadas sobre el casetón
+        // del centro: el ancho del nervio y la separación libre de abajo.
+        // A la derecha, lo mismo en la otra dirección. Dentro del casetón
+        // del centro, la separación de arriba (el fondo del casetón).
+        const [, [xa, xb]] = tramos;
+        const yc = y0 - 6;
+        const tramoArriba = (xi, xf, texto, centrado) => `
+            <line x1="${X(xi)}" y1="${yc}" x2="${X(xf)}" y2="${yc}" ${ESTILO_COTA}></line>
+            <line x1="${X(xi)}" y1="${yc - 3}" x2="${X(xi)}" y2="${yc + 3}" ${ESTILO_COTA}></line>
+            <line x1="${X(xf)}" y1="${yc - 3}" x2="${X(xf)}" y2="${yc + 3}" ${ESTILO_COTA}></line>
+            ${centrado
+                ? `<text x="${(X(xi) + X(xf)) / 2}" y="${yc - 5}" text-anchor="middle" ${ESTILO_TEXTO_LOSA}>${texto}</text>`
+                : `<text x="${X(xf) + 5}" y="${yc + 3.5}" ${ESTILO_TEXTO_LOSA}>${texto}</text>`}`;
+        const xl = x0 + S + 30; // pasando la marca del corte A-A
+        const tramoDerecha = (yi, yf, texto) => `
+            <line x1="${xl}" y1="${Y(yi)}" x2="${xl}" y2="${Y(yf)}" ${ESTILO_COTA}></line>
+            <line x1="${xl - 3}" y1="${Y(yi)}" x2="${xl + 3}" y2="${Y(yi)}" ${ESTILO_COTA}></line>
+            <line x1="${xl - 3}" y1="${Y(yf)}" x2="${xl + 3}" y2="${Y(yf)}" ${ESTILO_COTA}></line>
+            <text x="${xl + 5}" y="${(Y(yi) + Y(yf)) / 2 + 3.5}" ${ESTILO_TEXTO_LOSA}>${texto}</text>`;
+        let cota = '';
+        if (losa.anchoNervio !== null) {
+            cota += tramoArriba(xa - geo.nervioBase, xa, formatearMedida(geo.nervioBase), true);
+            cota += tramoDerecha(xa - geo.nervioBase, xa, formatearMedida(geo.nervioBase));
+        }
+        if (losa.separacionAbajo !== null) {
+            cota += tramoArriba(xa, xb, formatearMedida(geo.libre), false);
+            cota += tramoDerecha(xa, xb, formatearMedida(geo.libre));
+        }
+        if (losa.separacionArriba !== null) {
+            const ys = Y(xa + ensanche) + 12;
+            const [xi, xf] = [X(xa + ensanche), X(xb - ensanche)];
+            cota += `
+                <line x1="${xi}" y1="${ys}" x2="${xf}" y2="${ys}" ${ESTILO_COTA}></line>
+                <line x1="${xi}" y1="${ys - 3}" x2="${xi}" y2="${ys + 3}" ${ESTILO_COTA}></line>
+                <line x1="${xf}" y1="${ys - 3}" x2="${xf}" y2="${ys + 3}" ${ESTILO_COTA}></line>
+                <text x="${(xi + xf) / 2}" y="${ys - 4}" text-anchor="middle" ${ESTILO_TEXTO_LOSA}>${formatearMedida(geo.libreArriba)}</text>`;
+        }
+
+        return `<svg viewBox="0 0 320 ${y0 + S + 34}" data-escala="${escala}" aria-label="Planta de la losa casetonada">
+                    <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Planta</text>
+                    <rect x="${x0}" y="${y0}" width="${S}" height="${S}" fill="#e9edf2"></rect>
+                    ${casetones}
+                    <rect x="${x0}" y="${y0}" width="${S}" height="${S}" fill="none" stroke="#445060" stroke-width="1.5" stroke-dasharray="6 3"></rect>
+                    ${lineaCorteLosa(x0, y0, S)}
+                    ${cota}
+                    ${ejesPlantaLosa(x0, y0, S, losa.referenciaX, losa.referenciaY)}
+                </svg>`;
+    }
+
+    // Corte A-A: nervios cortados (más anchos arriba), los casetones
+    // abiertos abajo y la carpeta corrida arriba.
+    function dibujarCasetonadoCorte(geo, losa) {
+        const espesor = geo.alto + geo.capa;
+        const ventana = ventanaCasetonado(geo);
+        const W = MARCO_RAP.ancho;
+        const escala = W / ventana;
+        const h = espesor * escala;
+        const x0 = MARCO_RAP.x0;
+        const y0 = 28;
+        const X = v => x0 + Math.min(ventana, Math.max(0, v)) * escala;
+        const Y = v => y0 + h - v * escala; // v en cm desde la cara inferior
+        const ensanche = geo.ensanche;
+
+        // Perfil de abajo, de izquierda a derecha: nervios y huecos de los
+        // casetones. Los bordes de la ventana caen en el medio de un
+        // casetón, así que el perfil arranca y termina contra la carpeta.
+        const abajo = casetonesCasetonado(geo)
+            .flatMap(([a, b]) => [[a, 0], [a + ensanche, geo.alto], [b - ensanche, geo.alto], [b, 0]])
+            .filter(([x]) => x >= 0 && x <= ventana);
+        const perfil = [[0, geo.alto], ...abajo, [ventana, geo.alto]];
+        const trazo = puntos => puntos.map(([x, y]) => `${X(x)} ${Y(y)}`).join(' L ');
+        const seccion = `M ${trazo([...perfil, [ventana, espesor], [0, espesor]])} Z`;
+        const hCapa = geo.capa * escala;
+
+        // Armadura de cada nervio cortado: el estribo en U con patitas
+        // (hueco, como en vigas y pilares) y las barras.
+        const armadura = armaduraNervio(geo, losa);
+        const nervios = ejesNerviosCasetonado(geo).filter(c => c > 0 && c < ventana);
+        let armaduraSvg = '';
+        nervios.forEach(c => {
+            const est = armadura.estribo;
+            if (est) {
+                const grosor = Math.max(dibujoEscalaReal ? 0 : 1.6, ((est.diametro ?? 6) / 10) * escala);
+                // Las puntas de las patitas se acortan en el trazo blanco
+                // (recorte), así quedan cerradas.
+                armaduraSvg += dibujarEstriboHueco(recorte => {
+                    const ya = Y(est.arriba), yb = Y(est.abajo);
+                    const xia = X(c - est.xArriba), xda = X(c + est.xArriba);
+                    const xib = X(c - est.xAbajo), xdb = X(c + est.xAbajo);
+                    const p = est.patita * escala - recorte;
+                    return [`M ${xia - p} ${ya} L ${xia} ${ya} L ${xib} ${yb} L ${xdb} ${yb} L ${xda} ${ya} L ${xda + p} ${ya}`];
+                }, { grosor });
+            }
+            armaduraSvg += armadura.barras
+                .map(b => `<circle cx="${X(c + b.x)}" cy="${Y(b.y)}" r="${radioBarraLosa(b, escala)}" fill="${COLOR_ESTRIBO}"></circle>`)
+                .join('');
+        });
+
+        // Cotas, sólo de lo cargado, sobre el nervio y el casetón del
+        // centro: abajo el ancho del nervio y la separación de abajo;
+        // dentro del casetón, contra la carpeta, la separación de arriba;
+        // a la izquierda la altura del nervio y, arriba de ella, la carpeta.
+        const cotaHorizontal = (xa, xb, yc, texto, arriba = false) => `
+            <line x1="${xa}" y1="${yc}" x2="${xb}" y2="${yc}" ${ESTILO_COTA}></line>
+            <line x1="${xa}" y1="${yc - 4}" x2="${xa}" y2="${yc + 4}" ${ESTILO_COTA}></line>
+            <line x1="${xb}" y1="${yc - 4}" x2="${xb}" y2="${yc + 4}" ${ESTILO_COTA}></line>
+            <text x="${(xa + xb) / 2}" y="${arriba ? yc - 4 : yc + 13}" text-anchor="middle" ${ESTILO_TEXTO_LOSA}>${texto}</text>`;
+        const [, [a, b]] = casetonesCasetonado(geo);
+        const yCotas = y0 + h + 10;
+        const yArriba = Y(geo.alto) + 16;
+        let cotas = '';
+        if (losa.anchoNervio !== null) cotas += cotaHorizontal(X(a - geo.nervioBase), X(a), yCotas, formatearMedida(geo.nervioBase));
+        if (losa.separacionAbajo !== null) cotas += cotaHorizontal(X(a), X(b), yCotas, formatearMedida(geo.libre));
+        if (losa.separacionArriba !== null) cotas += cotaHorizontal(X(a + ensanche), X(b - ensanche), yArriba, formatearMedida(geo.libreArriba), true);
+        if (losa.alturaNervio !== null) {
+            const xc = x0 - 8;
+            cotas += `
+                <line x1="${xc - 5}" y1="${Y(geo.alto)}" x2="${X(a - geo.nervioBase / 2)}" y2="${Y(geo.alto)}" ${ESTILO_COTA} stroke-dasharray="2 2"></line>
+                <line x1="${xc}" y1="${Y(geo.alto)}" x2="${xc}" y2="${Y(0)}" ${ESTILO_COTA}></line>
+                <line x1="${xc - 5}" y1="${Y(0)}" x2="${xc + 5}" y2="${Y(0)}" ${ESTILO_COTA}></line>
+                <text x="${xc - 8}" y="${(Y(geo.alto) + Y(0)) / 2 + 4}" text-anchor="end" ${ESTILO_TEXTO_COTA}>${formatearMedida(geo.alto)}</text>`;
+        }
+        if (losa.carpeta !== null) {
+            const xc = x0 - 8;
+            cotas += `
+                <line x1="${xc}" y1="${y0}" x2="${xc}" y2="${Y(geo.alto)}" ${ESTILO_COTA}></line>
+                <line x1="${xc - 5}" y1="${y0}" x2="${xc + 5}" y2="${y0}" ${ESTILO_COTA}></line>
+                <line x1="${xc - 5}" y1="${Y(geo.alto)}" x2="${xc + 5}" y2="${Y(geo.alto)}" ${ESTILO_COTA}></line>
+                <text x="${xc - 8}" y="${(y0 + Y(geo.alto)) / 2 + 4}" text-anchor="end" ${ESTILO_TEXTO_COTA}>${formatearMedida(geo.capa)}</text>`;
+        }
+        const hayCotasAbajo = losa.anchoNervio !== null || losa.separacionAbajo !== null;
+
+        return `<svg viewBox="0 0 320 ${Math.ceil(hayCotasAbajo ? yCotas + 18 : y0 + h + 14)}" data-escala="${escala}" aria-label="Corte A-A de la losa casetonada">
+                    <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Corte A-A</text>
+                    <path d="${seccion}" fill="#e9edf2"></path>
+                    <path d="M ${trazo(perfil)}" fill="none" stroke="#445060" stroke-width="1.5" stroke-linejoin="round"></path>
+                    <line x1="${x0}" y1="${y0}" x2="${x0 + W}" y2="${y0}" stroke="#445060" stroke-width="2"></line>
+                    <line x1="${x0}" y1="${Y(geo.alto)}" x2="${x0 + W}" y2="${Y(geo.alto)}" stroke="#445060" stroke-width="0.6" stroke-dasharray="4 3"></line>
+                    ${armaduraSvg}
+                    ${quiebreCorteLosa(x0, y0, hCapa)}
+                    ${quiebreCorteLosa(x0 + W, y0, hCapa)}
+                    ${cotas}
+                </svg>`;
+    }
+
+    // Sólo lo cargado. Con las dos separaciones se indica si el nervio
+    // es recto o inclinado.
+    function leyendaCasetonado(losa) {
+        const cm = v => `${Number(v.toFixed(2))}cm`;
+        const separaciones = [
+            losa.separacionAbajo !== null && `abajo ${cm(losa.separacionAbajo)}`,
+            losa.separacionArriba !== null && `arriba ${cm(losa.separacionArriba)}`,
+        ].filter(Boolean);
+        const nervio = [
+            losa.anchoNervio !== null && `${cm(losa.anchoNervio)} de ancho`,
+            losa.alturaNervio !== null && `${cm(losa.alturaNervio)} de alto`,
+        ].filter(Boolean);
+        let forma = '';
+        if (losa.separacionAbajo !== null && losa.separacionArriba !== null) {
+            forma = Math.abs(losa.separacionAbajo - losa.separacionArriba) < 0.01 ? ' (recto)' : ' (inclinado)';
+        }
+        const renglones = [
+            nervio.length && `Nervio ${nervio.join(' × ')}${forma}`,
+            separaciones.length && `Separación libre entre nervios: ${separaciones.join(', ')}`,
+            losa.carpeta !== null && `Carpeta ${cm(losa.carpeta)}`,
+            losa.barras.length && `Armadura del nervio: ${losa.barras.map(b => `${b.cantidad} Ø${Number(b.diametro.toFixed(2))}mm`).join(' + ')}`,
+            (losa.estribo !== null || losa.separacionEstribo !== null) && [
+                'Est.',
+                losa.estribo !== null && `Ø${Number(losa.estribo.toFixed(2))}mm`,
+                losa.separacionEstribo !== null && `c/${cm(losa.separacionEstribo)}`,
+            ].filter(Boolean).join(' '),
+            losa.recubrimientoMm !== null && `Rec. ${Number(losa.recubrimientoMm.toFixed(2))}mm`,
+        ].filter(Boolean).map(r => `<div>${r}</div>`);
+        return renglones.length ? `<div class="lienzo-leyenda">${renglones.join('')}</div>` : '';
     }
 
     /* Altura total de la viga. Con losas, la altura cargada puede
@@ -1987,6 +2334,11 @@
                 : dibujarPilarRectangular(leerMedida(d.lado), leerMedida(d.ancho), armadura);
             return dibujo + leyendaArmadura(armadura, d.forma === 'circular' ? 'circular' : 'rectangular');
         }
+        if (d.tipo === 'losa' && d.tipoLosa === 'casetonado') {
+            const losa = leerLosaCasetonado(card);
+            const geo = geometriaCasetonado(losa);
+            return dibujarCasetonadoPlanta(geo, losa) + dibujarCasetonadoCorte(geo, losa) + leyendaCasetonado(losa);
+        }
         if (d.tipo === 'losa' && d.tipoLosa !== 'rap') {
             const losa = leerLosa(card);
             return dibujarLosaPlanta(losa) + dibujarLosaCorte(losa) + leyendaLosa(losa);
@@ -2053,7 +2405,7 @@
             const altura = alturaTotalViga(d);
             return base !== null || altura !== null ? ` (${cm(base)} x ${cm(altura)})` : '';
         }
-        if (d.tipo === 'losa' && d.tipoLosa !== 'rap') {
+        if (d.tipo === 'losa' && ! ['rap', 'casetonado'].includes(d.tipoLosa)) {
             const espesor = leerMedida(d.espesor);
             return espesor !== null ? ` (e = ${cm(espesor)})` : '';
         }
@@ -2423,16 +2775,19 @@
         }
 
         if (d.tipo === 'losa') {
-            const tipoLosa = d.tipoLosa === 'rap' ? 'rap' : 'maciza';
+            const tipoLosa = ['rap', 'casetonado'].includes(d.tipoLosa) ? d.tipoLosa : 'maciza';
             const selectorLosa = `
                 <div>
                     <span class="tipo-label">Tipo de losa</span>
-                    <div class="forma-opciones">
+                    <div class="forma-opciones tipo-losa-opciones">
                         <button type="button" class="tipo-btn tipo-losa-btn ${tipoLosa === 'maciza' ? 'activo' : ''}" data-tipo-losa="maciza">
                             <i class="fas fa-square"></i> Maciza
                         </button>
                         <button type="button" class="tipo-btn tipo-losa-btn ${tipoLosa === 'rap' ? 'activo' : ''}" data-tipo-losa="rap">
                             <i class="fas fa-bars"></i> RAP
+                        </button>
+                        <button type="button" class="tipo-btn tipo-losa-btn ${tipoLosa === 'casetonado' ? 'activo' : ''}" data-tipo-losa="casetonado">
+                            <i class="fas fa-th"></i> Casetonado
                         </button>
                     </div>
                 </div>
@@ -2444,6 +2799,50 @@
                     redibujar(card);
                 });
             });
+
+            // Losa casetonada: el nervio y la separación libre entre
+            // nervios abajo y arriba (así se ve si es recto o inclinado).
+            if (tipoLosa === 'casetonado') {
+                contenedor.innerHTML = `
+                    ${selectorLosa}
+                    <div>
+                        <span class="tipo-label">Nervios</span>
+                        <div class="medidas-grid">
+                            ${campoMedida('anchoNervio', 'Ancho del nervio (cm) · abajo', d.anchoNervio)}
+                            ${campoMedida('alturaNervio', 'Altura del nervio (cm)', d.alturaNervio)}
+                        </div>
+                        <span class="sub-label">Separación libre entre nervios <small>· iguales: nervio recto; arriba menor: inclinado</small></span>
+                        <div class="medidas-grid">
+                            ${campoMedida('separacionAbajo', 'Abajo (cm)', d.separacionAbajo)}
+                            ${campoMedida('separacionArriba', 'Arriba (cm) · contra la carpeta', d.separacionArriba)}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="tipo-label">Carpeta</span>
+                        <div class="medidas-grid" style="grid-template-columns:minmax(0, 220px)">
+                            ${campoMedida('alturaCarpeta', 'Altura de la carpeta (cm)', d.alturaCarpeta)}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="tipo-label">Armadura principal del nervio</span>
+                        <span class="sub-label">Por nervio <small>· abajo, apoyada en el estribo</small></span>
+                        ${listaBarrasHTML(card, 'barrasNervio')}
+                    </div>
+                    ${camposEstribo(d)}
+                    <div>
+                        <span class="tipo-label">Referencias</span>
+                        <div class="medidas-grid">
+                            ${campoTexto('referenciaX', 'Referencia X', d.referenciaX, 'Ej: Calle Mitre')}
+                            ${campoTexto('referenciaY', 'Referencia Y', d.referenciaY, 'Ej: Calle Tango')}
+                        </div>
+                    </div>
+                    ${campoComentario(d)}
+                `;
+                escucharTipoLosa();
+                escucharListasBarras(card, contenedor);
+                escucharMedidas(card, contenedor);
+                return;
+            }
 
             // Losa RAP: separación y medidas de las viguetas.
             if (tipoLosa === 'rap') {
@@ -2477,8 +2876,9 @@
                     </div>
                     <div>
                         <span class="tipo-label">Ladrillos</span>
-                        <div class="medidas-grid" style="grid-template-columns:minmax(0, 220px)">
+                        <div class="medidas-grid">
                             ${campoMedida('anchoLadrillo', 'Ancho del ladrillo (cm)', d.anchoLadrillo)}
+                            ${campoMedida('alturaLadrillo', 'Altura del ladrillo (cm)', d.alturaLadrillo)}
                         </div>
                     </div>
                     <div>
@@ -2976,6 +3376,7 @@
         'barras', 'barrasX', 'barrasY',
         'barrasSuperior', 'barrasInferior', 'barrasCamadas', 'barrasPiel',
         'barrasVigueta', 'barrasSuperiorVigueta', 'barrasTransversalRap',
+        'barrasNervio',
         ...LISTAS_MALLA,
     ];
 
@@ -3487,8 +3888,15 @@
                 // barra: círculo con su diámetro real.
                 entidades.push({ e: 'circulo', capa, c, r });
             } else if (etiqueta === 'polygon') {
-                const v = el.getAttribute('points').trim().split(/\s+/)
-                    .map(par => par.split(',').map(Number)).map(([x, y]) => P({ x, y }));
+                const puntos = el.getAttribute('points').trim().split(/\s+/)
+                    .map(par => par.split(',').map(Number)).map(([x, y]) => ({ x, y }));
+                // data-dxf="contorno": sólo el borde (p. ej. los casetones),
+                // sin el relleno.
+                if (el.dataset.dxf === 'contorno') {
+                    puntos.forEach((p, j) => linea(capa, p, puntos[(j + 1) % puntos.length], tipo));
+                    return;
+                }
+                const v = puntos.map(P);
                 if (v.length >= 3) entidades.push({ e: 'solido', capa, v: [v[0], v[1], v[2], v[3] ?? v[2]] });
             } else if (etiqueta === 'text') {
                 const texto = el.textContent.trim();
