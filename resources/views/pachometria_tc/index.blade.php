@@ -1925,7 +1925,7 @@
             rap.barras.length && textoArmaduraVigueta(distribuirArmaduraVigueta(rap.barras)),
             rap.superior.length && `Sobre vigueta: ${barras(rap.superior)} por vigueta`,
             rap.transversal.length && `Transversal: ${barras(rap.transversal)}`,
-            rap.carpeta !== null && `Carpeta ${cm(rap.carpeta)}`,
+            rap.carpeta !== null && `Capa de compresión ${cm(rap.carpeta)}`,
         ].filter(Boolean).map(r => `<div>${r}</div>`);
         const mallas = textoMallasRap('X', rap.mallaX) + textoMallasRap('Y', rap.mallaY);
         if (! renglones.length && ! mallas) return '';
@@ -1964,6 +1964,9 @@
             separacionArriba: positiva('separacionArriba'),
             carpeta: positiva('alturaCarpeta'),
             barras: leerBarras(card.barrasNervio), // armadura principal, por nervio
+            negativo: leerBarras(card.barrasNegativoNervio), // arriba, por nervio
+            mallaX: leerMallas(card.casetonMallaX),
+            mallaY: leerMallas(card.casetonMallaY),
             estribo: positiva('estribo'),          // Ø en mm
             separacionEstribo: positiva('separacion'),
             recubrimientoMm: positiva('recubrimiento'),
@@ -1980,7 +1983,8 @@
        verticales si el nervio es recto) y arriba de la carpeta, donde
        van las patitas. Las barras principales van abajo, apoyadas en el
        estribo, repartidas a lo ancho; si no entran en una fila, en
-       varias hacia arriba. Sin recubrimiento cargado se toman 2 cm. */
+       varias hacia arriba. Las negativas, igual pero en la parte de
+       arriba del nervio, debajo de la capa de compresión, y hacia abajo. Sin recubrimiento cargado se toman 2 cm. */
     function armaduraNervio(geo, losa) {
         const rec = (losa.recubrimientoMm ?? 20) / 10;
         const e = (losa.estribo ?? 0) / 10;
@@ -2003,24 +2007,32 @@
                 diametro: losa.estribo,
             }
             : null;
-        const diametros = losa.barras.flatMap(b => Array(b.cantidad).fill(b.diametro)).sort((a, b) => b - a);
-        const barras = [];
-        if (diametros.length) {
+        // Filas de barras entre las patas del estribo: la primera a la
+        // altura que da primera(Ø mayor) y las siguientes hacia adentro
+        // del nervio (sentido 1: hacia arriba; -1: hacia abajo).
+        const repartir = (lista, primera, sentido) => {
+            const diametros = lista.flatMap(b => Array(b.cantidad).fill(b.diametro)).sort((a, b) => b - a);
+            const posiciones = [];
+            if (! diametros.length) return posiciones;
             const mayor = Math.max(...diametros) / 10;
-            // Entre las patas del estribo, a la altura de la primera fila.
-            const util = Math.max(0, 2 * (pata(rec + e + mayor / 2) - e / 2) - mayor);
+            const yPrimera = primera(mayor);
+            const util = Math.max(0, 2 * (pata(yPrimera) - e / 2) - mayor);
             const paso = mayor * 1.5; // cm entre centros, como mínimo
             const porFila = Math.max(1, Math.floor(util / paso) + 1);
             for (let f = 0; f * porFila < diametros.length; f++) {
                 const fila = diametros.slice(f * porFila, (f + 1) * porFila);
-                const y = rec + e + mayor / 2 + f * paso;
+                const y = yPrimera + sentido * f * paso;
                 fila.forEach((diametro, i) => {
                     const x = fila.length === 1 ? 0 : -util / 2 + i * util / (fila.length - 1);
-                    barras.push({ x, y, diametro });
+                    posiciones.push({ x, y, diametro });
                 });
             }
-        }
-        return { estribo, barras };
+            return posiciones;
+        };
+        const barras = repartir(losa.barras, mayor => rec + e + mayor / 2, 1);
+        // Las negativas, arriba del nervio, justo debajo de la capa de compresión.
+        const negativos = repartir(losa.negativo, mayor => geo.alto - mayor / 2, -1);
+        return { estribo, barras, negativos };
     }
 
     // Geometría para dibujar: lo cargado o, si falta, el detalle típico.
@@ -2089,6 +2101,15 @@
         // del centro: el ancho del nervio y la separación libre de abajo.
         // A la derecha, lo mismo en la otra dirección. Dentro del casetón
         // del centro, la separación de arriba (el fondo del casetón).
+        // Armadura negativa: a lo largo de cada nervio, en las dos
+        // direcciones, en rojo y a trazos (como la negativa de la maciza).
+        const negativos = armaduraNervio(geo, losa).negativos;
+        const negativosSvg = ejesNerviosCasetonado(geo).filter(c => c > 0 && c < ventana).map(c => negativos.map(b => {
+            const estilo = `stroke="${COLOR_NEGATIVA}" stroke-width="${grosorBarraLosa(b, escala, 1.2)}" stroke-dasharray="6 3" data-dxf="barra"`;
+            return `<line x1="${X(c + b.x)}" y1="${y0}" x2="${X(c + b.x)}" y2="${y0 + S}" ${estilo}></line>
+                <line x1="${x0}" y1="${Y(c + b.x)}" x2="${x0 + S}" y2="${Y(c + b.x)}" ${estilo}></line>`;
+        }).join('')).join('');
+
         const [, [xa, xb]] = tramos;
         const yc = y0 - 6;
         const tramoArriba = (xi, xf, texto, centrado) => `
@@ -2127,6 +2148,7 @@
                     <text x="8" y="14" ${ESTILO_TITULO_VISTA}>Planta</text>
                     <rect x="${x0}" y="${y0}" width="${S}" height="${S}" fill="#e9edf2"></rect>
                     ${casetones}
+                    ${negativosSvg}
                     <rect x="${x0}" y="${y0}" width="${S}" height="${S}" fill="none" stroke="#445060" stroke-width="1.5" stroke-dasharray="6 3"></rect>
                     ${lineaCorteLosa(x0, y0, S)}
                     ${cota}
@@ -2181,6 +2203,21 @@
             armaduraSvg += armadura.barras
                 .map(b => `<circle cx="${X(c + b.x)}" cy="${Y(b.y)}" r="${radioBarraLosa(b, escala)}" fill="${COLOR_ESTRIBO}"></circle>`)
                 .join('');
+            armaduraSvg += armadura.negativos
+                .map(b => `<circle cx="${X(c + b.x)}" cy="${Y(b.y)}" r="${radioBarraLosa(b, escala)}" fill="${COLOR_NEGATIVA}"></circle>`)
+                .join('');
+        });
+
+        // Malla de la capa de compresión, a media altura, como en la RAP:
+        // las barras en X a lo largo (una línea, del grosor de la más
+        // gruesa) y las en Y de punta, debajo.
+        const yMalla = Y(espesor - geo.capa / 2);
+        const g = losa.mallaX.length ? Math.max(...losa.mallaX.map(m => grosorBarraLosa(m, escala, 1.5))) : 0;
+        let mallaSvg = g ? `<line x1="${x0}" y1="${yMalla}" x2="${x0 + W}" y2="${yMalla}" stroke="${COLOR_ESTRIBO}" stroke-width="${g}" data-dxf="barra"></line>` : '';
+        const radio = m => radioBarraLosa(m, escala);
+        barrasDireccion(losa.mallaY, false, m => 2 * radio(m) / escala, ventana).forEach(({ malla, posiciones, desplazamiento }) => {
+            const r = radio(malla);
+            mallaSvg += posiciones.map(p => `<circle cx="${X(p + desplazamiento)}" cy="${yMalla + g / 2 + r}" r="${r}" fill="${COLOR_ESTRIBO}"></circle>`).join('');
         });
 
         // Cotas, sólo de lo cargado, sobre el nervio y el casetón del
@@ -2215,6 +2252,17 @@
                 <line x1="${xc - 5}" y1="${Y(geo.alto)}" x2="${xc + 5}" y2="${Y(geo.alto)}" ${ESTILO_COTA}></line>
                 <text x="${xc - 8}" y="${(y0 + Y(geo.alto)) / 2 + 4}" text-anchor="end" ${ESTILO_TEXTO_COTA}>${formatearMedida(geo.capa)}</text>`;
         }
+        // Separación de la malla en Y (la primera cargada), sobre el corte.
+        const psMallaY = losa.mallaY.length ? posicionesMalla(losa.mallaY[0], false, ventana) : [];
+        if (psMallaY.length >= 2) {
+            const [xa, xb] = [X(psMallaY[0]), X(psMallaY[1])];
+            const yc = y0 - 6;
+            cotas += `
+                <line x1="${xa}" y1="${yc}" x2="${xb}" y2="${yc}" ${ESTILO_COTA}></line>
+                <line x1="${xa}" y1="${yc - 3}" x2="${xa}" y2="${yc + 3}" ${ESTILO_COTA}></line>
+                <line x1="${xb}" y1="${yc - 3}" x2="${xb}" y2="${yc + 3}" ${ESTILO_COTA}></line>
+                <text x="${xb + 5}" y="${yc + 3.5}" ${ESTILO_TEXTO_LOSA}>c/${Number(losa.mallaY[0].separacion.toFixed(2))}</text>`;
+        }
         const hayCotasAbajo = losa.anchoNervio !== null || losa.separacionAbajo !== null;
 
         return `<svg viewBox="0 0 320 ${Math.ceil(hayCotasAbajo ? yCotas + 18 : y0 + h + 14)}" data-escala="${escala}" aria-label="Corte A-A de la losa casetonada">
@@ -2223,6 +2271,7 @@
                     <path d="M ${trazo(perfil)}" fill="none" stroke="#445060" stroke-width="1.5" stroke-linejoin="round"></path>
                     <line x1="${x0}" y1="${y0}" x2="${x0 + W}" y2="${y0}" stroke="#445060" stroke-width="2"></line>
                     <line x1="${x0}" y1="${Y(geo.alto)}" x2="${x0 + W}" y2="${Y(geo.alto)}" stroke="#445060" stroke-width="0.6" stroke-dasharray="4 3"></line>
+                    ${mallaSvg}
                     ${armaduraSvg}
                     ${quiebreCorteLosa(x0, y0, hCapa)}
                     ${quiebreCorteLosa(x0 + W, y0, hCapa)}
@@ -2249,8 +2298,9 @@
         const renglones = [
             nervio.length && `Nervio ${nervio.join(' × ')}${forma}`,
             separaciones.length && `Separación libre entre nervios: ${separaciones.join(', ')}`,
-            losa.carpeta !== null && `Carpeta ${cm(losa.carpeta)}`,
+            losa.carpeta !== null && `Capa de compresión ${cm(losa.carpeta)}`,
             losa.barras.length && `Armadura del nervio: ${losa.barras.map(b => `${b.cantidad} Ø${Number(b.diametro.toFixed(2))}mm`).join(' + ')}`,
+            losa.negativo.length && `<span style="color:${COLOR_NEGATIVA}">Negativa del nervio: ${losa.negativo.map(b => `${b.cantidad} Ø${Number(b.diametro.toFixed(2))}mm`).join(' + ')}</span>`,
             (losa.estribo !== null || losa.separacionEstribo !== null) && [
                 'Est.',
                 losa.estribo !== null && `Ø${Number(losa.estribo.toFixed(2))}mm`,
@@ -2258,7 +2308,9 @@
             ].filter(Boolean).join(' '),
             losa.recubrimientoMm !== null && `Rec. ${Number(losa.recubrimientoMm.toFixed(2))}mm`,
         ].filter(Boolean).map(r => `<div>${r}</div>`);
-        return renglones.length ? `<div class="lienzo-leyenda">${renglones.join('')}</div>` : '';
+        const mallas = textoMallasRap('X', losa.mallaX) + textoMallasRap('Y', losa.mallaY);
+        if (! renglones.length && ! mallas) return '';
+        return `<div class="lienzo-leyenda">${renglones.join('')}${mallas}</div>`;
     }
 
     /* Altura total de la viga. Con losas, la altura cargada puede
@@ -2625,7 +2677,7 @@
        el resto, cantidad y Ø. */
     const LISTAS_PIEL = ['barrasPiel'];
     const LISTAS_CAMADA = ['barrasCamadas']; // cantidad, Ø y altura
-    const LISTAS_MALLA = ['losaInfX', 'losaInfY', 'losaNegX', 'losaNegY', 'rapMallaX', 'rapMallaY']; // losa: Ø y separación
+    const LISTAS_MALLA = ['losaInfX', 'losaInfY', 'losaNegX', 'losaNegY', 'rapMallaX', 'rapMallaY', 'casetonMallaX', 'casetonMallaY']; // losa: Ø y separación
 
     function filaVacia(clave) {
         if (LISTAS_CAMADA.includes(clave)) return { cantidad: '', diametro: '', altura: '' };
@@ -2811,22 +2863,28 @@
                             ${campoMedida('anchoNervio', 'Ancho del nervio (cm) · abajo', d.anchoNervio)}
                             ${campoMedida('alturaNervio', 'Altura del nervio (cm)', d.alturaNervio)}
                         </div>
-                        <span class="sub-label">Separación libre entre nervios <small>· iguales: nervio recto; arriba menor: inclinado</small></span>
+                        <span class="sub-label">Separación libre entre nervios <small>· arriba: contra la capa de compresión · iguales: nervio recto; arriba menor: inclinado</small></span>
                         <div class="medidas-grid">
                             ${campoMedida('separacionAbajo', 'Abajo (cm)', d.separacionAbajo)}
-                            ${campoMedida('separacionArriba', 'Arriba (cm) · contra la carpeta', d.separacionArriba)}
+                            ${campoMedida('separacionArriba', 'Arriba (cm)', d.separacionArriba)}
                         </div>
                     </div>
                     <div>
-                        <span class="tipo-label">Carpeta</span>
+                        <span class="tipo-label">Capa de compresión</span>
                         <div class="medidas-grid" style="grid-template-columns:minmax(0, 220px)">
-                            ${campoMedida('alturaCarpeta', 'Altura de la carpeta (cm)', d.alturaCarpeta)}
+                            ${campoMedida('alturaCarpeta', 'Altura de la capa de compresión (cm)', d.alturaCarpeta)}
                         </div>
+                        <span class="sub-label">Malla dirección X <small>· barras paralelas al eje X</small></span>
+                        ${listaBarrasHTML(card, 'casetonMallaX')}
+                        <span class="sub-label">Malla dirección Y <small>· barras paralelas al eje Y</small></span>
+                        ${listaBarrasHTML(card, 'casetonMallaY')}
                     </div>
                     <div>
                         <span class="tipo-label">Armadura principal del nervio</span>
                         <span class="sub-label">Por nervio <small>· abajo, apoyada en el estribo</small></span>
                         ${listaBarrasHTML(card, 'barrasNervio')}
+                        <span class="sub-label">Armadura negativa del nervio <small>· por nervio, arriba del nervio, debajo de la capa de compresión</small></span>
+                        ${listaBarrasHTML(card, 'barrasNegativoNervio')}
                     </div>
                     ${camposEstribo(d)}
                     <div>
@@ -2882,9 +2940,9 @@
                         </div>
                     </div>
                     <div>
-                        <span class="tipo-label">Carpeta</span>
+                        <span class="tipo-label">Capa de compresión</span>
                         <div class="medidas-grid" style="grid-template-columns:minmax(0, 220px)">
-                            ${campoMedida('alturaCarpeta', 'Altura de la carpeta (cm)', d.alturaCarpeta)}
+                            ${campoMedida('alturaCarpeta', 'Altura de la capa de compresión (cm)', d.alturaCarpeta)}
                         </div>
                         <span class="sub-label">Malla dirección X <small>· barras paralelas al eje X</small></span>
                         ${listaBarrasHTML(card, 'rapMallaX')}
@@ -3376,7 +3434,7 @@
         'barras', 'barrasX', 'barrasY',
         'barrasSuperior', 'barrasInferior', 'barrasCamadas', 'barrasPiel',
         'barrasVigueta', 'barrasSuperiorVigueta', 'barrasTransversalRap',
-        'barrasNervio',
+        'barrasNervio', 'barrasNegativoNervio',
         ...LISTAS_MALLA,
     ];
 

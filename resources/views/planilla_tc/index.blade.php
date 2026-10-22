@@ -415,8 +415,8 @@
         },
         resistividad: {
             titulo: datos => `Reporte de Resistividad — ${datos.obra || ''}`,
-            columnas: ['Nivel', 'Elemento', 'Identificación', 'Resistividad (kΩ·cm)'],
-            fila: p => [p.nivel, p.elemento, p.identificacion, p.resistividad],
+            columnas: ['Nivel', 'Elemento', 'Identificación', 'Resistividad (kΩ·cm)', 'Velocidad de corrosión', 'Riesgo'],
+            fila: p => [p.nivel, p.elemento, p.identificacion, p.resistividad, p.velocidad_corrosion, p.riesgo],
             prefijoArchivo: 'reporte-resistividad',
         },
     };

@@ -311,6 +311,9 @@ class PlanillaTcController extends Controller
                     'ancho' => $detalle->ancho,
                     'espesores' => $detalle->espesores,
                     'profundidades' => $detalle->profundidades,
+                    'dos_lados' => $detalle->dos_lados,
+                    'espesores_b' => $detalle->espesores_b,
+                    'profundidades_b' => $detalle->profundidades_b,
                     'pasante' => $detalle->pasante,
                 ];
             })->values()->all(),
@@ -460,15 +463,24 @@ class PlanillaTcController extends Controller
 
         $puntos = $medicionFisura
             ? $medicionFisura->detalles->values()->map(function ($detalle, $i) {
+                $numero = fn ($valor) => $valor !== null ? number_format((float) $valor, 2, ',', '.') : '-';
+                // Medida por los dos lados: "lado A / lado B".
+                $lados = fn ($a, $b) => $detalle->dos_lados ? $numero($a).' / '.$numero($b) : $numero($a);
+
                 return [
                     'nivel' => $detalle->nivel?->descripcion ?: '-',
                     'identificacion' => 'F'.($i + 1),
                     'elemento' => $detalle->elemento ?: '-',
-                    'ancho' => $detalle->ancho !== null ? number_format((float) $detalle->ancho, 2, ',', '.') : '-',
-                    'promedio_espesor' => $detalle->promedio_espesor !== null ? number_format((float) $detalle->promedio_espesor, 2, ',', '.') : '-',
-                    'promedio_profundidad' => $detalle->promedio_profundidad !== null ? number_format((float) $detalle->promedio_profundidad, 2, ',', '.') : '-',
+                    'ancho' => $numero($detalle->ancho),
+                    'promedio_espesor' => $lados($detalle->promedio_espesor, $detalle->promedio_espesor_b),
+                    'promedio_profundidad' => $lados($detalle->promedio_profundidad, $detalle->promedio_profundidad_b),
                     'pasante' => $detalle->pasante ? 'Sí' : 'No',
-                    'porcentaje_afectado' => $detalle->porcentaje_afectado !== null ? number_format(round((float) $detalle->porcentaje_afectado), 0, '', '.').'%' : '-',
+                    'porcentaje_afectado' => match (true) {
+                        $detalle->porcentaje_afectado === null => '-',
+                        // Más del 99 % de la sección: la fisura atraviesa el elemento.
+                        (float) $detalle->porcentaje_afectado > 99 => 'Pasante',
+                        default => number_format(round((float) $detalle->porcentaje_afectado), 0, '', '.').'%',
+                    },
                 ];
             })
             : collect();
@@ -492,11 +504,17 @@ class PlanillaTcController extends Controller
 
         $puntos = $resistividad
             ? $resistividad->detalles->values()->map(function ($detalle, $i) {
+                $clasificacion = $this->clasificacionResistividad(
+                    $detalle->resistividad_final !== null ? (float) $detalle->resistividad_final : null
+                );
+
                 return [
                     'nivel' => $detalle->nivel?->descripcion ?: '-',
                     'identificacion' => 'R'.($i + 1),
                     'elemento' => $detalle->elemento ?: '-',
                     'resistividad' => $detalle->resistividad_final !== null ? number_format((float) $detalle->resistividad_final, 2, ',', '.') : '-',
+                    'velocidad_corrosion' => $clasificacion['velocidad'],
+                    'riesgo' => $clasificacion['riesgo'],
                 ];
             })
             : collect();
@@ -508,6 +526,21 @@ class PlanillaTcController extends Controller
         ]);
     }
 
+    // Misma clasificación que la planilla de resistividad (kΩ·cm).
+    private function clasificacionResistividad(?float $resistividad): array
+    {
+        if ($resistividad === null) {
+            return ['velocidad' => '-', 'riesgo' => '-'];
+        }
+
+        return match (true) {
+            $resistividad > 20 => ['velocidad' => 'Despreciable', 'riesgo' => 'Concreto muy seco o denso. Corrosión casi nula.'],
+            $resistividad >= 10 => ['velocidad' => 'Baja', 'riesgo' => 'Velocidad de corrosión lenta.'],
+            $resistividad >= 5 => ['velocidad' => 'Moderada a Alta', 'riesgo' => 'Corrosión activa probable si hay humedad y oxígeno.'],
+            default => ['velocidad' => 'Muy Alta', 'riesgo' => 'Corrosión severa y rápida en las armaduras.'],
+        };
+    }
+
     private function compactacionHormigon(?float $velocidad): string
     {
         if ($velocidad === null) {
@@ -517,9 +550,9 @@ class PlanillaTcController extends Controller
         return match (true) {
             $velocidad > 4500 => 'Excelente',
             $velocidad >= 3500 => 'Buena',
-            $velocidad >= 3000 => 'Dudosa',
-            $velocidad >= 2000 => 'Pobre',
-            default => 'Muy pobre',
+            $velocidad >= 3000 => 'Aceptable',
+            $velocidad >= 2000 => 'Mala',
+            default => 'Muy Mala',
         };
     }
 
@@ -821,9 +854,16 @@ class PlanillaTcController extends Controller
             'puntos.*.espesores.*' => 'nullable|numeric',
             'puntos.*.profundidades' => 'array',
             'puntos.*.profundidades.*' => 'nullable|numeric',
+            'puntos.*.dos_lados' => 'nullable|boolean',
+            'puntos.*.espesores_b' => 'array',
+            'puntos.*.espesores_b.*' => 'nullable|numeric',
+            'puntos.*.profundidades_b' => 'array',
+            'puntos.*.profundidades_b.*' => 'nullable|numeric',
             'puntos.*.pasante' => 'nullable|boolean',
             'puntos.*.promedio_espesor' => 'nullable|numeric',
             'puntos.*.promedio_profundidad' => 'nullable|numeric',
+            'puntos.*.promedio_espesor_b' => 'nullable|numeric',
+            'puntos.*.promedio_profundidad_b' => 'nullable|numeric',
             'puntos.*.porcentaje_afectado' => 'nullable|numeric',
         ]);
 
@@ -847,9 +887,14 @@ class PlanillaTcController extends Controller
                     'ancho' => $punto['ancho'] ?? null,
                     'espesores' => $punto['espesores'] ?? [],
                     'profundidades' => $punto['profundidades'] ?? [],
+                    'dos_lados' => $punto['dos_lados'] ?? false,
+                    'espesores_b' => $punto['espesores_b'] ?? [],
+                    'profundidades_b' => $punto['profundidades_b'] ?? [],
                     'pasante' => $punto['pasante'] ?? false,
                     'promedio_espesor' => $punto['promedio_espesor'] ?? null,
                     'promedio_profundidad' => $punto['promedio_profundidad'] ?? null,
+                    'promedio_espesor_b' => $punto['promedio_espesor_b'] ?? null,
+                    'promedio_profundidad_b' => $punto['promedio_profundidad_b'] ?? null,
                     'porcentaje_afectado' => $punto['porcentaje_afectado'] ?? null,
                 ]);
             }

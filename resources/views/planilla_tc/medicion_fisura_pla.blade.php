@@ -244,16 +244,32 @@
         .medida-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .medida-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,111,219,0.1); }
 
-        /* ── FISURA PASANTE ── */
-        .pasante-row {
-            display: flex; align-items: center; gap: 0.55rem;
-            padding: 0.7rem 0.9rem;
+        /* ── MEDIDA POR LOS DOS LADOS ── */
+        .dos-lados-btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 0.9rem; margin-bottom: 1.1rem;
             background: var(--surface2); border: 1.5px solid var(--border); border-radius: 0.6rem;
-            margin-bottom: 1.1rem;
+            font-size: 0.8rem; font-weight: 600; color: var(--text2); cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
         }
-        .pasante-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
-        .pasante-row label { font-size: 0.82rem; font-weight: 600; color: var(--text2); cursor: pointer; }
-        .pasante-row .pasante-hint { font-size: 0.72rem; color: var(--muted); margin-left: auto; }
+        .dos-lados-btn:hover:not(:disabled) { border-color: var(--accent); }
+        .dos-lados-btn.activo { background: var(--accent-s); border-color: var(--accent); color: var(--accent-b); }
+        .dos-lados-btn:disabled { cursor: default; }
+        .lado-titulo {
+            display: none;
+            font-size: 0.78rem; font-weight: 800; color: var(--accent-b);
+            margin-bottom: 0.6rem;
+        }
+        .punto-card.dos-lados .lado-titulo { display: block; }
+        .lado-b, .resultado-item.resultado-lado-b, .sufijo-lado-a { display: none; }
+        .punto-card.dos-lados .sufijo-lado-a { display: inline; }
+        .punto-card.dos-lados .lado-b { display: block; }
+        .punto-card.dos-lados .resultado-item.resultado-lado-b { display: flex; }
+
+        /* ── FISURA PASANTE (junto a los resultados) ── */
+        .resultado-item.pasante-aviso { display: none; }
+        .resultado-item.pasante-aviso.visible { display: flex; }
+        .pasante-aviso .resultado-valor { color: #c0392b; }
 
         /* ── RESULTADOS DEL PUNTO ── */
         .punto-resultados {
@@ -678,7 +694,6 @@
         card.className = 'punto-card';
         card.dataset.idx = idx;
         const soloLectura = PUEDE_EDITAR ? '' : 'readonly';
-        const deshabilitado = PUEDE_EDITAR ? '' : 'disabled';
         const botonEliminar = PUEDE_EDITAR
             ? `<button type="button" class="punto-delete-btn" title="Eliminar fisura"><i class="fas fa-trash"></i></button>`
             : '';
@@ -707,6 +722,11 @@
                     </div>
                 </div>
 
+                <button type="button" class="dos-lados-btn" ${PUEDE_EDITAR ? '' : 'disabled'}>
+                    <i class="fas fa-exchange-alt"></i> Medida por los dos lados
+                </button>
+
+                <div class="lado-titulo">Lado A</div>
                 <div class="medidas-bloque">
                     <span class="medidas-label">Espesor (3 medidas)</span>
                     <div class="medidas-grid">
@@ -721,24 +741,47 @@
                     </div>
                 </div>
 
-                <div class="pasante-row">
-                    <input type="checkbox" class="punto-pasante-input" id="pasante-${idx}" name="puntos[${idx}][pasante]" ${deshabilitado}>
-                    <label for="pasante-${idx}">Fisura pasante</label>
-                    <span class="pasante-hint">Cambia la fórmula del % de sección afectada</span>
+                <div class="lado-b">
+                    <div class="lado-titulo">Lado B · la misma fisura, del otro lado del elemento</div>
+                    <div class="medidas-bloque">
+                        <span class="medidas-label">Espesor (3 medidas)</span>
+                        <div class="medidas-grid">
+                            ${crearMedidasHTML(idx, 'espesor-b', 3)}
+                        </div>
+                    </div>
+
+                    <div class="medidas-bloque">
+                        <span class="medidas-label">Profundidad (3 medidas)</span>
+                        <div class="medidas-grid">
+                            ${crearMedidasHTML(idx, 'profundidad-b', 3)}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="punto-resultados">
                     <div class="resultado-item">
-                        <span class="resultado-label">Promedio espesor</span>
+                        <span class="resultado-label">Promedio espesor<span class="sufijo-lado-a"> · lado A</span></span>
                         <span class="resultado-valor resultado-promedio-espesor">—</span>
                     </div>
                     <div class="resultado-item">
-                        <span class="resultado-label">Promedio profundidad</span>
+                        <span class="resultado-label">Promedio profundidad<span class="sufijo-lado-a"> · lado A</span></span>
                         <span class="resultado-valor resultado-promedio-profundidad">—</span>
+                    </div>
+                    <div class="resultado-item resultado-lado-b">
+                        <span class="resultado-label">Promedio espesor · lado B</span>
+                        <span class="resultado-valor resultado-promedio-espesor-b">—</span>
+                    </div>
+                    <div class="resultado-item resultado-lado-b">
+                        <span class="resultado-label">Promedio profundidad · lado B</span>
+                        <span class="resultado-valor resultado-promedio-profundidad-b">—</span>
                     </div>
                     <div class="resultado-item resultado-final">
                         <span class="resultado-label">% sección afectada</span>
                         <span class="resultado-valor resultado-porcentaje-afectada">—</span>
+                    </div>
+                    <div class="resultado-item pasante-aviso">
+                        <span class="resultado-label">Fisura</span>
+                        <span class="resultado-valor"><i class="fas fa-exclamation-triangle"></i> Pasante</span>
                     </div>
                 </div>
             </div>
@@ -748,7 +791,7 @@
             abrirModalEliminarPunto(card);
         });
 
-        card.querySelectorAll('.espesor-input, .profundidad-input, .punto-ancho-input').forEach(function (input) {
+        card.querySelectorAll('.espesor-input, .profundidad-input, .espesor-b-input, .profundidad-b-input, .punto-ancho-input').forEach(function (input) {
             input.addEventListener('input', function () {
                 actualizarIncompletos(card);
                 recalcularPunto(card);
@@ -756,7 +799,9 @@
             });
         });
 
-        card.querySelector('.punto-pasante-input').addEventListener('change', function () {
+        card.querySelector('.dos-lados-btn').addEventListener('click', function () {
+            fijarDosLados(card, ! card.classList.contains('dos-lados'));
+            actualizarIncompletos(card);
             recalcularPunto(card);
             programarGuardado();
         });
@@ -776,18 +821,28 @@
        ancho del elemento y cada medida de espesor/profundidad. */
     function actualizarIncompletos(card) {
         card.querySelectorAll(
-            '.punto-elemento-input, .punto-nivel-input, .punto-ancho-input, .espesor-input, .profundidad-input'
+            '.punto-elemento-input, .punto-nivel-input, .punto-ancho-input, .espesor-input, .profundidad-input, .espesor-b-input, .profundidad-b-input'
         ).forEach(function (input) {
             input.classList.toggle('incompleto', input.value.trim() === '');
         });
     }
 
+    /* ─── Medida por los dos lados ─────────────────────────────
+       La misma fisura vista del otro lado del elemento: se cargan
+       también 3 espesores y 3 profundidades del lado B. */
+    function fijarDosLados(card, activo) {
+        card.classList.toggle('dos-lados', activo);
+        card.querySelector('.dos-lados-btn').classList.toggle('activo', activo);
+    }
+
     /* ─── Cálculo de la fisura ────────────────────────────────
        1) Promedio de espesor: media de las 3 medidas cargadas.
        2) Promedio de profundidad: media de las 3 medidas cargadas.
-       3) % sección afectada (siempre contra el ancho del elemento):
-          - Si NO es pasante: promedio profundidad / ancho del elemento.
-          - Si es pasante: (promedio profundidad × 2) / ancho del elemento. */
+       3) % sección afectada: promedio profundidad / ancho del elemento.
+          Medida por los dos lados: se suman los dos lados,
+          (promedio profundidad A + promedio profundidad B) / ancho.
+       4) Es pasante si la sección afectada (calculada con los promedios)
+          llega al 100 %; se indica junto a los resultados. */
     function promediar(valores) {
         return valores.reduce((s, v) => s + v, 0) / valores.length;
     }
@@ -801,31 +856,44 @@
     function recalcularPunto(card) {
         const espesores = leerValores(card, '.espesor-input');
         const profundidades = leerValores(card, '.profundidad-input');
+        const dosLados = card.classList.contains('dos-lados');
+        const espesoresB = dosLados ? leerValores(card, '.espesor-b-input') : [];
+        const profundidadesB = dosLados ? leerValores(card, '.profundidad-b-input') : [];
         const ancho = parseFloat(card.querySelector('.punto-ancho-input').value);
-        const pasante = card.querySelector('.punto-pasante-input').checked;
+        const hayAncho = ! isNaN(ancho) && ancho > 0;
 
-        const elEspesor = card.querySelector('.resultado-promedio-espesor');
-        const elProfundidad = card.querySelector('.resultado-promedio-profundidad');
-        const elPorcentaje = card.querySelector('.resultado-porcentaje-afectada');
+        const promedio = valores => valores.length > 0 ? promediar(valores) : null;
+        const texto = valor => valor !== null ? valor.toFixed(2) : '—';
+        const promedioEspesor = promedio(espesores);
+        const promedioProfundidad = promedio(profundidades);
+        const promedioEspesorB = promedio(espesoresB);
+        const promedioProfundidadB = promedio(profundidadesB);
 
-        const promedioEspesor = espesores.length > 0 ? promediar(espesores) : null;
-        const promedioProfundidad = profundidades.length > 0 ? promediar(profundidades) : null;
+        card.querySelector('.resultado-promedio-espesor').textContent = texto(promedioEspesor);
+        card.querySelector('.resultado-promedio-profundidad').textContent = texto(promedioProfundidad);
+        card.querySelector('.resultado-promedio-espesor-b').textContent = texto(promedioEspesorB);
+        card.querySelector('.resultado-promedio-profundidad-b').textContent = texto(promedioProfundidadB);
 
-        elEspesor.textContent = promedioEspesor !== null ? promedioEspesor.toFixed(2) : '—';
-        elProfundidad.textContent = promedioProfundidad !== null ? promedioProfundidad.toFixed(2) : '—';
-
+        // Por los dos lados se suma lo que penetra cada uno.
         let porcentaje = null;
-        if (promedioProfundidad !== null && ! isNaN(ancho) && ancho > 0) {
-            porcentaje = pasante
-                ? (promedioProfundidad * 2 / ancho) * 100
-                : (promedioProfundidad / ancho) * 100;
+        if (hayAncho && (promedioProfundidad !== null || promedioProfundidadB !== null)) {
+            porcentaje = ((promedioProfundidad ?? 0) + (promedioProfundidadB ?? 0)) / ancho * 100;
         }
-        elPorcentaje.textContent = porcentaje !== null ? porcentaje.toFixed(2) + ' %' : '—';
+        card.querySelector('.resultado-porcentaje-afectada').textContent = porcentaje !== null ? porcentaje.toFixed(2) + ' %' : '—';
 
+        // Con los promedios: la sección afectada (de un lado o la suma de
+        // los dos) llega al 100 %.
+        const pasante = porcentaje !== null && porcentaje >= 100;
+        card.querySelector('.pasante-aviso').classList.toggle('visible', pasante);
+
+        const dato = valor => valor !== null ? valor : '';
         Object.assign(card.dataset, {
-            promedioEspesor: promedioEspesor !== null ? promedioEspesor : '',
-            promedioProfundidad: promedioProfundidad !== null ? promedioProfundidad : '',
-            porcentajeAfectada: porcentaje !== null ? porcentaje : '',
+            pasante: pasante ? '1' : '',
+            promedioEspesor: dato(promedioEspesor),
+            promedioProfundidad: dato(promedioProfundidad),
+            promedioEspesorB: dato(promedioEspesorB),
+            promedioProfundidadB: dato(promedioProfundidadB),
+            porcentajeAfectada: dato(porcentaje),
         });
     }
 
@@ -845,19 +913,24 @@
             card.querySelector('.punto-elemento-input').value = datos.elemento || '';
             card.querySelector('.punto-nivel-input').value = datos.nivel || '';
             card.querySelector('.punto-ancho-input').value = datos.ancho ?? '';
-            card.querySelector('.punto-pasante-input').checked = !! datos.pasante;
             const espesorInputs = card.querySelectorAll('.espesor-input');
             (datos.espesores || []).forEach((valor, i) => {
                 if (espesorInputs[i] && valor !== null && valor !== undefined) {
                     espesorInputs[i].value = valor;
                 }
             });
-            const profundidadInputs = card.querySelectorAll('.profundidad-input');
-            (datos.profundidades || []).forEach((valor, i) => {
-                if (profundidadInputs[i] && valor !== null && valor !== undefined) {
-                    profundidadInputs[i].value = valor;
-                }
-            });
+            const cargar = (selector, valores) => {
+                const inputs = card.querySelectorAll(selector);
+                (valores || []).forEach((valor, i) => {
+                    if (inputs[i] && valor !== null && valor !== undefined) {
+                        inputs[i].value = valor;
+                    }
+                });
+            };
+            cargar('.profundidad-input', datos.profundidades);
+            cargar('.espesor-b-input', datos.espesores_b);
+            cargar('.profundidad-b-input', datos.profundidades_b);
+            fijarDosLados(card, !! datos.dos_lados);
         }
         insertarPuntoOrdenado(card);
         recalcularPunto(card);
@@ -906,11 +979,7 @@
 
     function recolectarPuntos() {
         return Array.from(listaPuntos.querySelectorAll('.punto-card')).map(function (card) {
-            const espesores = Array.from(card.querySelectorAll('.espesor-input')).map(function (input) {
-                const valor = parseFloat(input.value);
-                return input.value.trim() === '' || isNaN(valor) ? null : valor;
-            });
-            const profundidades = Array.from(card.querySelectorAll('.profundidad-input')).map(function (input) {
+            const medidas = selector => Array.from(card.querySelectorAll(selector)).map(function (input) {
                 const valor = parseFloat(input.value);
                 return input.value.trim() === '' || isNaN(valor) ? null : valor;
             });
@@ -918,11 +987,16 @@
                 elemento: card.querySelector('.punto-elemento-input').value || null,
                 nivel: card.querySelector('.punto-nivel-input').value || null,
                 ancho: card.querySelector('.punto-ancho-input').value || null,
-                espesores: espesores,
-                profundidades: profundidades,
-                pasante: card.querySelector('.punto-pasante-input').checked,
+                espesores: medidas('.espesor-input'),
+                profundidades: medidas('.profundidad-input'),
+                dos_lados: card.classList.contains('dos-lados'),
+                espesores_b: medidas('.espesor-b-input'),
+                profundidades_b: medidas('.profundidad-b-input'),
+                pasante: card.dataset.pasante === '1',
                 promedio_espesor: card.dataset.promedioEspesor || null,
                 promedio_profundidad: card.dataset.promedioProfundidad || null,
+                promedio_espesor_b: card.dataset.promedioEspesorB || null,
+                promedio_profundidad_b: card.dataset.promedioProfundidadB || null,
                 porcentaje_afectado: card.dataset.porcentajeAfectada || null,
             };
         });

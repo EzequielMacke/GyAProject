@@ -18,15 +18,23 @@ class MedicionFisuraDetalleTc extends Model
         'ancho',
         'espesores',
         'profundidades',
+        'dos_lados',
+        'espesores_b',
+        'profundidades_b',
         'pasante',
         'promedio_espesor',
         'promedio_profundidad',
+        'promedio_espesor_b',
+        'promedio_profundidad_b',
         'porcentaje_afectado',
     ];
 
     protected $casts = [
         'espesores' => 'array',
         'profundidades' => 'array',
+        'dos_lados' => 'boolean',
+        'espesores_b' => 'array',
+        'profundidades_b' => 'array',
         'pasante' => 'boolean',
     ];
 
