@@ -244,9 +244,9 @@
                 Se calcula el promedio de espesor y el promedio de profundidad, y el % de sección afectada. Si la fisura se 
                 marca como pasante, ese % se multiplica por 2.
 
-                En cuanto a la planilla de cloruros, permite cargar el recubrimiento y 4 mediciones de espesor
-                afectado por cloruros de cada punto. Se calcula el espesor afectado promedio y el % afectado
-                (espesor promedio / recubrimiento x 100).
+                En cuanto a la planilla de cloruros, cada punto se ensaya con 3 perforaciones: de cada una se carga
+                la profundidad, el peso del polvo recogido y el % de cloruros (% Cl) que informa el laboratorio.
+                El reporte muestra, por punto ensayado, las 3 perforaciones y un grafico de barras horizontal.
 
                 En cuanto a la planilla de resistividad, permite cargar 4 lecturas del equipo (kΩ·cm) y la temperatura
                 del hormigon de cada punto. Se calcula el promedio de las lecturas y se corrige por temperatura

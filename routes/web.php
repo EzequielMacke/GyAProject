@@ -92,6 +92,16 @@ Route::get('/', [AuthController::class , 'showLoginForm'])->name('welcome');
 Route::post('/login', [AuthController::class , 'login'])->name('login');
 Route::post('/logout', [AuthController::class , 'logout'])->name('logout');
 
+// Token CSRF vigente, para que las planillas guardadas sin conexión puedan
+// subirse al volver la señal aunque la página haya salido del cache
+// (public/js/planilla-offline.js). Indica también si hay sesión iniciada.
+Route::get('/csrf-token', function () {
+    return response()->json([
+        'sesion' => (bool) session('usuario_area_id'),
+        'token' => csrf_token(),
+    ])->header('Cache-Control', 'no-store');
+})->name('csrf_token');
+
 Route::get('/home', function () {
     if (!session('usuario_area_id')) {
         return redirect()->route('welcome');
@@ -513,6 +523,11 @@ Route::middleware('permiso:gal_tc,ver')->group(function () {
 });
 Route::middleware('permiso:pch_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/pachometrias', [PachometriaTcController::class, 'index'])->name('pachometria_tc.index');
+    // Crear o actualizar por uid (también sin conexión): el permiso de
+    // agregar/editar se verifica en el controlador según si ya existe.
+    Route::patch('/trabajo-campo/{obraTc}/pachometrias/uid/{uid}', [PachometriaTcController::class, 'guardarPorUid'])
+        ->where('uid', '[0-9a-fA-F-]{36}')
+        ->name('pachometria_tc.guardar_uid');
 });
 Route::middleware('permiso:pch_tc,agregar')->group(function () {
     Route::post('/trabajo-campo/{obraTc}/pachometrias', [PachometriaTcController::class, 'store'])->name('pachometria_tc.store');
@@ -526,6 +541,9 @@ Route::middleware('permiso:pch_tc,eliminar')->group(function () {
     Route::delete('/trabajo-campo/{obraTc}/pachometrias/{pachometria}', [PachometriaTcController::class, 'destroy'])
         ->where('pachometria', '[0-9]+')
         ->name('pachometria_tc.destroy');
+    Route::delete('/trabajo-campo/{obraTc}/pachometrias/uid/{uid}', [PachometriaTcController::class, 'eliminarPorUid'])
+        ->where('uid', '[0-9a-fA-F-]{36}')
+        ->name('pachometria_tc.eliminar_uid');
 });
 Route::middleware('permiso:ens_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/planillas', [PlanillaTcController::class, 'index'])->name('planilla_tc.index');

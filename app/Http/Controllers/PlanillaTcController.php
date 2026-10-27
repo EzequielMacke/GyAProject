@@ -247,8 +247,7 @@ class PlanillaTcController extends Controller
                 return [
                     'elemento' => $detalle->elemento,
                     'nivel' => $detalle->nivel?->descripcion,
-                    'recubrimiento' => $detalle->recubrimiento,
-                    'espesores' => $detalle->espesores,
+                    'muestras' => $detalle->muestras ?? [],
                 ];
             })->values()->all(),
         ] : null;
@@ -277,8 +276,7 @@ class PlanillaTcController extends Controller
                 return [
                     'elemento' => $detalle->elemento,
                     'nivel' => $detalle->nivel?->descripcion,
-                    'recubrimiento' => $detalle->recubrimiento,
-                    'espesores' => $detalle->espesores,
+                    'muestras' => $detalle->muestras ?? [],
                 ];
             })->values()->all(),
         ] : null;
@@ -431,15 +429,19 @@ class PlanillaTcController extends Controller
 
         $puntos = $cloruros
             ? $cloruros->detalles->values()->map(function ($detalle, $i) {
-                $porcentaje = $detalle->porcentaje_afectado !== null ? round((float) $detalle->porcentaje_afectado, 1) : null;
+                $muestras = collect($detalle->muestras ?? [])->map(function ($muestra) {
+                    return [
+                        'profundidad' => isset($muestra['profundidad']) ? (float) $muestra['profundidad'] : null,
+                        'peso' => isset($muestra['peso']) ? (float) $muestra['peso'] : null,
+                        'cloruro' => isset($muestra['cloruro']) ? (float) $muestra['cloruro'] : null,
+                    ];
+                })->values();
 
                 return [
                     'nivel' => $detalle->nivel?->descripcion ?: '-',
                     'identificacion' => 'CL'.($i + 1),
                     'elemento' => $detalle->elemento ?: '-',
-                    'recubrimiento' => $detalle->recubrimiento !== null ? number_format((float) $detalle->recubrimiento, 2, ',', '.') : '-',
-                    'espesor_cloruros' => $detalle->espesor_cloruros !== null ? number_format((float) $detalle->espesor_cloruros, 2, ',', '.') : '-',
-                    'porcentaje_afectado' => $porcentaje !== null ? number_format($porcentaje, 1, ',', '.').'%' : '-',
+                    'muestras' => $muestras,
                 ];
             })
             : collect();
@@ -646,6 +648,10 @@ class PlanillaTcController extends Controller
             return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
         }
 
+        if (! $this->puedeCrearSiNoExiste(EsclerometriaTc::class, $obraTc)) {
+            return response()->json(['message' => 'No tenés permiso para agregar planillas.'], 403);
+        }
+
         $data = $request->validate([
             'fecha' => 'required|date',
             'lectura_inicial_yunque' => 'nullable|numeric',
@@ -704,6 +710,10 @@ class PlanillaTcController extends Controller
             return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
         }
 
+        if (! $this->puedeCrearSiNoExiste(UltrasonidoIndirectoTc::class, $obraTc)) {
+            return response()->json(['message' => 'No tenés permiso para agregar planillas.'], 403);
+        }
+
         $data = $request->validate([
             'fecha' => 'required|date',
             'puntos' => 'array',
@@ -752,6 +762,10 @@ class PlanillaTcController extends Controller
             return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
         }
 
+        if (! $this->puedeCrearSiNoExiste(CarbonatacionTc::class, $obraTc)) {
+            return response()->json(['message' => 'No tenés permiso para agregar planillas.'], 403);
+        }
+
         $data = $request->validate([
             'fecha' => 'required|date',
             'puntos' => 'array',
@@ -798,16 +812,19 @@ class PlanillaTcController extends Controller
             return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
         }
 
+        if (! $this->puedeCrearSiNoExiste(ClorurosTc::class, $obraTc)) {
+            return response()->json(['message' => 'No tenés permiso para agregar planillas.'], 403);
+        }
+
         $data = $request->validate([
             'fecha' => 'required|date',
             'puntos' => 'array',
             'puntos.*.elemento' => 'nullable|string|max:255',
             'puntos.*.nivel' => 'nullable|string|max:255',
-            'puntos.*.recubrimiento' => 'nullable|numeric',
-            'puntos.*.espesores' => 'array',
-            'puntos.*.espesores.*' => 'nullable|numeric',
-            'puntos.*.espesor_cloruros' => 'nullable|numeric',
-            'puntos.*.porcentaje_afectado' => 'nullable|numeric',
+            'puntos.*.muestras' => 'array|max:3',
+            'puntos.*.muestras.*.profundidad' => 'nullable|numeric|min:0',
+            'puntos.*.muestras.*.peso' => 'nullable|numeric|min:0',
+            'puntos.*.muestras.*.cloruro' => 'nullable|numeric|min:0',
         ]);
 
         $usuarioId = session('usuario_id');
@@ -827,10 +844,11 @@ class PlanillaTcController extends Controller
                 $cloruros->detalles()->create([
                     'elemento' => $punto['elemento'] ?? null,
                     'nivel_pla_tc_id' => $this->resolverNivelId($obraTc, $punto['nivel'] ?? null),
-                    'recubrimiento' => $punto['recubrimiento'] ?? null,
-                    'espesores' => $punto['espesores'] ?? [],
-                    'espesor_cloruros' => $punto['espesor_cloruros'] ?? null,
-                    'porcentaje_afectado' => $punto['porcentaje_afectado'] ?? null,
+                    'muestras' => collect($punto['muestras'] ?? [])->map(fn ($muestra) => [
+                        'profundidad' => $muestra['profundidad'] ?? null,
+                        'peso' => $muestra['peso'] ?? null,
+                        'cloruro' => $muestra['cloruro'] ?? null,
+                    ])->values()->all(),
                 ]);
             }
         });
@@ -842,6 +860,10 @@ class PlanillaTcController extends Controller
     {
         if (! $this->tieneAccesoAObra($obraTc)) {
             return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        if (! $this->puedeCrearSiNoExiste(MedicionFisuraTc::class, $obraTc)) {
+            return response()->json(['message' => 'No tenés permiso para agregar planillas.'], 403);
         }
 
         $data = $request->validate([
@@ -907,6 +929,10 @@ class PlanillaTcController extends Controller
     {
         if (! $this->tieneAccesoAObra($obraTc)) {
             return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        if (! $this->puedeCrearSiNoExiste(ResistividadTc::class, $obraTc)) {
+            return response()->json(['message' => 'No tenés permiso para agregar planillas.'], 403);
         }
 
         $data = $request->validate([
@@ -1017,6 +1043,16 @@ class PlanillaTcController extends Controller
         ResistividadTc::where('obra_tc_id', $obraTc->id)->delete();
 
         return response()->json(['ok' => true]);
+    }
+
+    /* El guardado hace updateOrCreate: si la planilla todavía no existe
+       (por ejemplo, se agregó sin conexión y este es su primer guardado),
+       guardar equivale a crearla, así que además de 'editar' (ruta) se
+       exige 'agregar'. */
+    private function puedeCrearSiNoExiste(string $modelo, ObraTc $obraTc): bool
+    {
+        return $modelo::where('obra_tc_id', $obraTc->id)->exists()
+            || app(PermisoService::class)->puede('ens_tc', 'agregar');
     }
 
     private function tieneAccesoAObra(ObraTc $obraTc): bool

@@ -317,6 +317,8 @@
         .estado-guardado.guardando { color: var(--accent-b); }
         .estado-guardado.guardado { color: var(--green); }
         .estado-guardado.error { color: #c0392b; }
+        .estado-guardado.local { color: #b26a00; }
+        .estado-guardado.sesion { color: #b26a00; }
 
         /* ── MOBILE ── */
         @media (max-width: 900px) {
@@ -927,12 +929,16 @@
         guardando: 'fa-circle-notch fa-spin',
         guardado: 'fa-check',
         error: 'fa-triangle-exclamation',
+        local: 'fa-cloud-arrow-up',
+        sesion: 'fa-right-to-bracket',
     };
     const TEXTOS_ESTADO = {
         pendiente: 'Cambios sin guardar',
         guardando: 'Guardando...',
         guardado: 'Guardado',
         error: 'Error al guardar',
+        local: 'Guardado en el dispositivo: se sube al volver la conexión',
+        sesion: 'Guardado en el dispositivo: iniciá sesión para subirlo',
     };
 
     function fijarEstadoGuardado(estado) {
@@ -980,17 +986,10 @@
         };
 
         try {
-            const respuesta = await fetch(URL_GUARDAR, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': CSRF_TOKEN,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-            if (!respuesta.ok) throw new Error('No se pudo guardar');
-            fijarEstadoGuardado('guardado');
+            // Se guarda primero en el dispositivo y después se intenta subir
+            // (public/js/planilla-offline.js): sin conexión no se pierde nada.
+            const estado = await PlanillaOffline.guardar(URL_GUARDAR, payload, { token: CSRF_TOKEN, titulo: document.title });
+            fijarEstadoGuardado(estado);
         } catch (e) {
             fijarEstadoGuardado('error');
         } finally {
@@ -1012,14 +1011,26 @@
     // Precarga la planilla existente, o arranca con un primer punto vacío.
     const datosIniciales = @json($datosResistividad);
 
-    if (datosIniciales && datosIniciales.puntos && datosIniciales.puntos.length > 0) {
-        datosIniciales.puntos.forEach(function (punto) {
-            agregarPunto(punto);
-        });
-    } else {
-        agregarPunto();
-    }
-    fijarEstadoGuardado('guardado');
+    // Si quedó una versión guardada en el dispositivo sin subir, es más
+    // nueva que la del servidor: se usa esa y se intenta subir.
+    PlanillaOffline.cargarInicial(URL_GUARDAR, datosIniciales).then(function ({ datos, pendiente }) {
+        if (datos && datos.puntos && datos.puntos.length > 0) {
+            datos.puntos.forEach(function (punto) {
+                agregarPunto(punto);
+            });
+        } else {
+            agregarPunto();
+        }
+        fijarEstadoGuardado(pendiente ? 'local' : 'guardado');
+        if (pendiente && PUEDE_EDITAR) guardar();
+    });
+
+    // Subidas en segundo plano (al volver la conexión) de esta planilla.
+    window.addEventListener('planilla-offline:estado', function (e) {
+        if (e.detail.url === URL_GUARDAR && ! guardadoEnCurso && ! elEstadoGuardado?.classList.contains('pendiente')) {
+            fijarEstadoGuardado(e.detail.estado);
+        }
+    });
 
     document.getElementById('form-resistividad').addEventListener('submit', function (e) {
         e.preventDefault();

@@ -189,24 +189,33 @@
 
         .punto-datos-grid {
             display: grid;
-            grid-template-columns: 1.6fr 1fr 1fr;
+            grid-template-columns: 1.6fr 1fr;
             gap: 1rem;
             margin-bottom: 1.1rem;
         }
 
-        /* ── MEDICIONES DE ESPESOR ── */
+        /* ── PERFORACIONES ── */
         .mediciones-label {
             font-size: 0.72rem; font-weight: 700; color: var(--text2);
             text-transform: uppercase; letter-spacing: 0.04em;
             margin-bottom: 0.5rem; display: block;
         }
-        .mediciones-grid {
+        .muestras-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.5rem;
+            grid-template-columns: auto repeat(3, 1fr);
+            gap: 0.5rem 0.6rem;
+            align-items: center;
         }
-        .medicion-item { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
-        .medicion-num { font-size: 0.66rem; font-weight: 700; color: var(--muted); }
+        .muestras-col-head { font-size: 0.66rem; font-weight: 700; color: var(--muted); text-align: center; }
+        .muestras-fila-label { font-size: 0.74rem; font-weight: 700; color: var(--text2); white-space: nowrap; }
+
+        /* ── PERFIL DE CLORUROS (vista previa) ── */
+        .perfil-cloruros { display: flex; flex-direction: column; gap: 0.4rem; min-width: 240px; flex: 1; }
+        .perfil-fila { display: grid; grid-template-columns: 4.5rem 1fr 3.8rem; gap: 0.5rem; align-items: center; }
+        .perfil-label { font-size: 0.72rem; font-weight: 600; color: var(--text2); white-space: nowrap; }
+        .perfil-pista { height: 10px; background: var(--surface2); border-radius: 0 4px 4px 0; }
+        .perfil-barra { height: 100%; width: 0; background: var(--accent); border-radius: 0 4px 4px 0; transition: width 0.2s; }
+        .perfil-valor { font-size: 0.75rem; font-weight: 700; color: var(--text); text-align: right; }
         .medicion-input {
             width: 100%; text-align: center;
             font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem;
@@ -298,6 +307,8 @@
         .estado-guardado.guardando { color: var(--accent-b); }
         .estado-guardado.guardado { color: var(--green); }
         .estado-guardado.error { color: #c0392b; }
+        .estado-guardado.local { color: #b26a00; }
+        .estado-guardado.sesion { color: #b26a00; }
 
         /* ── MOBILE ── */
         @media (max-width: 900px) {
@@ -309,7 +320,8 @@
             .ph-title { font-size: 1.3rem; }
             .ph-right { width: 100%; }
             .form-grid { grid-template-columns: 1fr; }
-            .mediciones-grid { grid-template-columns: repeat(2, 1fr); }
+            .muestras-grid { grid-template-columns: auto repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
+            .muestras-fila-label { font-size: 0.68rem; }
         }
     </style>
 </head>
@@ -370,7 +382,7 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label class="form-label" for="input-norma">Norma</label>
-                                <input type="text" id="input-norma" class="form-control" value="RILEM CPC-18" readonly>
+                                <input type="text" id="input-norma" class="form-control" value="ASTM C1152/C1152M" readonly>
                             </div>
                             <div class="form-group">
                                 <label class="form-label" for="input-obra">Obra</label>
@@ -440,7 +452,7 @@
 
 <script>
     const PUEDE_EDITAR = @json($puedeEditar);
-    const CANTIDAD_MEDICIONES = 4;
+    const CANTIDAD_PERFORACIONES = 3;
     const listaPuntos = document.getElementById('puntos-list');
     const emptyPuntos = document.getElementById('empty-puntos');
     const puntosNav = document.getElementById('puntos-nav');
@@ -674,14 +686,33 @@
         }
     }
 
-    function crearMedicionesHTML(idx) {
-        let html = '';
+    function crearMuestrasHTML(idx) {
         const soloLectura = PUEDE_EDITAR ? '' : 'readonly';
-        for (let i = 1; i <= CANTIDAD_MEDICIONES; i++) {
+        let html = `
+            <span></span>
+            <span class="muestras-col-head">Profundidad (mm)</span>
+            <span class="muestras-col-head">Peso muestra (g)</span>
+            <span class="muestras-col-head">Cloruros (% Cl)</span>
+        `;
+        for (let i = 1; i <= CANTIDAD_PERFORACIONES; i++) {
             html += `
-                <div class="medicion-item">
-                    <span class="medicion-num">Medición ${i}</span>
-                    <input type="number" step="any" min="0" class="medicion-input punto-espesor-input" name="puntos[${idx}][espesores][]" inputmode="decimal" ${soloLectura}>
+                <span class="muestras-fila-label">Perf. ${i}</span>
+                <input type="number" step="any" min="0" class="medicion-input muestra-profundidad-input" name="puntos[${idx}][muestras][${i}][profundidad]" inputmode="decimal" ${soloLectura}>
+                <input type="number" step="any" min="0" class="medicion-input muestra-peso-input" name="puntos[${idx}][muestras][${i}][peso]" inputmode="decimal" ${soloLectura}>
+                <input type="number" step="any" min="0" class="medicion-input muestra-cloruro-input" name="puntos[${idx}][muestras][${i}][cloruro]" inputmode="decimal" placeholder="Lab." ${soloLectura}>
+            `;
+        }
+        return html;
+    }
+
+    function crearPerfilHTML() {
+        let html = '';
+        for (let i = 1; i <= CANTIDAD_PERFORACIONES; i++) {
+            html += `
+                <div class="perfil-fila">
+                    <span class="perfil-label">Perf. ${i}</span>
+                    <div class="perfil-pista"><div class="perfil-barra"></div></div>
+                    <span class="perfil-valor">—</span>
                 </div>
             `;
         }
@@ -715,25 +746,21 @@
                         <label class="form-label">Nivel</label>
                         <input type="text" class="form-control punto-nivel-input" name="puntos[${idx}][nivel]" placeholder="Ej: PB, 1° piso..." autocomplete="off" ${soloLectura}>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Recubrimiento (mm)</label>
-                        <input type="number" step="any" min="0" class="form-control punto-recubrimiento-input" name="puntos[${idx}][recubrimiento]" inputmode="decimal" ${soloLectura}>
-                    </div>
                 </div>
                 <div>
-                    <span class="mediciones-label">Espesor afectado por cloruros — ${CANTIDAD_MEDICIONES} mediciones (mm)</span>
-                    <div class="mediciones-grid">
-                        ${crearMedicionesHTML(idx)}
+                    <span class="mediciones-label">Perforaciones — profundidad, peso del polvo y resultado de laboratorio</span>
+                    <div class="muestras-grid">
+                        ${crearMuestrasHTML(idx)}
                     </div>
                 </div>
                 <div class="punto-resultados">
-                    <div class="resultado-item">
-                        <span class="resultado-label">Espesor afectado por cloruros promedio</span>
-                        <span class="resultado-valor resultado-espesor-promedio">—</span>
+                    <div class="perfil-cloruros">
+                        <span class="resultado-label">Contenido de cloruros por perforación</span>
+                        ${crearPerfilHTML()}
                     </div>
                     <div class="resultado-item resultado-final">
-                        <span class="resultado-label">% afectado por cloruros</span>
-                        <span class="resultado-valor resultado-porcentaje-afectado">—</span>
+                        <span class="resultado-label">Cloruros máximo</span>
+                        <span class="resultado-valor resultado-cloruro-maximo">—</span>
                     </div>
                 </div>
             </div>
@@ -748,12 +775,7 @@
             programarGuardado();
         });
 
-        card.querySelector('.punto-recubrimiento-input').addEventListener('input', function () {
-            recalcularPunto(card);
-            programarGuardado();
-        });
-
-        card.querySelectorAll('.punto-espesor-input').forEach(function (input) {
+        card.querySelectorAll('.medicion-input').forEach(function (input) {
             input.addEventListener('input', function () {
                 recalcularPunto(card);
                 programarGuardado();
@@ -775,41 +797,40 @@
         input.classList.toggle('incompleto', input.value.trim() === '');
     }
 
-    /* ─── Cálculo del porcentaje afectado por cloruros ─────
-       1) Espesor afectado por cloruros = promedio de las 4 mediciones cargadas.
-       2) % afectado = (espesor promedio / recubrimiento) × 100. */
+    function leerNumero(input) {
+        const valor = parseFloat(input.value);
+        return input.value.trim() === '' || isNaN(valor) ? null : valor;
+    }
+
+    function formatearNumero(valor, decimales) {
+        return valor.toLocaleString('es-AR', { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
+    }
+
+    /* ─── Perfil de cloruros del punto ──────────────────────────
+       No hay cálculo: el % Cl de cada perforación lo informa el
+       laboratorio. Se marca lo que falta cargar y se dibuja una
+       barra horizontal por perforación, escalada al máximo del
+       punto, para ver el perfil de un vistazo. */
     function recalcularPunto(card) {
-        const inputRecubrimiento = card.querySelector('.punto-recubrimiento-input');
-        const inputsEspesor = Array.from(card.querySelectorAll('.punto-espesor-input'));
-        const elPromedio = card.querySelector('.resultado-espesor-promedio');
-        const elPorcentaje = card.querySelector('.resultado-porcentaje-afectado');
+        card.querySelectorAll('.medicion-input').forEach(inp => inp.classList.toggle('incompleto', inp.value.trim() === ''));
 
-        inputRecubrimiento.classList.toggle('incompleto', inputRecubrimiento.value.trim() === '');
-        inputsEspesor.forEach(inp => inp.classList.toggle('incompleto', inp.value.trim() === ''));
+        const profundidades = Array.from(card.querySelectorAll('.muestra-profundidad-input')).map(leerNumero);
+        const cloruros = Array.from(card.querySelectorAll('.muestra-cloruro-input')).map(leerNumero);
+        const cargados = cloruros.filter(v => v !== null);
+        const maximo = cargados.length > 0 ? Math.max(...cargados) : null;
 
-        const recubrimiento = parseFloat(inputRecubrimiento.value);
-        const espesores = inputsEspesor
-            .map(inp => parseFloat(inp.value))
-            .filter(v => ! isNaN(v));
-        const promedio = espesores.length > 0
-            ? espesores.reduce((s, v) => s + v, 0) / espesores.length
-            : null;
+        card.querySelectorAll('.perfil-fila').forEach(function (fila, i) {
+            const valor = cloruros[i];
+            fila.querySelector('.perfil-label').textContent = profundidades[i] !== null
+                ? `${formatearNumero(profundidades[i], 0)} mm`
+                : `Perf. ${i + 1}`;
+            fila.querySelector('.perfil-barra').style.width = valor !== null && maximo > 0
+                ? `${(valor / maximo) * 100}%`
+                : '0';
+            fila.querySelector('.perfil-valor').textContent = valor !== null ? `${formatearNumero(valor, 2)}%` : '—';
+        });
 
-        elPromedio.textContent = promedio !== null ? promedio.toFixed(2) + ' mm' : '—';
-
-        if (isNaN(recubrimiento) || recubrimiento <= 0 || promedio === null) {
-            elPorcentaje.textContent = '—';
-            Object.assign(card.dataset, {
-                espesorPromedio: promedio !== null ? promedio : '',
-                porcentajeAfectado: '',
-            });
-            return;
-        }
-
-        const porcentaje = (promedio / recubrimiento) * 100;
-        elPorcentaje.textContent = porcentaje.toFixed(1) + '%';
-
-        Object.assign(card.dataset, { espesorPromedio: promedio, porcentajeAfectado: porcentaje });
+        card.querySelector('.resultado-cloruro-maximo').textContent = maximo !== null ? `${formatearNumero(maximo, 2)}% Cl` : '—';
     }
 
     document.getElementById('input-fecha').addEventListener('input', programarGuardado);
@@ -829,12 +850,14 @@
         if (datos) {
             card.querySelector('.punto-elemento-input').value = datos.elemento || '';
             card.querySelector('.punto-nivel-input').value = datos.nivel || '';
-            card.querySelector('.punto-recubrimiento-input').value = datos.recubrimiento ?? '';
-            const espesorInputs = card.querySelectorAll('.punto-espesor-input');
-            (datos.espesores || []).forEach((valor, i) => {
-                if (espesorInputs[i] && valor !== null && valor !== undefined) {
-                    espesorInputs[i].value = valor;
-                }
+            const profundidadInputs = card.querySelectorAll('.muestra-profundidad-input');
+            const pesoInputs = card.querySelectorAll('.muestra-peso-input');
+            const cloruroInputs = card.querySelectorAll('.muestra-cloruro-input');
+            (datos.muestras || []).forEach((muestra, i) => {
+                if (! muestra || ! profundidadInputs[i]) return;
+                profundidadInputs[i].value = muestra.profundidad ?? '';
+                pesoInputs[i].value = muestra.peso ?? '';
+                cloruroInputs[i].value = muestra.cloruro ?? '';
             });
         }
         insertarPuntoOrdenado(card);
@@ -866,12 +889,16 @@
         guardando: 'fa-circle-notch fa-spin',
         guardado: 'fa-check',
         error: 'fa-triangle-exclamation',
+        local: 'fa-cloud-arrow-up',
+        sesion: 'fa-right-to-bracket',
     };
     const TEXTOS_ESTADO = {
         pendiente: 'Cambios sin guardar',
         guardando: 'Guardando...',
         guardado: 'Guardado',
         error: 'Error al guardar',
+        local: 'Guardado en el dispositivo: se sube al volver la conexión',
+        sesion: 'Guardado en el dispositivo: iniciá sesión para subirlo',
     };
 
     function fijarEstadoGuardado(estado) {
@@ -886,13 +913,13 @@
             return {
                 elemento: card.querySelector('.punto-elemento-input').value || null,
                 nivel: card.querySelector('.punto-nivel-input').value || null,
-                recubrimiento: card.querySelector('.punto-recubrimiento-input').value || null,
-                espesores: Array.from(card.querySelectorAll('.punto-espesor-input')).map(function (input) {
-                    const valor = parseFloat(input.value);
-                    return input.value.trim() === '' || isNaN(valor) ? null : valor;
+                muestras: Array.from(card.querySelectorAll('.muestra-profundidad-input')).map(function (input, i) {
+                    return {
+                        profundidad: leerNumero(input),
+                        peso: leerNumero(card.querySelectorAll('.muestra-peso-input')[i]),
+                        cloruro: leerNumero(card.querySelectorAll('.muestra-cloruro-input')[i]),
+                    };
                 }),
-                espesor_cloruros: card.dataset.espesorPromedio || null,
-                porcentaje_afectado: card.dataset.porcentajeAfectado || null,
             };
         });
     }
@@ -915,17 +942,10 @@
         };
 
         try {
-            const respuesta = await fetch(URL_GUARDAR, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': CSRF_TOKEN,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-            if (!respuesta.ok) throw new Error('No se pudo guardar');
-            fijarEstadoGuardado('guardado');
+            // Se guarda primero en el dispositivo y después se intenta subir
+            // (public/js/planilla-offline.js): sin conexión no se pierde nada.
+            const estado = await PlanillaOffline.guardar(URL_GUARDAR, payload, { token: CSRF_TOKEN, titulo: document.title });
+            fijarEstadoGuardado(estado);
         } catch (e) {
             fijarEstadoGuardado('error');
         } finally {
@@ -947,14 +967,26 @@
     // Precarga la planilla existente, o arranca con un primer punto vacío.
     const datosIniciales = @json($datosCloruros ?? null);
 
-    if (datosIniciales && datosIniciales.puntos && datosIniciales.puntos.length > 0) {
-        datosIniciales.puntos.forEach(function (punto) {
-            agregarPunto(punto);
-        });
-    } else {
-        agregarPunto();
-    }
-    fijarEstadoGuardado('guardado');
+    // Si quedó una versión guardada en el dispositivo sin subir, es más
+    // nueva que la del servidor: se usa esa y se intenta subir.
+    PlanillaOffline.cargarInicial(URL_GUARDAR, datosIniciales).then(function ({ datos, pendiente }) {
+        if (datos && datos.puntos && datos.puntos.length > 0) {
+            datos.puntos.forEach(function (punto) {
+                agregarPunto(punto);
+            });
+        } else {
+            agregarPunto();
+        }
+        fijarEstadoGuardado(pendiente ? 'local' : 'guardado');
+        if (pendiente && PUEDE_EDITAR) guardar();
+    });
+
+    // Subidas en segundo plano (al volver la conexión) de esta planilla.
+    window.addEventListener('planilla-offline:estado', function (e) {
+        if (e.detail.url === URL_GUARDAR && ! guardadoEnCurso && ! elEstadoGuardado?.classList.contains('pendiente')) {
+            fijarEstadoGuardado(e.detail.estado);
+        }
+    });
 
     document.getElementById('form-cloruros').addEventListener('submit', function (e) {
         e.preventDefault();

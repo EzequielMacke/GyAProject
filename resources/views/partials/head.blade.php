@@ -8,6 +8,7 @@
         });
     }
 </script>
+<script src="{{ asset('js/planilla-offline.js') }}"></script>
 <link rel="stylesheet" href="{{ asset('vendor/adminlte/dist/css/adminlte.min.css') }}">
 <link rel="stylesheet" href="{{ asset('vendor/fontawesome-free/css/all.min.css') }}">
 <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>

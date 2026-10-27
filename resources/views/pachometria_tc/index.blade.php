@@ -55,6 +55,8 @@
         .estado-guardado.guardando { color: var(--accent-b); }
         .estado-guardado.guardado { color: #1e8e5a; }
         .estado-guardado.error { color: #c0392b; }
+        .estado-guardado.local { color: #b26a00; }
+        .estado-guardado.sesion { color: #b26a00; }
 
         /* ── BUTTONS ── */
         .btn {
@@ -68,6 +70,7 @@
             transition: all 0.14s; white-space: nowrap;
         }
         .btn:hover { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+        .alert-offline { padding: 0.75rem 1rem; border-radius: 0.55rem; font-size: 0.83rem; font-weight: 500; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; background: var(--accent-s); color: var(--accent-b); border: 1px solid #b9d3f5; }
 
         /* ── PANEL ── */
         .panel {
@@ -423,6 +426,9 @@
                             <i class="fas fa-check"></i> <span id="estado-guardado-texto">Guardado</span>
                         </span>
                         @endif
+                        <button type="button" class="btn" id="btn-descargar-offline">
+                            <i class="fas fa-cloud-download-alt"></i> Descargar para trabajar sin conexión
+                        </button>
                         <button type="button" class="btn" id="btn-exportar-pdf">
                             <i class="fas fa-file-pdf"></i> Exportar PDF
                         </button>
@@ -439,6 +445,11 @@
 
         <section class="content">
             <div class="container-fluid">
+
+                <div class="alert-offline" id="alert-descarga-offline" style="display:none">
+                    <i class="fas fa-cloud-download-alt"></i>
+                    <span id="texto-descarga-offline"></span>
+                </div>
 
                 <div class="pach-buscador">
                     <label class="buscador-campo">
@@ -3158,6 +3169,26 @@
         grilla.insertBefore(card, siguiente || btnAgregar);
     }
 
+    // UUID v4. crypto.randomUUID() solo existe en contextos seguros (https),
+    // así que se arma con getRandomValues, que está siempre.
+    function generarUid() {
+        if (crypto.randomUUID) {
+            try { return crypto.randomUUID(); } catch (e) { /* http: se arma a mano */ }
+        }
+        const b = crypto.getRandomValues(new Uint8Array(16));
+        b[6] = (b[6] & 0x0f) | 0x40;
+        b[8] = (b[8] & 0x3f) | 0x80;
+        const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+        return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+    }
+
+    // Mismo formato que la autoría que manda el servidor (d/m/Y H:i).
+    function fechaHoraActual() {
+        const d = new Date();
+        const dos = n => String(n).padStart(2, '0');
+        return `${dos(d.getDate())}/${dos(d.getMonth() + 1)}/${d.getFullYear()} ${dos(d.getHours())}:${dos(d.getMinutes())}`;
+    }
+
     // Quién dibujó la pachometría y cuándo (texto chiquito bajo el tipo).
     // Se guarda también en la tarjeta para el buscador.
     function mostrarAutoria(card, autoria) {
@@ -3177,7 +3208,10 @@
         Object.entries(campos).forEach(([clave, valor]) => {
             if (clave !== 'id' && valor !== null) card.dataset[clave] = valor;
         });
-        if (guardada) card.dataset.id = guardada.id;
+        if (guardada?.id) card.dataset.id = guardada.id;
+        // Identificador de la tarjeta para guardarla (también sin conexión).
+        // Las nuevas lo generan acá; las guardadas traen el suyo.
+        card.dataset.uid = guardada?.uid || card.dataset.uid || generarUid();
         const idx = parseInt(card.dataset.idx, 10) || obtenerSiguienteIdx();
         card.dataset.idx = idx;
         if (card.dataset.numero === undefined) card.dataset.numero = idx;
@@ -3235,7 +3269,9 @@
             </div>
         `;
 
-        mostrarAutoria(card, guardada);
+        // Una tarjeta nueva es de quien la agrega, desde ahora (el servidor
+        // registra lo mismo al subirla, aunque sea más tarde).
+        mostrarAutoria(card, guardada ?? { usuario: NOMBRE_USUARIO_ACTUAL, creado: fechaHoraActual() });
         activarZoom(card);
 
         card.addEventListener('click', function () {
@@ -3417,15 +3453,24 @@
         else contraerTodas();
     });
 
-    /* ─── Guardado en la base ─────────────────────────────────
-       Cada pachometría es una fila (PachometriaTc). Al agregar una
-       tarjeta se crea en el servidor (store) y, con cada modificación,
-       se guarda sola unos instantes después (update), sin botón. Se
-       manda la tarjeta completa: los campos del dataset y las listas
-       de barras. */
+    /* ─── Guardado (también sin conexión) ─────────────────────
+       Cada pachometría es una fila (PachometriaTc) identificada por el uid
+       que genera el dispositivo al agregar la tarjeta. Con cada
+       modificación se guarda sola unos instantes después, por ese uid
+       (guardarPorUid: crea la fila si no existe o la reemplaza), sin botón.
+       Se manda la tarjeta completa: los campos del dataset y las listas
+       de barras.
+
+       El guardado pasa por public/js/planilla-offline.js, igual que las
+       planillas: primero queda en el dispositivo y después se sube. Sin
+       conexión queda pendiente y se sube sola al volver la señal. Como
+       cada tarjeta es una fila propia y solo se sube lo que el usuario
+       modifica, dos personas pueden trabajar a la vez en la misma obra,
+       cada una en sus pachometrías, sin pisarse. */
     const CSRF_TOKEN = @json(csrf_token());
-    const URL_PACHOMETRIAS = @json(route('pachometria_tc.store', $obraTc->id));
+    const URL_UID_BASE = @json(route('pachometria_tc.store', $obraTc->id)) + '/uid/';
     const PACHOMETRIAS_GUARDADAS = @json($pachometrias);
+    const NOMBRE_USUARIO_ACTUAL = @json($nombreUsuarioActual);
     const PUEDE_AGREGAR = @json($puedeAgregar);
     const PUEDE_EDITAR = @json($puedeEditar);
     const PUEDE_ELIMINAR = @json($puedeEliminar);
@@ -3438,7 +3483,8 @@
         ...LISTAS_MALLA,
     ];
 
-    const urlPachometria = id => `${URL_PACHOMETRIAS}/${id}`;
+    const urlTarjeta = card => URL_UID_BASE + card.dataset.uid;
+    const tituloTarjeta = card => `${PREFIJO_NOMBRE}${card.dataset.numero || '?'} — Pachometrías`;
 
     function datosTarjeta(card) {
         const campos = { ...card.dataset };
@@ -3448,77 +3494,51 @@
         return { campos, listas };
     }
 
-    function pedir(url, metodo, cuerpo, keepalive = false) {
-        return fetch(url, {
-            method: metodo,
-            keepalive,
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': CSRF_TOKEN,
-                'Accept': 'application/json',
-            },
-            body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
-        }).then(respuesta => {
-            if (! respuesta.ok) throw new Error(`Error ${respuesta.status}`);
-            return respuesta.status === 204 ? null : respuesta.json();
-        });
-    }
-
-    // Indicador de la cabecera: "Cambios sin guardar", "Guardando...",
-    // "Guardado" o "Error al guardar", según el estado de todas las tarjetas.
+    // Indicador de la cabecera, según el estado de todas las tarjetas.
     const elEstadoGuardado = document.getElementById('estado-guardado');
     const ESTADOS_GUARDADO = {
         pendiente: { icono: 'fa-circle-notch', texto: 'Cambios sin guardar' },
         guardando: { icono: 'fa-circle-notch fa-spin', texto: 'Guardando...' },
         guardado: { icono: 'fa-check', texto: 'Guardado' },
+        local: { icono: 'fa-cloud-arrow-up', texto: 'Guardado en el dispositivo: se sube al volver la conexión' },
+        sesion: { icono: 'fa-right-to-bracket', texto: 'Guardado en el dispositivo: iniciá sesión para subirlo' },
         error: { icono: 'fa-exclamation-triangle', texto: 'Error al guardar' },
     };
+    const PRIORIDAD_ESTADO = ['guardado', 'local', 'sesion', 'error'];
     const tarjetasPendientes = new Set();  // con cambios esperando la demora
+    const estadosPorUrl = new Map();       // tarjetas (o eliminaciones) sin subir: url → estado
     let pedidosEnCurso = 0;
-    let huboError = false;
+    let cargandoTarjetas = true;           // al reconstruirlas no se guarda nada
 
     function actualizarEstadoGuardado() {
         if (! elEstadoGuardado) return;
-        const estado = huboError ? 'error'
-            : pedidosEnCurso ? 'guardando'
+        let peor = 'guardado';
+        estadosPorUrl.forEach(e => {
+            if (PRIORIDAD_ESTADO.indexOf(e) > PRIORIDAD_ESTADO.indexOf(peor)) peor = e;
+        });
+        const estado = pedidosEnCurso ? 'guardando'
             : tarjetasPendientes.size ? 'pendiente'
-            : 'guardado';
+            : peor;
         elEstadoGuardado.className = `estado-guardado ${estado}`;
         elEstadoGuardado.querySelector('i').className = `fas ${ESTADOS_GUARDADO[estado].icono}`;
         document.getElementById('estado-guardado-texto').textContent = ESTADOS_GUARDADO[estado].texto;
     }
 
-    // Envuelve cada pedido para llevar la cuenta de los que están en curso.
-    async function conEstado(promesa) {
-        pedidosEnCurso++;
+    function registrarEstado(url, estado) {
+        const ruta = new URL(url, location.href).pathname;
+        if (estado === 'guardado') estadosPorUrl.delete(ruta);
+        else estadosPorUrl.set(ruta, estado);
         actualizarEstadoGuardado();
-        try {
-            const resultado = await promesa;
-            huboError = false;
-            return resultado;
-        } catch (error) {
-            huboError = true;
-            throw error;
-        } finally {
-            pedidosEnCurso--;
-            actualizarEstadoGuardado();
-        }
     }
 
-    // Tarjeta nueva: se crea en el servidor para tener su id. Los cambios
-    // que se hagan mientras tanto esperan a esta promesa.
-    function crearEnServidor(card) {
-        card.creacion = conEstado(pedir(URL_PACHOMETRIAS, 'POST', { datos: datosTarjeta(card) }))
-            .then(respuesta => {
-                card.dataset.id = respuesta.id;
-                mostrarAutoria(card, respuesta);
-            })
-            .catch(error => console.error('No se pudo crear la pachometría', error));
-        return card.creacion;
-    }
+    // Subidas en segundo plano (al volver la conexión) de esta pantalla.
+    window.addEventListener('planilla-offline:estado', function (e) {
+        const ruta = new URL(e.detail.url, location.href).pathname;
+        if (estadosPorUrl.has(ruta)) registrarEstado(ruta, e.detail.estado);
+    });
 
     function programarGuardado(card) {
-        if (! PUEDE_EDITAR) return;
+        if (! PUEDE_EDITAR || cargandoTarjetas || card.eliminada) return;
         tarjetasPendientes.add(card);
         actualizarEstadoGuardado();
         clearTimeout(card.temporizadorGuardado);
@@ -3529,22 +3549,31 @@
     // se guarda, se vuelve a guardar al terminar (con los datos nuevos).
     async function guardarTarjeta(card) {
         clearTimeout(card.temporizadorGuardado);
+        if (card.eliminada) return;
         if (card.guardando) {
             card.guardarDeNuevo = true;
             return;
         }
         tarjetasPendientes.delete(card);
         card.guardando = true;
+        pedidosEnCurso++;
+        actualizarEstadoGuardado();
+        const url = urlTarjeta(card);
         try {
-            if (card.creacion) await card.creacion;
-            if (! card.dataset.id) throw new Error('La pachometría no se pudo crear en el servidor');
-            await conEstado(pedir(urlPachometria(card.dataset.id), 'PATCH', { datos: datosTarjeta(card) }));
+            // La autoría viaja aparte de "datos": solo sirve para mostrarla
+            // si la tarjeta se reconstruye desde el dispositivo antes de subirse.
+            const estado = await PlanillaOffline.guardar(url, { datos: datosTarjeta(card), autoria: card.autoria }, {
+                token: CSRF_TOKEN,
+                titulo: tituloTarjeta(card),
+            });
+            registrarEstado(url, estado);
         } catch (error) {
             console.error(error);
-            huboError = true;
-            actualizarEstadoGuardado();
+            registrarEstado(url, 'error');
         } finally {
+            pedidosEnCurso--;
             card.guardando = false;
+            actualizarEstadoGuardado();
             if (card.guardarDeNuevo) {
                 card.guardarDeNuevo = false;
                 guardarTarjeta(card);
@@ -3552,44 +3581,141 @@
         }
     }
 
+    // La eliminación también queda pendiente si no hay conexión. Reemplaza
+    // cualquier guardado pendiente de la tarjeta; si nunca llegó a subirse,
+    // el servidor no tiene nada que borrar y la da por eliminada igual.
     async function eliminarEnServidor(card) {
+        card.eliminada = true;
         clearTimeout(card.temporizadorGuardado);
         tarjetasPendientes.delete(card);
+        pedidosEnCurso++;
         actualizarEstadoGuardado();
-        if (card.creacion) await card.creacion;
-        if (! card.dataset.id) return;
+        const url = urlTarjeta(card);
         try {
-            await conEstado(pedir(urlPachometria(card.dataset.id), 'DELETE'));
+            const estado = await PlanillaOffline.guardar(url, null, {
+                metodo: 'DELETE',
+                token: CSRF_TOKEN,
+                titulo: `Eliminar ${tituloTarjeta(card)}`,
+            });
+            registrarEstado(url, estado);
         } catch (error) {
             console.error('No se pudo eliminar la pachometría', error);
+            registrarEstado(url, 'error');
+        } finally {
+            pedidosEnCurso--;
+            actualizarEstadoGuardado();
         }
     }
 
-    // Si se sale de la página con cambios esperando la demora, se mandan
-    // igual (keepalive deja terminar el pedido aunque la página se cierre).
+    // Si se sale de la página con cambios esperando la demora, se guardan
+    // en el dispositivo enseguida (y se suben ahora o al volver la señal).
     window.addEventListener('pagehide', function () {
-        tarjetasPendientes.forEach(card => {
-            if (! card.dataset.id) return;
-            clearTimeout(card.temporizadorGuardado);
-            pedir(urlPachometria(card.dataset.id), 'PATCH', { datos: datosTarjeta(card) }, true).catch(() => {});
-        });
+        tarjetasPendientes.forEach(card => guardarTarjeta(card));
     });
     window.addEventListener('beforeunload', function (e) {
-        if (pedidosEnCurso || [...tarjetasPendientes].some(card => ! card.dataset.id)) {
+        if (tarjetasPendientes.size) {
             e.preventDefault();
             e.returnValue = '';
         }
     });
 
-    // Las pachometrías guardadas se reconstruyen al abrir la página.
-    PACHOMETRIAS_GUARDADAS.forEach(guardada => crearTarjeta(guardada));
+    /* Al abrir la página se reconstruyen las pachometrías guardadas. Si en
+       el dispositivo hay cambios sin subir, son más nuevos que lo que vino
+       del servidor (o del cache): se usan esos. También se agregan las
+       tarjetas creadas sin conexión y se omiten las eliminadas sin
+       conexión. Después se intenta subir lo pendiente. */
+    (async function cargarPachometrias() {
+        const pendientes = await PlanillaOffline.pendientesBajo(URL_UID_BASE);
+        const rutaDe = url => new URL(url, location.href).pathname;
+        const pendientePorRuta = new Map(pendientes.map(r => [rutaDe(r.url), r]));
+        const usadas = new Set();
 
-    // Una tarjeta nueva se abre expandida para elegir el tipo enseguida.
+        PACHOMETRIAS_GUARDADAS.forEach(guardada => {
+            const ruta = guardada.uid ? rutaDe(URL_UID_BASE + guardada.uid) : null;
+            const local = ruta ? pendientePorRuta.get(ruta) : null;
+            if (! local) {
+                crearTarjeta(guardada);
+                return;
+            }
+            usadas.add(ruta);
+            registrarEstado(ruta, 'local');
+            if (local.metodo !== 'DELETE') crearTarjeta({ ...guardada, datos: local.payload?.datos });
+        });
+
+        pendientes.forEach(registro => {
+            const ruta = rutaDe(registro.url);
+            if (usadas.has(ruta)) return;
+            registrarEstado(ruta, 'local');
+            if (registro.metodo === 'DELETE') return;
+            crearTarjeta({
+                uid: ruta.split('/').pop(),
+                datos: registro.payload?.datos,
+                ...(registro.payload?.autoria || {}),
+            });
+        });
+
+        cargandoTarjetas = false;
+        if (pendientes.length) PlanillaOffline.sincronizarTodo();
+    })();
+
+    // Una tarjeta nueva se abre expandida para elegir el tipo enseguida, y
+    // se guarda de una (así queda registrada aunque no se toque nada más).
     btnAgregar.addEventListener('click', function () {
+        if (! PUEDE_AGREGAR) return;
         if (buscador.value) limpiarBusqueda();
         const card = crearTarjeta();
-        crearEnServidor(card);
         expandir(card);
+        guardarTarjeta(card);
+    });
+
+    /* ─── Descargar para trabajar sin conexión ────────────────
+       Igual que en planos y planillas: le pasa las URLs al Service Worker
+       (public/sw.js), que las descarga y guarda en sus caches. Además de
+       esta pantalla, guarda las librerías y fuentes de Exportar PDF (que
+       se cargan recién al exportar), para poder exportar sin señal. */
+    document.getElementById('btn-descargar-offline').addEventListener('click', async function () {
+        if (! ('serviceWorker' in navigator)) {
+            alert('Este navegador no permite guardar páginas para uso sin conexión.');
+            return;
+        }
+
+        const registro = await navigator.serviceWorker.ready;
+        const controlador = registro.active;
+        if (! controlador) {
+            alert('Todavía no está listo el guardado offline. Recargá la página e intentá de nuevo en un momento.');
+            return;
+        }
+
+        const boton = this;
+        const alerta = document.getElementById('alert-descarga-offline');
+        const texto = document.getElementById('texto-descarga-offline');
+        boton.disabled = true;
+        alerta.style.display = 'flex';
+        texto.textContent = 'Descargando pachometrías… 0%';
+
+        const canal = new MessageChannel();
+        canal.port1.onmessage = (event) => {
+            const { listos, fallidos, total, terminado } = event.data;
+            if (! terminado) {
+                texto.textContent = `Descargando pachometrías… ${Math.round((listos + fallidos) / total * 100)}%`;
+                return;
+            }
+            boton.disabled = false;
+            texto.textContent = fallidos === 0
+                ? 'Listo: las pachometrías de esta obra quedaron guardadas para trabajar sin conexión.'
+                : `No se pudieron descargar ${fallidos} de ${total} archivos: probá de nuevo con mejor señal.`;
+            setTimeout(() => { alerta.style.display = 'none'; }, 6000);
+        };
+
+        controlador.postMessage({
+            tipo: 'precachear',
+            paginas: [@json(route('pachometria_tc.index', $obraTc->id))],
+            recursos: [
+                @json(asset('js/planilla-offline.js')),
+                ...LIBRERIAS_PDF,
+                ...Object.values(FUENTES_PDF).map(peso => `${URL_FUENTES_PDF}PlusJakartaSans-${peso}.ttf`),
+            ],
+        }, [canal.port2]);
     });
 
     /* ─── Exportar a PDF ──────────────────────────────────────

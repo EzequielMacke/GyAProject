@@ -15,14 +15,11 @@ class ClorurosDetalleTc extends Model
         'cloruros_tc_id',
         'elemento',
         'nivel_pla_tc_id',
-        'recubrimiento',
-        'espesores',
-        'espesor_cloruros',
-        'porcentaje_afectado',
+        'muestras',
     ];
 
     protected $casts = [
-        'espesores' => 'array',
+        'muestras' => 'array',
     ];
 
     public function cloruros()

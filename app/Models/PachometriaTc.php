@@ -12,6 +12,7 @@ class PachometriaTc extends Model
     protected $table = 'pachometrias_tc';
 
     protected $fillable = [
+        'uid',
         'obra_tc_id',
         'usuario_id',
         'orden',

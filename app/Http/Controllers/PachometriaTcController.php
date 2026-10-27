@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DirectorioTc;
 use App\Models\ObraTc;
 use App\Models\PachometriaTc;
+use App\Models\Usuarios;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 
@@ -24,6 +25,7 @@ class PachometriaTcController extends Controller
             ->get()
             ->map(fn (PachometriaTc $p) => [
                 'id' => $p->id,
+                'uid' => $p->uid,
                 'datos' => $p->datos ?? [],
             ] + $this->autoria($p))
             ->values();
@@ -33,7 +35,67 @@ class PachometriaTcController extends Controller
         $puedeEditar = $permisoService->puede('pch_tc', 'editar');
         $puedeEliminar = $permisoService->puede('pch_tc', 'eliminar');
 
-        return view('pachometria_tc.index', compact('obraTc', 'pachometrias', 'puedeAgregar', 'puedeEditar', 'puedeEliminar'));
+        // Para mostrar la autoría de las tarjetas creadas sin conexión.
+        $usuarioActual = Usuarios::find(session('usuario_id'));
+        $nombreUsuarioActual = $usuarioActual ? ($usuarioActual->nombre_completo ?: $usuarioActual->nombre) : null;
+
+        return view('pachometria_tc.index', compact('obraTc', 'pachometrias', 'puedeAgregar', 'puedeEditar', 'puedeEliminar', 'nombreUsuarioActual'));
+    }
+
+    /* Guardado por uid (lo genera el dispositivo al agregar la tarjeta): crea
+       la pachometría si no existe o la reemplaza si ya existe. Es lo que usa
+       la pantalla, también sin conexión (public/js/planilla-offline.js):
+       como no depende de un id del servidor, una tarjeta creada offline se
+       puede seguir editando y se sube entera al volver la señal, y reenviar
+       el mismo guardado nunca la duplica. Crear exige 'agregar' y modificar
+       exige 'editar'. */
+    public function guardarPorUid(Request $request, ObraTc $obraTc, string $uid)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $pachometria = PachometriaTc::where('uid', $uid)->first();
+
+        if ($pachometria && (int) $pachometria->obra_tc_id !== (int) $obraTc->id) {
+            return response()->json(['message' => 'No tenés acceso a esta pachometría.'], 403);
+        }
+
+        if (! app(PermisoService::class)->puede('pch_tc', $pachometria ? 'editar' : 'agregar')) {
+            return response()->json(['message' => 'No tenés permiso para guardar esta pachometría.'], 403);
+        }
+
+        $columnas = $this->columnas($this->validar($request));
+
+        if ($pachometria) {
+            $pachometria->update($columnas);
+        } else {
+            $pachometria = PachometriaTc::create($columnas + [
+                'uid' => $uid,
+                'obra_tc_id' => $obraTc->id,
+                'usuario_id' => session('usuario_id'),
+            ]);
+        }
+
+        return response()->json(['ok' => true, 'id' => $pachometria->id] + $this->autoria($pachometria));
+    }
+
+    // Eliminar por uid. Si no existe (nunca llegó a subirse) no hay nada que borrar.
+    public function eliminarPorUid(ObraTc $obraTc, string $uid)
+    {
+        if (! $this->tieneAccesoAObra($obraTc)) {
+            return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
+        }
+
+        $pachometria = PachometriaTc::where('uid', $uid)->first();
+
+        if ($pachometria && (int) $pachometria->obra_tc_id !== (int) $obraTc->id) {
+            return response()->json(['message' => 'No tenés acceso a esta pachometría.'], 403);
+        }
+
+        $pachometria?->delete();
+
+        return response()->json(['ok' => true]);
     }
 
     // Se llama apenas se agrega una tarjeta, para tener su id y poder
