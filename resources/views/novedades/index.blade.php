@@ -165,6 +165,112 @@
                 <details class="version-block" open>
                     <summary class="version-header">
                         <div>
+                            <h2 class="version-titulo">Cambios de la versión <span class="version-numero">7.0</span></h2>
+                            <p class="version-fecha">Domingo 1 de octubre de 2026</p>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
+                    </summary>
+
+                    <details class="modulo-card" open>
+                        <summary class="modulo-titulo">
+                            <i class="fas fa-hard-hat modulo-icono"></i> Obra
+                            <span class="modulo-cantidad">1 cambio</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </summary>
+                        <div class="modulo-body">
+                            <div class="grupo-cambios">
+                                <span class="grupo-titulo nuevo">Nuevas funcionalidades</span>
+                                <ul class="lista-cambios">
+                                    <li class="nuevo">Se incorporó el botón <strong>Descargar obra para trabajar sin conexión</strong>, que descarga de una sola vez todos los planos, planillas y pachometrías de la obra. Antes de comenzar se muestra el tamaño aproximado de la descarga. Los botones de descarga de cada sección se mantienen, para descargarlas por separado.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details class="modulo-card" open>
+                        <summary class="modulo-titulo">
+                            <i class="fas fa-drafting-compass modulo-icono"></i> Planos
+                            <span class="modulo-cantidad">9 cambios</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </summary>
+                        <div class="modulo-body">
+                            <div class="grupo-cambios">
+                                <span class="grupo-titulo nuevo">Nuevas funcionalidades</span>
+                                <ul class="lista-cambios">
+                                    <li class="nuevo">Se incorporó la <strong>descarga en formato DXF</strong>, que genera un archivo ZIP con el archivo .dxf, el plano como imagen .png de fondo y el .pdf original como respaldo.</li>
+                                    <li class="nuevo">Se incorporó un <strong>botón de navegación</strong>, ubicado abajo a la derecha, para pasar de un plano a otro sin tener que volver al listado.</li>
+                                    <li class="nuevo">Se incorporó la posibilidad de <strong>sacar varias fotografías seguidas</strong> para un mismo pin, sin tener que volver a abrirlo después de cada foto.</li>
+                                    <li class="nuevo">Se incorporó el botón <strong>Duplicar</strong>, que permite copiar anotaciones, tanto de a una como en selección múltiple. No está disponible para daños, ensayos ni fotografías.</li>
+                                    <li class="nuevo">Se incorporó el botón <strong>Rotar</strong>, que permite girar anotaciones, tanto de a una como en selección múltiple. No está disponible para daños, ensayos ni fotografías.</li>
+                                    <li class="nuevo">Se incorporó el botón <strong>Editar</strong> para los textos, que permite modificar su contenido sin tener que borrarlos y volver a escribirlos.</li>
+                                    <li class="nuevo">Se incorporó la descarga del editor completo al usar <strong>Descargar para trabajar sin conexión</strong>, para que los planos abran sin señal aunque nunca se hayan abierto antes con conexión.</li>
+                                </ul>
+                            </div>
+
+                            <div class="grupo-cambios">
+                                <span class="grupo-titulo corregido">Corrección de errores</span>
+                                <ul class="lista-cambios">
+                                    <li class="corregido">Se corrigió un error por el cual algunas fotografías no llegaban a guardarse en celulares con poca memoria disponible. Si el celular cierra el navegador mientras la cámara está abierta, ahora el sistema lo avisa y ofrece volver a sacar la foto en el mismo punto.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details class="modulo-card" open>
+                        <summary class="modulo-titulo">
+                            <i class="fas fa-clipboard-list modulo-icono"></i> Planillas
+                            <span class="modulo-cantidad">2 cambios</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </summary>
+                        <div class="modulo-body">
+                            <div class="grupo-cambios">
+                                <span class="grupo-titulo nuevo">Nuevas funcionalidades</span>
+                                <ul class="lista-cambios">
+                                    <li class="nuevo">Se incorporó la herramienta <strong>Planillas</strong>, con planillas de ultrasonido indirecto, esclerometría, carbonatación, medición de fisuras, cloruros y resistividad.</li>
+                                    <li class="nuevo">Se agregó la opción de <strong>descargar un reporte</strong> de cada planilla en formato PNG.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details class="modulo-card" open>
+                        <summary class="modulo-titulo">
+                            <i class="fas fa-magnet modulo-icono"></i> Pachometrías
+                            <span class="modulo-cantidad">2 cambios</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </summary>
+                        <div class="modulo-body">
+                            <div class="grupo-cambios">
+                                <span class="grupo-titulo nuevo">Nuevas funcionalidades</span>
+                                <ul class="lista-cambios">
+                                    <li class="nuevo">Se incorporó la herramienta <strong>Pachometrías</strong>, que permite cargar el detalle de armaduras de vigas, pilares y losas, con sus medidas, recubrimiento, estribos y barras. La sección se dibuja en proporción real.</li>
+                                    <li class="nuevo">Se agregó la <strong>descarga en formato DXF y PDF</strong> de las secciones dibujadas.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details class="modulo-card" open>
+                        <summary class="modulo-titulo">
+                            <i class="fas fa-images modulo-icono"></i> Galería
+                            <span class="modulo-cantidad">2 cambios</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </summary>
+                        <div class="modulo-body">
+                            <div class="grupo-cambios">
+                                <span class="grupo-titulo corregido">Corrección de errores</span>
+                                <ul class="lista-cambios">
+                                    <li class="corregido">Se corrigió un error por el cual no era posible descargar un grupo grande de fotografías.</li>
+                                    <li class="corregido">Se corrigió un error por el cual la galería cargaba con lentitud. Ahora las fotografías se muestran en miniatura, lo que hace que la galería sea más rápida y fluida.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+                </details>
+
+                <details class="version-block">
+                    <summary class="version-header">
+                        <div>
                             <h2 class="version-titulo">Cambios de la versión <span class="version-numero">6.3</span></h2>
                             <p class="version-fecha">Domingo 13 de septiembre de 2026</p>
                         </div>
@@ -218,59 +324,6 @@
                     </details>
                 </details>
 
-                {{-- Version 7.0 - 2026-09-13
-                Se agrego la herramienta planilla
-                Las planillas disponibles hasta la fecha son ultrasonido indirecto, esclerometria, carbonatacion,
-                medicion de fisuras, cloruros y resistividad. Todas se guardan automaticamente y cada punto
-                se asocia a un elemento y a un nivel de la obra.
-
-                En cuanto a la planilla de ultrasonido indirecto, permite cargar 8 lecturas, y se calcula el promedio,
-                la desviación estándar y el coeficiente de variación. Se marca el punto para repetir el ensayo cuando
-                la desviación estándar es mayor a 200 o el coeficiente de variación es mayor al 5%.
-
-                En cuanto a la planilla de esclerometria, permite cargar 14 lecturas (impactos). Se calcula el promedio
-                y se descartan las lecturas que quedan fuera de ±6 de ese promedio, en dos rondas sucesivas (primero
-                contra el promedio inicial, y luego contra el promedio de lo que sobrevivió a la primera ronda). Con
-                las lecturas finales se calcula el N corregido, usando la lectura inicial y final del yunque, y luego
-                se le aplica una corrección según el ángulo de ensayo (0°, ±45°, ±90°) para obtener el N final. Si en
-                total se descartan más de 2 lecturas, se marca el punto para repetir el ensayo.
-
-                En cuanto a la planilla de carbonatacion, permite cargar el recubrimiento y 4 mediciones de espesor
-                carbonatado de cada punto. Se calcula el espesor carbonatado promedio y el % afectado
-                (espesor promedio / recubrimiento x 100).
-
-                En cuanto a la planilla de medicion de fisuras permite cargar  3 medidas de espesor y 3 medidas de profundidad
-                de cada fisura y el ancho del elemento. 
-                Se calcula el promedio de espesor y el promedio de profundidad, y el % de sección afectada. Si la fisura se 
-                marca como pasante, ese % se multiplica por 2.
-
-                En cuanto a la planilla de cloruros, cada punto se ensaya con 3 perforaciones: de cada una se carga
-                la profundidad, el peso del polvo recogido y el % de cloruros (% Cl) que informa el laboratorio.
-                El reporte muestra, por punto ensayado, las 3 perforaciones y un grafico de barras horizontal.
-
-                En cuanto a la planilla de resistividad, permite cargar 4 lecturas del equipo (kΩ·cm) y la temperatura
-                del hormigon de cada punto. Se calcula el promedio de las lecturas y se corrige por temperatura
-                tomando 20 °C como referencia: corrección = promedio x 3% x (temperatura - 20). La resistividad
-                corregida es el promedio mas la corrección. Con ese valor se clasifica la velocidad de corrosion:
-                mayor a 20 despreciable, de 10 a 20 baja, de 5 a 10 moderada a alta, menor a 5 muy alta.
-
-                Se agrego la herramienta pachometria. Permite cargar el detalle de armaduras de vigas, pilares
-                (rectangulares o circulares) y losas, con sus medidas, recubrimiento, estribos y barras, y se dibuja
-                la seccion en proporcion real (en losas, planta de 1 m x 1 m y corte A-A). Cada pachometria se
-                nombra como PCH + numero. Se pueden exportar las pachometrias visibles a PDF (A4 vertical) y a DXF
-                en metros y a escala real, con cada cosa en su capa (hormigon, estribos, barras, cotas, ejes).
-
-                En los planos se agrego la descarga en DXF. Se descarga un ZIP con el .dxf, el plano como imagen
-                .png de fondo y el .pdf original como respaldo. En el DXF las anotaciones quedan como entidades
-                editables, cada herramienta en su propia capa, en milimetros y a tamaño real de la hoja. El archivo
-                se abre en AutoCAD y la imagen de fondo tiene que estar en la misma carpeta que el .dxf.
-
-                Se agregaron las notificaciones por correo. En Obras > Configuraciones > Notificaciones se eligen
-                los usuarios que reciben un aviso cuando se carga un presupuesto aprobado. Solo se pueden elegir
-                usuarios activos con correo registrado. El correo indica la obra, el nombre del presupuesto y la
-                observacion si la tiene. Si un correo no se puede enviar, el presupuesto se guarda igual y el error
-                queda en el log. Se agrego el campo correo a los usuarios, se carga desde la edicion del usuario.
-                --}}
 
 
             </div>
