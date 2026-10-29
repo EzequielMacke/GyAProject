@@ -266,6 +266,23 @@
                             </div>
                         </div>
                     </details>
+
+                    <details class="modulo-card" open>
+                        <summary class="modulo-titulo">
+                            <i class="fas fa-file-invoice-dollar modulo-icono"></i> Presupuestos aprobados
+                            <span class="modulo-cantidad">2 cambios</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </summary>
+                        <div class="modulo-body">
+                            <div class="grupo-cambios">
+                                <span class="grupo-titulo nuevo">Nuevas funcionalidades</span>
+                                <ul class="lista-cambios">
+                                    <li class="nuevo">Se incorporó la <strong>notificación por correo</strong> de presupuestos aprobados: cada vez que se carga un presupuesto aprobado, se envía un aviso con la clave, la obra, la observación y un enlace para verlo en el sistema.</li>
+                                    <li class="nuevo">Se incorporó la pestaña <strong>Notificaciones</strong> en la configuración de Obras, que permite elegir qué usuarios reciben estos correos. Solo los reciben los usuarios activos que tengan un correo cargado.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
                 </details>
 
                 <details class="version-block">
