@@ -7,6 +7,7 @@ use App\Models\DirectorioTcAutomatico;
 use App\Models\ObraTc;
 use App\Models\Plano;
 use App\Models\Usuarios;
+use App\Services\DescargaOfflineService;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 
@@ -63,7 +64,10 @@ class ObraTcController extends Controller
             })
             ->count();
 
-        return view('obras_tc.index', compact('obraTc', 'pendientesPlanos'));
+        // Botón "Descargar obra para trabajar sin conexión" (planos, planillas y pachometrías).
+        $descargaOffline = DescargaOfflineService::obra($obraTc);
+
+        return view('obras_tc.index', compact('obraTc', 'pendientesPlanos', 'descargaOffline'));
     }
 
     public function store(Request $request)

@@ -1100,14 +1100,15 @@
        lo necesita: le manda las URLs al Service Worker por mensaje y es
        él quien las descarga y las guarda en sus propios caches, ya
        registrados y versionados ahí. */
-    const PLANOS_PARA_OFFLINE = @json($planosParaOffline ?? []);
+    const DESCARGA_OFFLINE = @json($descargaOffline);
+    const CANTIDAD_PLANOS_OFFLINE = {{ $planos->count() }};
 
     async function descargarPlanosOffline() {
         if (!('serviceWorker' in navigator)) {
             alert('Este navegador no permite guardar páginas para uso sin conexión.');
             return;
         }
-        if (!PLANOS_PARA_OFFLINE.length) return;
+        if (!CANTIDAD_PLANOS_OFFLINE) return;
 
         const registro = await navigator.serviceWorker.ready;
         const controlador = registro.active;
@@ -1122,20 +1123,20 @@
 
         boton.disabled = true;
         alerta.style.display = 'flex';
-        texto.textContent = `Descargando planos… (0 / ${PLANOS_PARA_OFFLINE.length * 2})`;
+        texto.textContent = 'Descargando planos… 0%';
 
         const canal = new MessageChannel();
         canal.port1.onmessage = (event) => {
             const { listos, fallidos, total, terminado } = event.data;
 
             if (!terminado) {
-                texto.textContent = `Descargando planos… (${listos + fallidos} / ${total})`;
+                texto.textContent = `Descargando planos… ${Math.round((listos + fallidos) / total * 100)}%`;
                 return;
             }
 
             boton.disabled = false;
             texto.textContent = fallidos === 0
-                ? `Listo: los ${PLANOS_PARA_OFFLINE.length} planos quedaron guardados para trabajar sin conexión.`
+                ? `Listo: los ${CANTIDAD_PLANOS_OFFLINE} planos quedaron guardados para trabajar sin conexión.`
                 : `Se guardaron ${listos} de ${total} archivos; ${fallidos} fallaron (probá de nuevo con mejor señal).`;
 
             setTimeout(() => { alerta.style.display = 'none'; }, 6000);
@@ -1143,8 +1144,8 @@
 
         controlador.postMessage({
             tipo: 'precachear',
-            paginas: PLANOS_PARA_OFFLINE.map(p => p.pagina),
-            recursos: PLANOS_PARA_OFFLINE.map(p => p.pdf),
+            paginas: DESCARGA_OFFLINE.paginas,
+            recursos: DESCARGA_OFFLINE.recursos,
         }, [canal.port2]);
     }
 </script>

@@ -12,6 +12,7 @@ class EncryptCookies extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        //
+        // La lee el JS de la galería para saber cuándo terminó una descarga ZIP.
+        'descarga_galeria',
     ];
 }

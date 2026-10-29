@@ -104,9 +104,34 @@
 
     /* ─── fotos_pendientes: blobs de fotos sin subir todavía ──────── */
 
-    async function guardarFotoPendiente(id, planoId, blob, mime) {
+    /* `miniatura` es una versión chica en JPEG para mostrar en el
+       visor/cuadrícula sin decodificar el original (una foto de 12 MP
+       ocupa ~48 MB de RAM decodificada). Puede faltar en registros
+       guardados antes de que existiera: ver guardarMiniaturaFotoPendiente. */
+    async function guardarFotoPendiente(id, planoId, blob, mime, miniatura = null) {
         return conStore(STORE_FOTOS, 'readwrite', (store) => {
-            store.put({ id, planoId, blob, mime, creadoEn: Date.now() });
+            store.put({ id, planoId, blob, mime, miniatura, creadoEn: Date.now() });
+        });
+    }
+
+    async function guardarMiniaturaFotoPendiente(id, miniatura) {
+        return conStore(STORE_FOTOS, 'readwrite', (store) => {
+            const req = store.get(id);
+            req.onsuccess = () => {
+                if (req.result) store.put({ ...req.result, miniatura });
+            };
+        });
+    }
+
+    async function obtenerMiniaturaFotoPendiente(id) {
+        const db = await abrirDb();
+        if (!db) return null;
+
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_FOTOS, 'readonly');
+            const req = tx.objectStore(STORE_FOTOS).get(id);
+            req.onsuccess = () => resolve(req.result?.miniatura ?? null);
+            req.onerror = () => resolve(null);
         });
     }
 
@@ -250,8 +275,10 @@
         leerOperacionesLocal,
         limpiarOperacionesLocal,
         guardarFotoPendiente,
+        guardarMiniaturaFotoPendiente,
         eliminarFotoPendiente,
         obtenerBlobFotoPendiente,
+        obtenerMiniaturaFotoPendiente,
         listarFotosPendientes,
         subirFotosPendientes,
         iniciarReintentos,

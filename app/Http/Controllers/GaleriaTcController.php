@@ -7,6 +7,7 @@ use App\Models\EtiquetaDetalleTc;
 use App\Models\EtiquetaTc;
 use App\Models\FotoTc;
 use App\Models\ObraTc;
+use App\Services\MiniaturaFotoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -30,6 +31,14 @@ class GaleriaTcController extends Controller
             ->with(['plano', 'usuario', 'etiquetas'])
             ->orderByDesc('created_at')
             ->get();
+
+        // Si la miniatura ya existe se sirve como archivo estático; si no,
+        // la primera vez pasa por la ruta que la genera y queda guardada.
+        $fotos->each(function (FotoTc $foto) use ($obraTc) {
+            $foto->url_miniatura = MiniaturaFotoService::existe($foto->archivo)
+                ? MiniaturaFotoService::url($foto->archivo)
+                : route('galeria_tc.miniatura', [$obraTc->id, $foto->id]);
+        });
 
         $planosConFotos = $fotos->pluck('plano')
             ->filter()
@@ -78,6 +87,24 @@ class GaleriaTcController extends Controller
             'obraTc', 'fotos', 'planosConFotos', 'clasificaciones', 'usuariosConFotos',
             'aniosConFotos', 'diasConFotos', 'mesesConFotos', 'etiquetasTc'
         ));
+    }
+
+    public function miniatura(ObraTc $obraTc, FotoTc $foto)
+    {
+        if (! $this->verificarAcceso($obraTc) || $foto->obra_tc_id !== $obraTc->id) {
+            abort(403);
+        }
+
+        $rutaMiniatura = MiniaturaFotoService::generar($foto->archivo);
+
+        if (! $rutaMiniatura) {
+            // Si GD no pudo leer el original, se devuelve el original tal cual.
+            return redirect($foto->archivo);
+        }
+
+        return response()->file(Storage::disk('public')->path($rutaMiniatura), [
+            'Cache-Control' => 'private, max-age=604800',
+        ]);
     }
 
     private function verificarAcceso(ObraTc $obraTc): bool
@@ -142,6 +169,10 @@ class GaleriaTcController extends Controller
      * Arma un ZIP con las fotos pedidas (selección puntual o todas las que
      * el cliente tiene visibles según sus filtros, ya que ese listado de
      * ids lo decide el front) y lo devuelve como descarga.
+     *
+     * Los ids llegan como un único string separado por comas (el front
+     * envía un form normal para que el navegador maneje la descarga, y un
+     * input por id chocaría con max_input_vars en descargas grandes).
      */
     public function descargar(Request $request, ObraTc $obraTc)
     {
@@ -150,17 +181,26 @@ class GaleriaTcController extends Controller
         }
 
         $request->validate([
-            'ids' => 'required|array|min:1',
-            'ids.*' => 'integer',
+            'ids' => 'required|string',
+            'token_descarga' => 'nullable|string|regex:/^[a-zA-Z0-9_-]{1,64}$/',
         ]);
 
+        $ids = collect(explode(',', $request->input('ids')))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter()
+            ->unique()
+            ->values();
+
         $fotos = FotoTc::where('obra_tc_id', $obraTc->id)
-            ->whereIn('id', $request->input('ids'))
+            ->whereIn('id', $ids)
             ->get();
 
         if ($fotos->isEmpty()) {
             abort(404);
         }
+
+        // Con cientos de fotos armar el ZIP puede llevar más que el límite por defecto.
+        set_time_limit(0);
 
         $carpetaTemp = storage_path('app/temp');
         if (! is_dir($carpetaTemp)) {
@@ -168,34 +208,52 @@ class GaleriaTcController extends Controller
         }
 
         $zipNombre = 'fotos_'.Str::slug($obraTc->descripcion).'_'.now()->format('Ymd_His').'.zip';
-        $zipRuta = $carpetaTemp.DIRECTORY_SEPARATOR.$zipNombre;
+        $zipRuta = $carpetaTemp.DIRECTORY_SEPARATOR.Str::random(8).'_'.$zipNombre;
 
         $zip = new ZipArchive();
-        $zip->open($zipRuta, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        if ($zip->open($zipRuta, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'No se pudo crear el archivo ZIP.');
+        }
 
+        $disco = Storage::disk('public');
         $nombresUsados = [];
 
         foreach ($fotos as $foto) {
-            $rutaRelativa = ltrim(str_replace('/storage/', '', $foto->archivo), '/');
+            $rutaRelativa = MiniaturaFotoService::rutaRelativa($foto->archivo);
 
-            if (! Storage::disk('public')->exists($rutaRelativa)) {
+            if (! $disco->exists($rutaRelativa)) {
                 continue;
             }
 
             $nombreBase = basename($rutaRelativa);
             $nombreFinal = $nombreBase;
             $contador = 1;
-            while (in_array($nombreFinal, $nombresUsados, true)) {
+            while (isset($nombresUsados[$nombreFinal])) {
                 $nombreFinal = pathinfo($nombreBase, PATHINFO_FILENAME)."_{$contador}.".pathinfo($nombreBase, PATHINFO_EXTENSION);
                 $contador++;
             }
-            $nombresUsados[] = $nombreFinal;
+            $nombresUsados[$nombreFinal] = true;
 
-            $zip->addFromString($nombreFinal, Storage::disk('public')->get($rutaRelativa));
+            // addFile lee el archivo recién al cerrar el ZIP (no lo carga
+            // entero en memoria como addFromString) y las fotos se guardan
+            // sin comprimir: JPG/PNG ya vienen comprimidos y recomprimirlos
+            // sólo gasta tiempo de CPU.
+            $zip->addFile($disco->path($rutaRelativa), $nombreFinal);
+            $zip->setCompressionName($nombreFinal, ZipArchive::CM_STORE);
         }
 
         $zip->close();
 
-        return response()->download($zipRuta, $zipNombre)->deleteFileAfterSend(true);
+        $respuesta = response()->download($zipRuta, $zipNombre)->deleteFileAfterSend(true);
+
+        // El front espera esta cookie para saber que el ZIP ya está listo
+        // y sacar el "Descargando…" del botón.
+        if ($request->filled('token_descarga')) {
+            $respuesta->headers->setCookie(cookie(
+                'descarga_galeria', $request->input('token_descarga'), 1, '/', null, false, false
+            ));
+        }
+
+        return $respuesta;
     }
 }

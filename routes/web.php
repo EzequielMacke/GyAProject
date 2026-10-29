@@ -520,6 +520,7 @@ Route::middleware('permiso:pla_tc,ver')->group(function () {
 Route::middleware('permiso:gal_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/galeria', [GaleriaTcController::class, 'index'])->name('galeria_tc.index');
     Route::post('/trabajo-campo/{obraTc}/galeria/descargar', [GaleriaTcController::class, 'descargar'])->name('galeria_tc.descargar');
+    Route::get('/trabajo-campo/{obraTc}/galeria/fotos/{foto}/miniatura', [GaleriaTcController::class, 'miniatura'])->name('galeria_tc.miniatura');
 });
 Route::middleware('permiso:pch_tc,ver')->group(function () {
     Route::get('/trabajo-campo/{obraTc}/pachometrias', [PachometriaTcController::class, 'index'])->name('pachometria_tc.index');

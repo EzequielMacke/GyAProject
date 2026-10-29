@@ -11,6 +11,8 @@ use App\Models\PlanoGrupo;
 use App\Models\PlanoPapelera;
 use App\Models\PlanoSubgrupo;
 use App\Models\PlanoTcActividad;
+use App\Services\DescargaOfflineService;
+use App\Services\MiniaturaFotoService;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -132,15 +134,9 @@ class PlanoController extends Controller
             ])
             ->values();
 
-        /* Para el botón "Descargar para trabajar sin conexión": la URL de
-           la página de cada plano y la de su PDF, para que el frontend
-           las pida una por una y el Service Worker las deje cacheadas
-           antes de perder señal (ver planos_tc/index.blade.php). */
-        $planosParaOffline = $planos->map(fn (Plano $p) => [
-            'descripcion' => $p->descripcion,
-            'pagina' => route('planos_tc.plano', [$obraTc->id, $p->id]),
-            'pdf' => Storage::url('planos/' . $p->archivo),
-        ])->values();
+        /* Para el botón "Descargar para trabajar sin conexión": páginas,
+           PDFs, librerías e íconos del editor (ver DescargaOfflineService). */
+        $descargaOffline = DescargaOfflineService::planos($obraTc, $planos);
 
         $actividadSubidas = $planos->map(function (Plano $plano) {
             $usuarioActividad = $plano->usuario;
@@ -174,7 +170,7 @@ class PlanoController extends Controller
             ->take(40)
             ->values();
 
-        return view('planos_tc.index', compact('obraTc', 'planos', 'arbol', 'pendientesCount', 'gruposExistentes', 'subgruposExistentes', 'actividad', 'planosParaOffline'));
+        return view('planos_tc.index', compact('obraTc', 'planos', 'arbol', 'pendientesCount', 'gruposExistentes', 'subgruposExistentes', 'actividad', 'descargaOffline'));
     }
 
     public function show(ObraTc $obraTc, Plano $plano)
@@ -441,7 +437,18 @@ class PlanoController extends Controller
             $ruta = $request->file('foto')->store($carpeta, 'public');
         }
 
-        return response()->json(['url' => Storage::url($ruta)]);
+        // Si se reintenta la subida con el mismo id, la miniatura vieja ya no corresponde.
+        $url = Storage::url($ruta);
+        // Si falla, la galería la vuelve a intentar la primera vez que la muestre:
+        // la subida del original no tiene que depender de esto.
+        try {
+            Storage::disk('public')->delete(MiniaturaFotoService::rutaMiniatura($url));
+            MiniaturaFotoService::generar($url);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return response()->json(['url' => $url]);
     }
 
     public function store(Request $request, ObraTc $obraTc)

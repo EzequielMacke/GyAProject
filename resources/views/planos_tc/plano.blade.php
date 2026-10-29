@@ -450,6 +450,16 @@
             color: #ccc; font-size: 0.82rem; font-weight: 500; cursor: pointer;
         }
         .overlay-descarga-referencia input { accent-color: #2a6fdb; width: 16px; height: 16px; cursor: pointer; }
+        .overlay-origen-aviso {
+            margin: 0; padding: 0.6rem 0.7rem; border-radius: 0.45rem;
+            background: #4a3a10; color: #f5d27a; font-size: 0.8rem; line-height: 1.35;
+        }
+        .overlay-origen-aviso[hidden] { display: none; }
+        .overlay-otra-foto-img {
+            width: 100%; max-height: 40vh; object-fit: contain;
+            background: #111; border-radius: 0.45rem; display: block;
+        }
+        .overlay-otra-foto-img[hidden] { display: none; }
 
         .lienzo {
             position: absolute;
@@ -931,10 +941,15 @@
             <input type="text" id="input-texto-flotante" class="input-texto-flotante" autocomplete="off">
             <div class="panel-seleccion" id="panel-seleccion">
                 <button type="button" class="panel-seleccion-btn" id="btn-seleccion-mover" @if(!$puedeEditar) style="display:none" @endif>Mover</button>
+                <button type="button" class="panel-seleccion-btn" id="btn-seleccion-editar" @if(!$puedeEditar) style="display:none" @endif>Editar</button>
+                <button type="button" class="panel-seleccion-btn" id="btn-seleccion-rotar" @if(!$puedeEditar) style="display:none" @endif>Rotar</button>
+                <button type="button" class="panel-seleccion-btn" id="btn-seleccion-duplicar" @if(!$puedeEditar) style="display:none" @endif>Duplicar</button>
                 <button type="button" class="panel-seleccion-btn borrar" id="btn-seleccion-eliminar" @if(!$puedeEliminar) style="display:none" @endif>Eliminar</button>
             </div>
             <div class="panel-seleccion" id="panel-seleccion-multiple">
                 <button type="button" class="panel-seleccion-btn" id="btn-multi-mover" @if(!$puedeEditar) style="display:none" @endif>Mover</button>
+                <button type="button" class="panel-seleccion-btn" id="btn-multi-rotar" @if(!$puedeEditar) style="display:none" @endif>Rotar</button>
+                <button type="button" class="panel-seleccion-btn" id="btn-multi-duplicar" @if(!$puedeEditar) style="display:none" @endif>Duplicar</button>
                 <button type="button" class="panel-seleccion-btn borrar" id="btn-multi-eliminar" @if(!$puedeEliminar) style="display:none" @endif>Eliminar (<span id="multi-cantidad">0</span>)</button>
             </div>
         </div>
@@ -946,6 +961,9 @@
     <div class="overlay-descarga" id="overlay-origen-foto">
         <div class="overlay-descarga-contenido">
             <span class="overlay-descarga-titulo">Agregar fotografía</span>
+            <p class="overlay-origen-aviso" id="overlay-origen-aviso" hidden>
+                La última foto no llegó a guardarse: el celular cerró el navegador mientras estaba abierta la cámara (por falta de memoria). Volvé a sacarla.
+            </p>
             <div class="overlay-descarga-opciones">
                 <button type="button" class="overlay-descarga-formato" id="btn-origen-camara">
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -965,6 +983,17 @@
             </div>
             <div class="overlay-descarga-acciones">
                 <button type="button" class="overlay-foto-accion" id="btn-origen-cancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay-descarga" id="overlay-otra-foto">
+        <div class="overlay-descarga-contenido">
+            <span class="overlay-descarga-titulo" id="overlay-otra-foto-titulo">Foto guardada</span>
+            <img class="overlay-otra-foto-img" id="overlay-otra-foto-img" alt="Última foto">
+            <div class="overlay-descarga-acciones">
+                <button type="button" class="overlay-foto-accion" id="btn-otra-foto-listo">Listo</button>
+                <button type="button" class="overlay-foto-accion overlay-descarga-confirmar" id="btn-otra-foto-sacar">Sacar otra</button>
             </div>
         </div>
     </div>
@@ -1039,13 +1068,14 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    {{-- Mismas URLs que descarga el botón "trabajar sin conexión" (ver DescargaOfflineService). --}}
+    <script src="{{ \App\Services\DescargaOfflineService::PDFJS }}"></script>
+    <script src="{{ \App\Services\DescargaOfflineService::PDF_LIB }}"></script>
+    <script src="{{ \App\Services\DescargaOfflineService::JSZIP }}"></script>
     <script src="{{ asset('js/plano-offline.js') }}"></script>
     <script src="{{ asset('js/plano-dxf.js') }}"></script>
     <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = @json(\App\Services\DescargaOfflineService::PDFJS_WORKER);
 
         const urlPdf = @json(Storage::url('planos/' . $plano->archivo));
         const rotacionPlano = {{ (int) ($plano->rotacion ?? 0) }};
@@ -1845,6 +1875,8 @@
                             texto: item.texto,
                             color: item.color,
                             tamano: item.tamano,
+                            // Grados, sentido horario en pantalla, alrededor de (x, y). Se omite si es 0.
+                            ...(item.rotacion ? { rotacion: item.rotacion } : {}),
                         };
                     }
                     return {
@@ -1893,7 +1925,7 @@
         let estadoRecibidoPendiente = null;
 
         function aplicarEstadoPendienteSiHay() {
-            if (estadoRecibidoPendiente && !dibujando && !arrastrandoMover && !arrastrandoMoverMultiple && !dibujandoRectangulo) {
+            if (estadoRecibidoPendiente && !dibujando && !arrastrandoMover && !arrastrandoRotar && !arrastrandoMoverMultiple && !dibujandoRectangulo) {
                 const pendiente = estadoRecibidoPendiente;
                 estadoRecibidoPendiente = null;
                 aplicarEstadoRecibido(pendiente);
@@ -1947,6 +1979,7 @@
                 item.texto = nuevo.texto;
                 item.color = nuevo.color;
                 item.tamano = nuevo.tamano;
+                item.rotacion = nuevo.rotacion ?? 0;
             } else {
                 item.puntos = nuevo.puntos;
                 item.color = nuevo.color;
@@ -1982,7 +2015,7 @@
            elemento seleccionado, etc.) no queda huérfana ni se pierde el
            cambio que estaba por aplicar. */
         function aplicarEstadoRecibido(estadoJson) {
-            if (dibujando || arrastrandoMover || arrastrandoMoverMultiple || dibujandoRectangulo) {
+            if (dibujando || arrastrandoMover || arrastrandoRotar || arrastrandoMoverMultiple || dibujandoRectangulo) {
                 estadoRecibidoPendiente = estadoJson;
                 return;
             }
@@ -2124,7 +2157,8 @@
 
                 const seMovio = item.tipo === 'trazo'
                     ? JSON.stringify(item.puntos) !== JSON.stringify(base.puntos)
-                    : (item.x !== base.x || item.y !== base.y);
+                    : (item.x !== base.x || item.y !== base.y || (item.rotacion ?? 0) !== (base.rotacion ?? 0)
+                        || (item.tipo === 'texto' && item.texto !== base.texto));
                 if (seMovio) movidos.push(item);
 
                 /* Se manda qué URLs se agregaron/sacaron (no el array
@@ -2219,7 +2253,7 @@
                de estadoPlano, y si la respuesta vuelve después de que esa
                acción terminó, pisaría la versión final con esa parcial.
                Mejor esperar a que termine y reintentar. */
-            if (dibujando || arrastrandoMover || arrastrandoMoverMultiple || dibujandoRectangulo) {
+            if (dibujando || arrastrandoMover || arrastrandoRotar || arrastrandoMoverMultiple || dibujandoRectangulo) {
                 programarGuardado();
                 return;
             }
@@ -2469,6 +2503,8 @@
                 }
 
                 if (item.tipo === 'texto') {
+                    // Mientras se edita, el input flotante ocupa su lugar.
+                    if (edicionTextoPendiente?.item === item) return;
                     const centro = proyectar(item.x, item.y);
                     const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
                     const tamanoFuente = item.tamano * escala * (estadoPlano.escalas[grupoEscala] ?? 1);
@@ -2476,7 +2512,15 @@
                     ctx.textBaseline = 'middle';
                     ctx.textAlign = 'left';
                     ctx.fillStyle = item.color;
-                    ctx.fillText(item.texto, centro.x, centro.y);
+                    if (item.rotacion) {
+                        ctx.save();
+                        ctx.translate(centro.x, centro.y);
+                        ctx.rotate(item.rotacion * Math.PI / 180);
+                        ctx.fillText(item.texto, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.fillText(item.texto, centro.x, centro.y);
+                    }
                     return;
                 }
 
@@ -3229,14 +3273,19 @@
                     const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
                     const tamanoFuente = item.tamano * (estadoPlano.escalas[grupoEscala] ?? 1);
                     const centro = proyectarNativo(item.x, item.y);
-                    const offsetTexto = rotarOffset(0, -tamanoFuente * 0.32);
+                    /* item.rotacion es horario en pantalla; en PDF los
+                       ángulos son antihorarios, por eso se resta. */
+                    const anguloTexto = rotObjetivo - (item.rotacion ?? 0);
+                    const radTexto = anguloTexto * Math.PI / 180;
+                    const v = -tamanoFuente * 0.32;
+                    const offsetTexto = { x: -v * Math.sin(radTexto), y: v * Math.cos(radTexto) };
                     page.drawText(item.texto, {
                         x: centro.x + offsetTexto.x,
                         y: centro.y + offsetTexto.y,
                         size: tamanoFuente,
                         font: fuente,
                         color: hexARgb(item.color),
-                        rotate: degrees(rotObjetivo),
+                        rotate: degrees(anguloTexto),
                     });
                     cerrarCapa();
                     continue;
@@ -3527,7 +3576,10 @@
                     const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
                     const tamanoFuente = item.tamano * (estadoPlano.escalas[grupoEscala] ?? 1);
                     const pos = aDxf(item.x, item.y);
-                    dxf.modelo.texto(item.texto, pos.x, pos.y, tamanoFuente * ALTURA_MAYUSCULA * MM_POR_PUNTO, { capa, color: item.color });
+                    // DXF mide los ángulos antihorarios (eje Y hacia arriba): se invierte el signo.
+                    dxf.modelo.texto(item.texto, pos.x, pos.y, tamanoFuente * ALTURA_MAYUSCULA * MM_POR_PUNTO, {
+                        capa, color: item.color, rotacion: -(item.rotacion ?? 0),
+                    });
                     continue;
                 }
 
@@ -3621,6 +3673,39 @@
             }
         });
 
+        /* Caja del texto en pantalla SIN rotar, relativa a su anclaje
+           (borde izquierdo, centro vertical): x de 0 a ancho, y de
+           -alto/2 a alto/2. La rotación se aplica alrededor del anclaje. */
+        function cajaTextoPantalla(item) {
+            const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
+            const tamanoFuente = item.tamano * vista.scale * (estadoPlano.escalas[grupoEscala] ?? 1);
+            drawCtx.font = `600 ${tamanoFuente}px sans-serif`;
+            return {
+                anclaje: mundoAPantalla(item.x, item.y),
+                ancho: drawCtx.measureText(item.texto).width,
+                alto: tamanoFuente,
+                rad: (item.rotacion ?? 0) * Math.PI / 180,
+            };
+        }
+
+        function esquinasTextoPantalla(item) {
+            const { anclaje, ancho, alto, rad } = cajaTextoPantalla(item);
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            return [[0, -alto / 2], [ancho, -alto / 2], [ancho, alto / 2], [0, alto / 2]].map(([u, v]) => ({
+                x: anclaje.x + u * cos - v * sin,
+                y: anclaje.y + u * sin + v * cos,
+            }));
+        }
+
+        function puntoSobreTexto(item, punto, margen) {
+            const { anclaje, ancho, alto, rad } = cajaTextoPantalla(item);
+            const dx = punto.x - anclaje.x, dy = punto.y - anclaje.y;
+            const cos = Math.cos(-rad), sin = Math.sin(-rad);
+            const u = dx * cos - dy * sin;
+            const v = dx * sin + dy * cos;
+            return u >= -margen && u <= ancho + margen && v >= -alto / 2 - margen && v <= alto / 2 + margen;
+        }
+
         /* ─── Selección: bounding box en pantalla de cualquier elemento
              (ícono, texto o trazo), usado para el resaltado y para
              ubicar el panel de Mover/Eliminar. ─ */
@@ -3637,12 +3722,9 @@
             }
 
             if (item.tipo === 'texto') {
-                const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
-                const tamanoFuente = item.tamano * vista.scale * (estadoPlano.escalas[grupoEscala] ?? 1);
-                drawCtx.font = `600 ${tamanoFuente}px sans-serif`;
-                const ancho = drawCtx.measureText(item.texto).width;
-                const centro = mundoAPantalla(item.x, item.y);
-                return { minX: centro.x, maxX: centro.x + ancho, minY: centro.y - tamanoFuente / 2, maxY: centro.y + tamanoFuente / 2 };
+                const xs = [], ys = [];
+                esquinasTextoPantalla(item).forEach(p => { xs.push(p.x); ys.push(p.y); });
+                return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
             }
 
             if (!item.puntos || !item.puntos.length) return null;
@@ -3768,6 +3850,7 @@
             ajustarTamanoHud();
             pdfDoc = await pdfjsLib.getDocument(urlPdf).promise;
             await renderPagina();
+            revisarFotoInterrumpida();
         }
 
         /* ─── Dibujo y pellizco (mouse, lápiz y táctil) ───────
@@ -3802,11 +3885,13 @@
         /* ─── Anotación de texto: input flotante posicionado sobre el
              punto clickeado, en vez de un prompt() desconectado del plano. ─ */
         const inputTextoFlotante = document.getElementById('input-texto-flotante');
+        /* { x, y } del texto nuevo, o { x, y, item } si se está editando
+           uno existente (ver editarTextoSeleccionado). */
         let edicionTextoPendiente = null;
 
         function posicionarInputTexto() {
             if (!edicionTextoPendiente) return;
-            const herramienta = HERRAMIENTAS.texto;
+            const herramienta = edicionTextoPendiente.item || HERRAMIENTAS.texto;
             const centro = mundoAPantalla(edicionTextoPendiente.x, edicionTextoPendiente.y);
             const tamanoFuente = herramienta.tamano * vista.scale * (estadoPlano.escalas.texto ?? 1);
             inputTextoFlotante.style.left = centro.x + 'px';
@@ -3815,9 +3900,9 @@
             inputTextoFlotante.style.color = herramienta.color;
         }
 
-        function abrirInputTexto(mundo) {
-            edicionTextoPendiente = mundo;
-            inputTextoFlotante.value = '';
+        function abrirInputTexto(mundo, item = null) {
+            edicionTextoPendiente = item ? { x: item.x, y: item.y, item } : mundo;
+            inputTextoFlotante.value = item ? item.texto : '';
             inputTextoFlotante.style.display = 'block';
             posicionarInputTexto();
             /* El foco se difiere: si se llama en el mismo pointerdown/mousedown
@@ -3834,6 +3919,18 @@
             edicionTextoPendiente = null;
             inputTextoFlotante.style.display = 'none';
             inputTextoFlotante.blur();
+
+            if (mundo.item) {
+                /* Edición: dejar el texto vacío no lo borra (para eso
+                   está Eliminar); simplemente se conserva el anterior. */
+                if (confirmar && texto && texto !== mundo.item.texto) {
+                    mundo.item.texto = texto;
+                    programarGuardado();
+                }
+                redibujarTrazos();
+                if (elementoSeleccionado === mundo.item) mostrarPanelSeleccion();
+                return;
+            }
 
             if (confirmar && texto) {
                 const herramienta = HERRAMIENTAS.texto;
@@ -3931,18 +4028,70 @@
             overlayOrigenFoto.classList.add('abierto');
         }
 
-        btnOrigenCamara.addEventListener('click', () => {
+        /* Al abrir la cámara (o la galería) el navegador pasa a segundo
+           plano, y en un celular con poca RAM el sistema puede cerrarlo
+           para hacer lugar: al volver, la página se recarga y la foto
+           recién sacada se pierde sin ningún error. No hay forma de
+           recuperar ese archivo, pero sí de enterarse: se deja una marca
+           antes de abrir la cámara y se borra apenas llega la foto (o se
+           cancela). Si al cargar el plano la marca sigue ahí, la cámara
+           se cerró con la página "muerta" y se le ofrece al usuario
+           volver a sacar la foto en el mismo punto (ver
+           revisarFotoInterrumpida). localStorage y no sessionStorage:
+           al matar la pestaña algunos navegadores no restauran este último. */
+        const CLAVE_CAMARA_ABIERTA = 'plano-camara-abierta';
+        const VIGENCIA_MARCA_CAMARA_MS = 15 * 60 * 1000;
+        const overlayOrigenAviso = document.getElementById('overlay-origen-aviso');
+
+        function marcarCamaraAbierta(contexto) {
+            try {
+                localStorage.setItem(CLAVE_CAMARA_ABIERTA, JSON.stringify({
+                    planoId: PLANO_ID,
+                    modo: contexto.modo,
+                    mundo: contexto.mundo ?? null,
+                    itemId: contexto.item?.id ?? null,
+                    abiertaEn: Date.now(),
+                }));
+            } catch (e) { /* sin localStorage: simplemente no hay aviso */ }
+        }
+
+        function desmarcarCamaraAbierta() {
+            try { localStorage.removeItem(CLAVE_CAMARA_ABIERTA); } catch (e) {}
+        }
+
+        function revisarFotoInterrumpida() {
+            let marca = null;
+            try { marca = JSON.parse(localStorage.getItem(CLAVE_CAMARA_ABIERTA)); } catch (e) {}
+            if (!marca || marca.planoId !== PLANO_ID) return;
+            desmarcarCamaraAbierta();
+            if (!PUEDE_EDITAR || Date.now() - marca.abiertaEn > VIGENCIA_MARCA_CAMARA_MS) return;
+
+            if (marca.modo === 'agregar') {
+                const item = estadoPlano.trazos.find(t => t.id === marca.itemId);
+                if (!item) return;
+                contextoFotoPendiente = { modo: 'agregar', item };
+            } else if (marca.mundo) {
+                contextoFotoPendiente = { modo: 'nuevo', mundo: marca.mundo };
+            } else {
+                return;
+            }
+            overlayOrigenAviso.hidden = false;
+            overlayOrigenFoto.classList.add('abierto');
+        }
+
+        function abrirSelectorFoto(input) {
             overlayOrigenFoto.classList.remove('abierto');
-            inputFoto.value = '';
-            inputFoto.click();
-        });
-        btnOrigenGaleria.addEventListener('click', () => {
-            overlayOrigenFoto.classList.remove('abierto');
-            inputFotoGaleria.value = '';
-            inputFotoGaleria.click();
-        });
+            overlayOrigenAviso.hidden = true;
+            if (contextoFotoPendiente) marcarCamaraAbierta(contextoFotoPendiente);
+            input.value = '';
+            input.click();
+        }
+
+        btnOrigenCamara.addEventListener('click', () => abrirSelectorFoto(inputFoto));
+        btnOrigenGaleria.addEventListener('click', () => abrirSelectorFoto(inputFotoGaleria));
         btnOrigenCancelar.addEventListener('click', () => {
             overlayOrigenFoto.classList.remove('abierto');
+            overlayOrigenAviso.hidden = true;
             contextoFotoPendiente = null;
         });
 
@@ -3962,26 +4111,104 @@
             return nombre.endsWith('.heic') || nombre.endsWith('.heif');
         }
 
-        function convertirHeicAJpeg(archivo) {
+        /* Redibuja la imagen como JPEG con su lado mayor limitado a
+           ladoMaximo (Infinity = mismo tamaño). Resuelve null si el
+           navegador no la puede decodificar. El canvas se achica a 0
+           al terminar para que la memoria del bitmap se libere enseguida
+           y no recién cuando pase el recolector de basura. */
+        function redibujarComoJpeg(blob, ladoMaximo, calidad) {
             return new Promise((resolve) => {
-                const url = URL.createObjectURL(archivo);
+                const url = URL.createObjectURL(blob);
                 const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.naturalWidth;
-                    canvas.height = img.naturalHeight;
-                    canvas.getContext('2d').drawImage(img, 0, 0);
-                    canvas.toBlob((blob) => {
-                        URL.revokeObjectURL(url);
-                        resolve(blob || archivo); // sin soporte para decodificar HEIC: se sigue con el original
-                    }, 'image/jpeg', 0.9);
-                };
-                img.onerror = () => {
+                const terminar = (resultado) => {
                     URL.revokeObjectURL(url);
-                    resolve(archivo);
+                    img.removeAttribute('src');
+                    resolve(resultado);
                 };
+                img.onload = () => {
+                    const escala = Math.min(1, ladoMaximo / Math.max(img.naturalWidth, img.naturalHeight));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(img.naturalWidth * escala));
+                    canvas.height = Math.max(1, Math.round(img.naturalHeight * escala));
+                    const ctx = canvas.getContext('2d');
+                    // Fondo blanco para que los PNG con transparencia no queden negros al pasar a JPEG.
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((resultado) => {
+                        canvas.width = canvas.height = 0;
+                        terminar(resultado);
+                    }, 'image/jpeg', calidad);
+                };
+                img.onerror = () => terminar(null);
                 img.src = url;
             });
+        }
+
+        async function convertirHeicAJpeg(archivo) {
+            // Sin soporte para decodificar HEIC: se sigue con el original.
+            return (await redibujarComoJpeg(archivo, Infinity, 0.9)) || archivo;
+        }
+
+        /* Las fotos se muestran SIEMPRE en miniatura (cuadrícula y visor):
+           decodificar el original de una foto de celular ocupa ~48 MB de
+           RAM y, con varias abiertas, el navegador se queda sin memoria
+           y el sistema lo cierra. Para verla en calidad completa está el
+           botón Descargar. Mismo tamaño que las miniaturas del servidor
+           (ver MiniaturaFotoService). */
+        const LADO_MINIATURA_PX = 480;
+        const CALIDAD_MINIATURA = 0.72;
+
+        function generarMiniatura(blob) {
+            return redibujarComoJpeg(blob, LADO_MINIATURA_PX, CALIDAD_MINIATURA);
+        }
+
+        /* Fotos ya subidas: el servidor guarda la miniatura al lado del
+           original (fotos_planos/{plano}/miniaturas/{nombre}.jpg). Si no
+           existe (fotos viejas sin `php artisan galeria:miniaturas`),
+           mostrarFotoEnImg cae al original. */
+        function urlMiniaturaServidor(url) {
+            if (!url.includes('/fotos_planos/')) return url;
+            const corte = url.lastIndexOf('/');
+            const nombre = url.slice(corte + 1).replace(/\.[^.]+$/, '');
+            return url.slice(0, corte) + '/miniaturas/' + nombre + '.jpg';
+        }
+
+        /* Fotos pendientes: la miniatura se genera al sacar la foto y se
+           guarda junto al original en IndexedDB. Las que se guardaron
+           antes de que existiera esto la generan acá una única vez. */
+        async function obtenerMiniaturaLocal(id) {
+            const guardada = await OfflineAPI?.obtenerMiniaturaFotoPendiente?.(id);
+            if (guardada) return guardada;
+            const original = await OfflineAPI?.obtenerBlobFotoPendiente(id);
+            if (!original) return null;
+            const miniatura = await generarMiniatura(original);
+            if (!miniatura) return original;
+            OfflineAPI?.guardarMiniaturaFotoPendiente?.(id, miniatura);
+            return miniatura;
+        }
+
+        /* Carga en `img` la miniatura de `foto` (URL del servidor o
+           'local:<id>'). Devuelve el Object URL creado (para revocarlo
+           después) o null. `sigueVigente()` evita pisar la imagen si el
+           usuario ya navegó a otra foto mientras se resolvía. */
+        async function mostrarFotoEnImg(img, foto, sigueVigente) {
+            img.onerror = null;
+            if (foto.startsWith('local:')) {
+                const blob = await obtenerMiniaturaLocal(foto.slice('local:'.length));
+                if (!sigueVigente()) return null;
+                if (!blob) { img.removeAttribute('src'); return null; }
+                const url = URL.createObjectURL(blob);
+                img.src = url;
+                return url;
+            }
+            const miniatura = urlMiniaturaServidor(foto);
+            img.onerror = miniatura === foto ? null : () => {
+                img.onerror = null;
+                if (sigueVigente()) img.src = foto;
+            };
+            img.src = miniatura;
+            return null;
         }
 
         /* Las fotos se guardan primero en el dispositivo (IndexedDB) y el
@@ -3994,19 +4221,24 @@
             const archivos = Array.from(input.files || []);
             const contexto = contextoFotoPendiente;
             contextoFotoPendiente = null;
+            desmarcarCamaraAbierta();
             if (!archivos.length || !contexto) return;
 
             const refs = [];
+            let ultimaMiniatura = null;
             for (const archivoOriginal of archivos) {
                 const archivo = esHeic(archivoOriginal) ? await convertirHeicAJpeg(archivoOriginal) : archivoOriginal;
                 const id = generarIdElemento();
-                await OfflineAPI?.guardarFotoPendiente(id, PLANO_ID, archivo, archivo.type);
+                const miniatura = await generarMiniatura(archivo);
+                await OfflineAPI?.guardarFotoPendiente(id, PLANO_ID, archivo, archivo.type, miniatura);
                 refs.push('local:' + id);
+                ultimaMiniatura = miniatura;
             }
 
+            let item = contexto.item;
             if (contexto.modo === 'nuevo') {
                 registrarUsoCapa('foto');
-                estadoPlano.trazos.push({
+                item = {
                     id: generarIdElemento(),
                     tipo: 'icono',
                     tool: 'foto',
@@ -4016,21 +4248,74 @@
                     tamano: HERRAMIENTAS.foto.tamano,
                     etiqueta: null,
                     fotos: refs,
-                });
+                };
+                estadoPlano.trazos.push(item);
                 redibujarTrazos();
             } else {
-                contexto.item.fotos.push(...refs);
-                fotoAbiertaIndice = contexto.item.fotos.length - refs.length;
+                item.fotos.push(...refs);
+                fotoAbiertaIndice = item.fotos.length - refs.length;
                 actualizarOverlayFoto();
             }
             programarGuardado();
             dispararSubidaFotosPendientes();
+
+            // La galería ya permite elegir varias de una vez; la cámara devuelve de a una.
+            if (input === inputFoto) ofrecerOtraFoto(item, ultimaMiniatura);
         }
+
+        /* ─── "Sacar otra": después de cada foto de cámara se ofrece
+             seguir sacando fotos para el mismo pin, sin tener que cerrar,
+             abrir el pin y volver a "Agregar foto". ─ */
+        const overlayOtraFoto = document.getElementById('overlay-otra-foto');
+        const overlayOtraFotoTitulo = document.getElementById('overlay-otra-foto-titulo');
+        const overlayOtraFotoImg = document.getElementById('overlay-otra-foto-img');
+        const btnOtraFotoSacar = document.getElementById('btn-otra-foto-sacar');
+        const btnOtraFotoListo = document.getElementById('btn-otra-foto-listo');
+        let itemOtraFoto = null;
+        let otraFotoObjectUrl = null;
+
+        function ofrecerOtraFoto(item, miniatura) {
+            itemOtraFoto = item;
+            const cantidad = item.fotos.length;
+            overlayOtraFotoTitulo.textContent = `Foto guardada · ${cantidad} ${cantidad === 1 ? 'foto' : 'fotos'} en este pin`;
+            if (otraFotoObjectUrl) URL.revokeObjectURL(otraFotoObjectUrl);
+            otraFotoObjectUrl = miniatura ? URL.createObjectURL(miniatura) : null;
+            overlayOtraFotoImg.hidden = !otraFotoObjectUrl;
+            if (otraFotoObjectUrl) overlayOtraFotoImg.src = otraFotoObjectUrl;
+            else overlayOtraFotoImg.removeAttribute('src');
+            overlayOtraFoto.classList.add('abierto');
+        }
+
+        function cerrarOtraFoto() {
+            overlayOtraFoto.classList.remove('abierto');
+            overlayOtraFotoImg.removeAttribute('src');
+            if (otraFotoObjectUrl) {
+                URL.revokeObjectURL(otraFotoObjectUrl);
+                otraFotoObjectUrl = null;
+            }
+            const item = itemOtraFoto;
+            itemOtraFoto = null;
+            return item;
+        }
+
+        btnOtraFotoSacar.addEventListener('click', () => {
+            const item = cerrarOtraFoto();
+            if (!item || !estadoPlano.trazos.includes(item)) return;
+            contextoFotoPendiente = { modo: 'agregar', item };
+            abrirSelectorFoto(inputFoto);
+        });
+        btnOtraFotoListo.addEventListener('click', cerrarOtraFoto);
 
         inputFoto.addEventListener('change', () => manejarArchivosFoto(inputFoto));
         inputFotoGaleria.addEventListener('change', () => manejarArchivosFoto(inputFotoGaleria));
-        inputFoto.addEventListener('cancel', () => { contextoFotoPendiente = null; });
-        inputFotoGaleria.addEventListener('cancel', () => { contextoFotoPendiente = null; });
+        inputFoto.addEventListener('cancel', () => { contextoFotoPendiente = null; desmarcarCamaraAbierta(); });
+        inputFotoGaleria.addEventListener('cancel', () => { contextoFotoPendiente = null; desmarcarCamaraAbierta(); });
+        /* Si al volver de la cámara esta misma página sigue viva, el
+           sistema no la cerró: la marca ya no hace falta (cubre los
+           navegadores que no disparan 'cancel' al cancelar la cámara). */
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') desmarcarCamaraAbierta();
+        });
 
         /* Sube en segundo plano las fotos que quedaron pendientes (sin
            conexión al sacarlas, o la subida falló). Se llama apenas se
@@ -4064,18 +4349,10 @@
                 overlayObjectUrlActual = null;
             }
 
-            if (foto.startsWith('local:')) {
-                const blob = await OfflineAPI?.obtenerBlobFotoPendiente(foto.slice('local:'.length));
-                if (item !== fotoAbiertaItem || indice !== fotoAbiertaIndice) return; // el usuario ya navegó a otra
-                if (blob) {
-                    overlayObjectUrlActual = URL.createObjectURL(blob);
-                    overlayFotoImg.src = overlayObjectUrlActual;
-                } else {
-                    overlayFotoImg.src = '';
-                }
-            } else {
-                overlayFotoImg.src = foto;
-            }
+            const sigueVigente = () => item === fotoAbiertaItem && indice === fotoAbiertaIndice;
+            const objectUrl = await mostrarFotoEnImg(overlayFotoImg, foto, sigueVigente);
+            if (!sigueVigente()) return; // el usuario ya navegó a otra
+            overlayObjectUrlActual = objectUrl;
 
             const multiples = fotos.length > 1;
             overlayFotoContador.textContent = multiples ? `${fotoAbiertaIndice + 1} / ${fotos.length}` : '';
@@ -4094,6 +4371,7 @@
 
         function cerrarFotoGrande() {
             overlayFoto.classList.remove('abierto');
+            overlayFotoImg.onerror = null;
             overlayFotoImg.src = '';
             fotoAbiertaItem = null;
             if (overlayObjectUrlActual) {
@@ -4135,16 +4413,10 @@
                 });
                 overlayFotoGridLista.appendChild(boton);
 
-                if (foto.startsWith('local:')) {
-                    OfflineAPI?.obtenerBlobFotoPendiente(foto.slice('local:'.length)).then(blob => {
-                        if (!blob || item !== fotoAbiertaItem) return;
-                        const url = URL.createObjectURL(blob);
-                        gridObjectUrls.push(url);
-                        img.src = url;
-                    });
-                } else {
-                    img.src = foto;
-                }
+                img.decoding = 'async';
+                mostrarFotoEnImg(img, foto, () => item === fotoAbiertaItem).then(url => {
+                    if (url) gridObjectUrls.push(url);
+                });
             });
             overlayFotoGrid.classList.add('abierto');
         }
@@ -4266,12 +4538,29 @@
         const panelSeleccion = document.getElementById('panel-seleccion');
         const btnSeleccionMover = document.getElementById('btn-seleccion-mover');
         const btnSeleccionEliminar = document.getElementById('btn-seleccion-eliminar');
+        const btnSeleccionRotar = document.getElementById('btn-seleccion-rotar');
+        const btnSeleccionDuplicar = document.getElementById('btn-seleccion-duplicar');
+        const btnSeleccionEditar = document.getElementById('btn-seleccion-editar');
 
         let elementoSeleccionado = null;
         let modoMover = false;
         let arrastrandoMover = false;
         let arrastreMoverInicio = null;
         let arrastreMoverOrigen = null;
+        /* Rotar: con el modo activo, arrastrar en cualquier parte gira
+           lo seleccionado alrededor de su centro según el ángulo que
+           barre el dedo/mouse. Rotar y Duplicar son sólo para las
+           herramientas del grupo Anotaciones (no daños, ensayos ni fotos). */
+        let modoRotar = false;
+        let arrastrandoRotar = false;
+        let arrastreRotarInfo = null;
+        const PASO_IMAN_ROTACION = 15;
+        const TOLERANCIA_IMAN_ROTACION = 4;
+        const TOOLS_ANOTACION = new Set(ANOTACIONES.map(a => a.tool));
+
+        function esAnotacion(item) {
+            return TOOLS_ANOTACION.has(item.tool);
+        }
 
         /* ─── Selección múltiple: arrastrar un rectángulo y agarrar todo
              lo que quede completamente adentro (respetando capas ocultas),
@@ -4279,10 +4568,13 @@
         const panelSeleccionMultiple = document.getElementById('panel-seleccion-multiple');
         const btnMultiMover = document.getElementById('btn-multi-mover');
         const btnMultiEliminar = document.getElementById('btn-multi-eliminar');
+        const btnMultiRotar = document.getElementById('btn-multi-rotar');
+        const btnMultiDuplicar = document.getElementById('btn-multi-duplicar');
         const multiCantidadEl = document.getElementById('multi-cantidad');
 
         let seleccionMultiple = [];
         let modoMoverMultiple = false;
+        let modoRotarMultiple = false;
         let arrastrandoMoverMultiple = false;
         let arrastreMoverMultipleInicio = null;
         let arrastreMoverMultipleOrigen = null;
@@ -4323,11 +4615,7 @@
                 }
 
                 if (item.tipo === 'texto') {
-                    const bbox = calcularBBoxPantalla(item);
-                    if (!bbox) continue;
-                    const punto = mundoAPantalla(mundo.x, mundo.y);
-                    if (punto.x >= bbox.minX - margenPantalla && punto.x <= bbox.maxX + margenPantalla &&
-                        punto.y >= bbox.minY - margenPantalla && punto.y <= bbox.maxY + margenPantalla) return item;
+                    if (puntoSobreTexto(item, mundoAPantalla(mundo.x, mundo.y), margenPantalla)) return item;
                     continue;
                 }
 
@@ -4344,6 +4632,10 @@
         }
 
         function mostrarPanelSeleccion() {
+            const transformable = PUEDE_EDITAR && elementoSeleccionado && esAnotacion(elementoSeleccionado);
+            btnSeleccionRotar.style.display = transformable ? '' : 'none';
+            btnSeleccionDuplicar.style.display = transformable ? '' : 'none';
+            btnSeleccionEditar.style.display = transformable && elementoSeleccionado.tool === 'texto' ? '' : 'none';
             panelSeleccion.classList.add('abierto');
             posicionarPanelSeleccion();
         }
@@ -4361,19 +4653,25 @@
             panelSeleccion.style.top = Math.max(bbox.minY - 14, 12) + 'px';
         }
 
+        function fijarModoSeleccion(mover, rotar) {
+            modoMover = mover;
+            modoRotar = rotar;
+            btnSeleccionMover.classList.toggle('activo', mover);
+            btnSeleccionRotar.classList.toggle('activo', rotar);
+        }
+
         function seleccionarElemento(item) {
             elementoSeleccionado = item;
-            modoMover = false;
-            btnSeleccionMover.classList.remove('activo');
+            fijarModoSeleccion(false, false);
             if (item) mostrarPanelSeleccion(); else ocultarPanelSeleccion();
             redibujarTrazos();
         }
 
         function deseleccionarElemento() {
             elementoSeleccionado = null;
-            modoMover = false;
+            fijarModoSeleccion(false, false);
             arrastrandoMover = false;
-            btnSeleccionMover.classList.remove('activo');
+            arrastrandoRotar = false;
             ocultarPanelSeleccion();
         }
 
@@ -4413,16 +4711,157 @@
 
         function finalizarArrastreMover() {
             arrastrandoMover = false;
-            modoMover = false;
-            btnSeleccionMover.classList.remove('activo');
+            fijarModoSeleccion(false, false);
             if (elementoSeleccionado) mostrarPanelSeleccion();
             programarGuardado();
             aplicarEstadoPendienteSiHay();
         }
 
+        /* Centro visual del elemento en coordenadas mundo: el pivote de
+           la rotación. En un texto no es su anclaje (borde izquierdo)
+           sino el medio de la palabra, para que gire "en el lugar". */
+        function centroElementoMundo(item) {
+            if (item.tipo === 'texto') {
+                const { ancho, rad } = cajaTextoPantalla(item);
+                const mitad = ancho / vista.scale / 2;
+                return { x: item.x + mitad * Math.cos(rad), y: item.y + mitad * Math.sin(rad) };
+            }
+            const xs = item.puntos.map(p => p.x);
+            const ys = item.puntos.map(p => p.y);
+            return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+        }
+
+        function rotarPuntoAlrededor(p, centro, cos, sin) {
+            const dx = p.x - centro.x, dy = p.y - centro.y;
+            return { x: centro.x + dx * cos - dy * sin, y: centro.y + dx * sin + dy * cos };
+        }
+
+        // Si el ángulo queda cerca de un múltiplo de 15°, se "pega" a él (ayuda a dejarlo derecho).
+        function aplicarImanRotacion(grados) {
+            const cercano = Math.round(grados / PASO_IMAN_ROTACION) * PASO_IMAN_ROTACION;
+            return Math.abs(grados - cercano) <= TOLERANCIA_IMAN_ROTACION ? cercano : grados;
+        }
+
+        function normalizarGrados(grados) {
+            const g = ((grados % 360) + 360) % 360;
+            return Math.round((g > 180 ? g - 360 : g) * 10) / 10;
+        }
+
+        /* Pivote del giro: con un solo elemento, su centro visual; con
+           varios, el centro del recuadro que los abarca a todos, para
+           que el grupo gire como una sola pieza. */
+        function pivoteRotacion(items) {
+            if (items.length === 1) return centroElementoMundo(items[0]);
+            const bbox = bboxUnion(items.map(calcularBBoxPantalla).filter(Boolean));
+            return pantallaAMundo((bbox.minX + bbox.maxX) / 2, (bbox.minY + bbox.maxY) / 2);
+        }
+
+        function iniciarArrastreRotar(mundo, items, multiple) {
+            items = items.filter(esAnotacion);
+            if (!items.length) return;
+            const pivote = pivoteRotacion(items);
+            arrastrandoRotar = true;
+            arrastreRotarInfo = {
+                multiple,
+                pivote,
+                anguloInicial: Math.atan2(mundo.y - pivote.y, mundo.x - pivote.x),
+                origenes: items.map(item => ({
+                    item,
+                    puntos: item.puntos ? item.puntos.map(p => ({ x: p.x, y: p.y })) : null,
+                    x: item.x,
+                    y: item.y,
+                    rotacion: item.rotacion ?? 0,
+                })),
+            };
+            if (multiple) ocultarPanelSeleccionMultiple(); else ocultarPanelSeleccion();
+        }
+
+        function rotarSeleccion(mundo) {
+            const info = arrastreRotarInfo;
+            if (!info) return;
+            const angulo = Math.atan2(mundo.y - info.pivote.y, mundo.x - info.pivote.x);
+            let delta = (angulo - info.anguloInicial) * 180 / Math.PI;
+
+            /* El imán se aplica sobre el ángulo final cuando es un solo
+               texto (para dejarlo derecho a 0°/90°); en trazos y grupos,
+               que no tienen un ángulo propio, sobre el giro. */
+            const unico = info.origenes.length === 1 ? info.origenes[0] : null;
+            if (unico && unico.item.tipo === 'texto') {
+                delta = aplicarImanRotacion(unico.rotacion + delta) - unico.rotacion;
+            } else {
+                delta = aplicarImanRotacion(delta);
+            }
+
+            const rad = delta * Math.PI / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            info.origenes.forEach(({ item, puntos, x, y, rotacion }) => {
+                if (puntos) {
+                    item.puntos = puntos.map(p => rotarPuntoAlrededor(p, info.pivote, cos, sin));
+                } else {
+                    const anclaje = rotarPuntoAlrededor({ x, y }, info.pivote, cos, sin);
+                    item.x = anclaje.x;
+                    item.y = anclaje.y;
+                    item.rotacion = normalizarGrados(rotacion + delta);
+                }
+            });
+            solicitarRedibujado();
+        }
+
+        function finalizarArrastreRotar() {
+            const multiple = arrastreRotarInfo?.multiple;
+            arrastrandoRotar = false;
+            arrastreRotarInfo = null;
+            if (multiple) {
+                fijarModoMultiple(false, false);
+                if (seleccionMultiple.length) mostrarPanelSeleccionMultiple();
+            } else {
+                fijarModoSeleccion(false, false);
+                if (elementoSeleccionado) mostrarPanelSeleccion();
+            }
+            programarGuardado();
+            aplicarEstadoPendienteSiHay();
+        }
+
+        /* Las copias aparecen apenas corridas (20 px en pantalla) y
+           quedan seleccionadas, listas para moverlas. */
+        function duplicarItems(items) {
+            const corrimiento = 20 / vista.scale;
+            const copias = items.filter(esAnotacion).map(original => {
+                const copia = { ...original, id: generarIdElemento() };
+                if (original.puntos) {
+                    copia.puntos = original.puntos.map(p => ({ x: p.x + corrimiento, y: p.y + corrimiento }));
+                    delete copia.puntoInicio;
+                } else {
+                    copia.x = original.x + corrimiento;
+                    copia.y = original.y + corrimiento;
+                }
+                return copia;
+            });
+            copias.forEach(copia => {
+                estadoPlano.trazos.push(copia);
+                registrarUsoCapa(copia.tool);
+            });
+            if (copias.length) programarGuardado();
+            return copias;
+        }
+
+        function editarTextoSeleccionado() {
+            if (!PUEDE_EDITAR) return;
+            const item = elementoSeleccionado;
+            if (!item || item.tool !== 'texto') return;
+            fijarModoSeleccion(false, false);
+            ocultarPanelSeleccion();
+            abrirInputTexto(null, item);
+            redibujarTrazos();
+        }
+
         function manejarClickSeleccion(mundo) {
             if (modoMover && elementoSeleccionado) {
                 iniciarArrastreMover(mundo);
+                return;
+            }
+            if (modoRotar && elementoSeleccionado) {
+                iniciarArrastreRotar(mundo, [elementoSeleccionado], false);
                 return;
             }
             seleccionarElemento(buscarElementoEnPunto(mundo));
@@ -4431,9 +4870,22 @@
         btnSeleccionMover.addEventListener('click', () => {
             if (!PUEDE_EDITAR) return;
             if (!elementoSeleccionado) return;
-            modoMover = !modoMover;
-            btnSeleccionMover.classList.toggle('activo', modoMover);
+            fijarModoSeleccion(!modoMover, false);
         });
+
+        btnSeleccionRotar.addEventListener('click', () => {
+            if (!PUEDE_EDITAR) return;
+            if (!elementoSeleccionado || !esAnotacion(elementoSeleccionado)) return;
+            fijarModoSeleccion(false, !modoRotar);
+        });
+
+        btnSeleccionDuplicar.addEventListener('click', () => {
+            if (!PUEDE_EDITAR || !elementoSeleccionado) return;
+            const [copia] = duplicarItems([elementoSeleccionado]);
+            if (copia) seleccionarElemento(copia);
+        });
+
+        btnSeleccionEditar.addEventListener('click', editarTextoSeleccionado);
 
         function bboxUnion(bboxes) {
             return {
@@ -4444,7 +4896,24 @@
             };
         }
 
+        /* Rotar/Duplicar en bloque sólo si TODO lo seleccionado es de
+           Anotaciones: si se mezclaran daños o ensayos, girar/copiar
+           una parte del grupo y dejar la otra quieta sería confuso. */
+        function seleccionMultipleEsAnotacion() {
+            return seleccionMultiple.length > 0 && seleccionMultiple.every(esAnotacion);
+        }
+
+        function fijarModoMultiple(mover, rotar) {
+            modoMoverMultiple = mover;
+            modoRotarMultiple = rotar;
+            btnMultiMover.classList.toggle('activo', mover);
+            btnMultiRotar.classList.toggle('activo', rotar);
+        }
+
         function mostrarPanelSeleccionMultiple() {
+            const transformable = PUEDE_EDITAR && seleccionMultipleEsAnotacion();
+            btnMultiRotar.style.display = transformable ? '' : 'none';
+            btnMultiDuplicar.style.display = transformable ? '' : 'none';
             panelSeleccionMultiple.classList.add('abierto');
             posicionarPanelSeleccionMultiple();
         }
@@ -4464,8 +4933,7 @@
 
         function seleccionarMultiple(items) {
             seleccionMultiple = items;
-            modoMoverMultiple = false;
-            btnMultiMover.classList.remove('activo');
+            fijarModoMultiple(false, false);
             multiCantidadEl.textContent = items.length;
             if (items.length) mostrarPanelSeleccionMultiple(); else ocultarPanelSeleccionMultiple();
             redibujarTrazos();
@@ -4473,9 +4941,8 @@
 
         function deseleccionarMultiple() {
             seleccionMultiple = [];
-            modoMoverMultiple = false;
+            fijarModoMultiple(false, false);
             arrastrandoMoverMultiple = false;
-            btnMultiMover.classList.remove('activo');
             ocultarPanelSeleccionMultiple();
             dibujandoRectangulo = false;
             rectSeleccion = null;
@@ -4533,8 +5000,7 @@
 
         function finalizarArrastreMoverMultiple() {
             arrastrandoMoverMultiple = false;
-            modoMoverMultiple = false;
-            btnMultiMover.classList.remove('activo');
+            fijarModoMultiple(false, false);
             if (seleccionMultiple.length) mostrarPanelSeleccionMultiple();
             programarGuardado();
             aplicarEstadoPendienteSiHay();
@@ -4557,8 +5023,18 @@
         btnMultiMover.addEventListener('click', () => {
             if (!PUEDE_EDITAR) return;
             if (!seleccionMultiple.length) return;
-            modoMoverMultiple = !modoMoverMultiple;
-            btnMultiMover.classList.toggle('activo', modoMoverMultiple);
+            fijarModoMultiple(!modoMoverMultiple, false);
+        });
+
+        btnMultiRotar.addEventListener('click', () => {
+            if (!PUEDE_EDITAR || !seleccionMultipleEsAnotacion()) return;
+            fijarModoMultiple(false, !modoRotarMultiple);
+        });
+
+        btnMultiDuplicar.addEventListener('click', () => {
+            if (!PUEDE_EDITAR || !seleccionMultipleEsAnotacion()) return;
+            const copias = duplicarItems(seleccionMultiple);
+            if (copias.length) seleccionarMultiple(copias);
         });
 
         btnMultiEliminar.addEventListener('click', eliminarSeleccionMultiple);
@@ -4596,6 +5072,10 @@
             if (herramientaActual === 'seleccion_multiple') {
                 if (modoMoverMultiple && seleccionMultiple.length) {
                     iniciarArrastreMoverMultiple(mundoPunto);
+                    return;
+                }
+                if (modoRotarMultiple && seleccionMultiple.length) {
+                    iniciarArrastreRotar(mundoPunto, seleccionMultiple, true);
                     return;
                 }
                 dibujandoRectangulo = true;
@@ -4691,6 +5171,7 @@
                 dibujando = false;
                 trazoActual = null;
                 if (arrastrandoMover) finalizarArrastreMover();
+                if (arrastrandoRotar) finalizarArrastreRotar();
                 if (arrastrandoMoverMultiple) finalizarArrastreMoverMultiple();
                 dibujandoRectangulo = false;
                 rectSeleccion = null;
@@ -4758,6 +5239,12 @@
                 return;
             }
 
+            if (arrastrandoRotar) {
+                const pantalla = posicionPantalla(e);
+                rotarSeleccion(pantallaAMundo(pantalla.x, pantalla.y));
+                return;
+            }
+
             if (arrastrandoMoverMultiple) {
                 const pantalla = posicionPantalla(e);
                 moverSeleccionMultiple(pantallaAMundo(pantalla.x, pantalla.y));
@@ -4818,6 +5305,12 @@
             if (arrastrandoMover) {
                 punterosActivos.delete(e.pointerId);
                 finalizarArrastreMover();
+                return;
+            }
+
+            if (arrastrandoRotar) {
+                punterosActivos.delete(e.pointerId);
+                finalizarArrastreRotar();
                 return;
             }
 

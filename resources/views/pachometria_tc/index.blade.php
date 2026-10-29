@@ -3707,14 +3707,11 @@
             setTimeout(() => { alerta.style.display = 'none'; }, 6000);
         };
 
+        @php $descargaOffline = \App\Services\DescargaOfflineService::pachometria($obraTc); @endphp
         controlador.postMessage({
             tipo: 'precachear',
-            paginas: [@json(route('pachometria_tc.index', $obraTc->id))],
-            recursos: [
-                @json(asset('js/planilla-offline.js')),
-                ...LIBRERIAS_PDF,
-                ...Object.values(FUENTES_PDF).map(peso => `${URL_FUENTES_PDF}PlusJakartaSans-${peso}.ttf`),
-            ],
+            paginas: @json($descargaOffline['paginas']),
+            recursos: @json($descargaOffline['recursos']),
         }, [canal.port2]);
     });
 
@@ -3728,17 +3725,16 @@
        y si el renglón no entra, a la hoja siguiente. Las librerías se
        cargan recién al exportar, para no sumar peso a la página. */
     const OBRA_DESCRIPCION = @json($obraTc->descripcion ?? '');
-    const LIBRERIAS_PDF = [
-        'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-        'https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js',
-    ];
+    // Mismas URLs que descarga el botón "trabajar sin conexión" (ver DescargaOfflineService).
+    const LIBRERIAS_PDF = @json(\App\Services\DescargaOfflineService::LIBRERIAS_PDF_PACHOMETRIA);
+
 
     // Plus Jakarta Sans (la de la pantalla) se incrusta en el PDF para que
     // rótulos, dibujos y leyenda usen la misma tipografía. Cada peso se
     // registra como una familia aparte, así svg2pdf no tiene que resolver
     // pesos numéricos (600, 800) que jsPDF no conoce.
-    const URL_FUENTES_PDF = 'https://cdn.jsdelivr.net/gh/tokotype/PlusJakartaSans@master/fonts/ttf/';
-    const FUENTES_PDF = { 400: 'Regular', 600: 'SemiBold', 700: 'Bold', 800: 'ExtraBold' };
+    const URL_FUENTES_PDF = @json(\App\Services\DescargaOfflineService::URL_FUENTES_PACHOMETRIA);
+    const FUENTES_PDF = @json(\App\Services\DescargaOfflineService::FUENTES_PACHOMETRIA);
     const fuentesPdfCache = {};
 
     async function registrarFuentesPdf(doc) {

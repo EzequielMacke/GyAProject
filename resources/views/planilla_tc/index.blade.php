@@ -460,9 +460,9 @@
        (public/sw.js), que las descarga y guarda en sus caches. Incluye
        las 6 planillas aunque todavía no estén creadas, para poder
        agregarlas en obra sin señal. */
-    @php $paginasParaOffline = array_merge([route('planilla_tc.index', $obraTc->id)], array_values(array_column($tiposPlanillas, 'ruta'))); @endphp
-    const PAGINAS_PARA_OFFLINE = @json($paginasParaOffline);
-    const RECURSOS_PARA_OFFLINE = [@json(asset('js/planilla-offline.js'))];
+    @php $descargaOffline = \App\Services\DescargaOfflineService::planillas($obraTc); @endphp
+    const PAGINAS_PARA_OFFLINE = @json($descargaOffline['paginas']);
+    const RECURSOS_PARA_OFFLINE = @json($descargaOffline['recursos']);
 
     async function descargarPlanillasOffline() {
         if (!('serviceWorker' in navigator)) {

@@ -174,7 +174,8 @@
         }
 
         /* Texto de una línea anclado a la izquierda y centrado en
-           vertical (igual que textBaseline 'middle' del canvas). */
+           vertical (igual que textBaseline 'middle' del canvas).
+           estilo.rotacion: grados, antihorario (convención DXF). */
         function texto(dueno, contenido, x, y, altura, estilo = {}) {
             const limpio = String(contenido ?? '').replace(/[\r\n]+/g, ' ');
             if (!limpio.trim()) return null;
@@ -182,7 +183,11 @@
             pares.push(
                 [100, 'AcDbText'],
                 [10, numero(x)], [20, numero(y)], [30, '0.0'],
-                [40, numero(altura)], [1, limpio], [7, 'Standard'], [72, 0],
+                [40, numero(altura)], [1, limpio]
+            );
+            if (estilo.rotacion) pares.push([50, numero(estilo.rotacion)]);
+            pares.push(
+                [7, 'Standard'], [72, 0],
                 [11, numero(x)], [21, numero(y)], [31, '0.0'],
                 [100, 'AcDbText'], [73, 2]
             );

@@ -77,6 +77,7 @@
         .alert { padding: 0.75rem 1rem; border-radius: 0.55rem; font-size: 0.83rem; font-weight: 500; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
         .alert-success { background: #e5f6f0; color: #1e9166; border: 1px solid #b6e8d6; }
         .alert-danger  { background: #fff0f0; color: #c0392b; border: 1px solid #f5c2c2; }
+        .alert-offline { background: var(--accent-s); color: #1f5bbf; border: 1px solid #b9d3f5; }
 
         /* ── MODAL ── */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; }
@@ -252,6 +253,11 @@
                         @endif
                     </div>
                     <div class="ph-right">
+                        @if(count($descargaOffline['paginas']) > 1)
+                        <button type="button" class="btn" id="btn-descargar-obra-offline" onclick="abrirModalDescargaObra()">
+                            <i class="fas fa-cloud-download-alt"></i> Descargar obra para trabajar sin conexión
+                        </button>
+                        @endif
                         @permiso('obr_tc', 'editar')
                         <button type="button" class="btn" onclick="abrirModalEditarObra()">
                             <i class="fas fa-pen"></i> Editar
@@ -291,6 +297,11 @@
                     <i class="fas fa-exclamation-circle"></i> {{ $errors->first() }}
                 </div>
                 @endif
+
+                <div class="alert alert-offline" id="alert-descarga-obra" style="display:none">
+                    <i class="fas fa-cloud-download-alt"></i>
+                    <span id="texto-descarga-obra"></span>
+                </div>
 
                 @if($obraTc->mensaje)
                 @php
@@ -393,6 +404,31 @@
 {{-- ══════════════════════════════════════════════════════
      MODAL ELIMINAR OBRA
 ══════════════════════════════════════════════════════ --}}
+<div class="modal-overlay" id="modal-descarga-obra">
+    <div class="modal-caja">
+        <div class="modal-head">
+            <div class="modal-head-title"><i class="fas fa-cloud-download-alt"></i> Descargar obra</div>
+            <button class="modal-close" onclick="cerrarModalDescargaObra()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="modal-body">
+            <p>
+                Se van a guardar en este dispositivo los planos, planillas y pachometrías de
+                <strong>{{ $obraTc->descripcion }}</strong> para poder trabajar sin conexión
+                (aprox. <strong id="tamano-descarga-obra"></strong>).
+            </p>
+            <p style="margin-top:0.6rem">Si estás con datos móviles, conviene conectarte a WiFi. Las fotos de la galería no se descargan.</p>
+        </div>
+
+        <div class="modal-foot">
+            <button type="button" class="btn-cancel" onclick="cerrarModalDescargaObra()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="descargarObraOffline()">
+                <i class="fas fa-cloud-download-alt"></i> Descargar
+            </button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="modal-eliminar-obra">
     <div class="modal-caja">
         <div class="modal-head">
@@ -447,6 +483,81 @@
     @if($errors->any())
     abrirModalEditarObra();
     @endif
+
+    /* ─── Descargar la obra entera para trabajar sin conexión ──────
+       Lo mismo que los botones de Planos, Planillas y Pachometrías,
+       pero todo junto (sólo los módulos que el usuario puede ver; ver
+       DescargaOfflineService::obra). Igual que en esos botones, las URLs
+       se le pasan al Service Worker (public/sw.js), que las descarga y
+       las guarda en sus caches. Antes se avisa el tamaño estimado,
+       porque con muchos planos pueden ser cientos de MB. */
+    const DESCARGA_OBRA = @json($descargaOffline);
+
+    function formatearTamano(bytes) {
+        if (bytes >= 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(1) + ' GB';
+        if (bytes >= 1024 * 1024) return Math.max(1, Math.round(bytes / 1024 / 1024)) + ' MB';
+        return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    }
+
+    function abrirModalDescargaObra() {
+        document.getElementById('tamano-descarga-obra').textContent = formatearTamano(DESCARGA_OBRA.bytes);
+        document.getElementById('modal-descarga-obra').classList.add('active');
+    }
+
+    function cerrarModalDescargaObra() {
+        document.getElementById('modal-descarga-obra').classList.remove('active');
+    }
+
+    document.getElementById('modal-descarga-obra').addEventListener('click', function (e) {
+        if (e.target === this) cerrarModalDescargaObra();
+    });
+
+    async function descargarObraOffline() {
+        cerrarModalDescargaObra();
+
+        if (!('serviceWorker' in navigator)) {
+            alert('Este navegador no permite guardar páginas para uso sin conexión.');
+            return;
+        }
+
+        const registro = await navigator.serviceWorker.ready;
+        const controlador = registro.active;
+        if (!controlador) {
+            alert('Todavía no está listo el guardado offline. Recargá la página e intentá de nuevo en un momento.');
+            return;
+        }
+
+        const boton = document.getElementById('btn-descargar-obra-offline');
+        const alerta = document.getElementById('alert-descarga-obra');
+        const texto = document.getElementById('texto-descarga-obra');
+
+        boton.disabled = true;
+        alerta.style.display = 'flex';
+        texto.textContent = 'Descargando obra… 0%';
+
+        const canal = new MessageChannel();
+        canal.port1.onmessage = (event) => {
+            const { listos, fallidos, total, terminado } = event.data;
+
+            if (!terminado) {
+                texto.textContent = `Descargando obra… ${Math.round((listos + fallidos) / total * 100)}%`;
+                return;
+            }
+
+            boton.disabled = false;
+            texto.textContent = fallidos === 0
+                ? 'Listo: la obra quedó guardada para trabajar sin conexión.'
+                : `Se guardaron ${listos} de ${total} archivos; ${fallidos} fallaron. Tocá de nuevo "Descargar obra" con mejor señal para completar lo que falta.`;
+
+            setTimeout(() => { alerta.style.display = 'none'; }, fallidos === 0 ? 6000 : 15000);
+        };
+
+        controlador.postMessage({
+            tipo: 'precachear',
+            paginas: DESCARGA_OBRA.paginas,
+            recursos: DESCARGA_OBRA.recursos,
+        }, [canal.port2]);
+    }
 </script>
 </body>
 </html>

@@ -162,6 +162,9 @@
         .multi-opcion:hover { background: var(--surface2); color: var(--text); }
         .multi-opcion input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
         .multi-opcion.hidden { display: none; }
+        .multi-opcion.deshabilitada { opacity: 0.4; cursor: not-allowed; }
+        .multi-opcion.deshabilitada:hover { background: none; color: var(--text2); }
+        .multi-opcion.deshabilitada input[type="checkbox"] { cursor: not-allowed; }
 
         .btn-filtros-clear {
             height: 42px; padding: 0 0.9rem; border-radius: 0.65rem;
@@ -637,7 +640,7 @@
                          data-anio="{{ $foto->created_at?->format('Y') }}">
                         <div class="foto-check"><span class="foto-check-circle"><i class="fas fa-check"></i></span></div>
                         <div class="foto-thumb-wrap">
-                            <img src="{{ $foto->archivo }}" alt="Foto" loading="lazy">
+                            <img src="{{ $foto->url_miniatura }}" alt="Foto" loading="lazy" decoding="async">
                         </div>
                         <div class="foto-info">
                             <div class="foto-plano">{{ $foto->plano->descripcion ?? 'Sin plano' }}</div>
@@ -1470,7 +1473,7 @@
         const btn = document.getElementById(btnId);
         const texto = document.getElementById(textoId);
         const panel = document.getElementById(panelId);
-        const vacio = { seleccionados: new Set(), agregarOpcion() {}, limpiar() {} };
+        const vacio = { seleccionados: new Set(), agregarOpcion() {}, limpiar() {}, habilitarSolo() {} };
         if (!wrap || !btn || !panel) return vacio;
 
         const seleccionados = new Set();
@@ -1547,6 +1550,17 @@
                 opciones().forEach(op => { op.querySelector('input').checked = false; });
                 actualizarTexto();
             },
+            /* Deja clickeables sólo los valores de "disponibles". Una opción
+               ya marcada nunca se bloquea, para que siempre se pueda
+               destildar aunque haya dejado de tener fotos. */
+            habilitarSolo(disponibles) {
+                opciones().forEach(op => {
+                    const input = op.querySelector('input');
+                    const habilitada = disponibles.has(input.value) || seleccionados.has(input.value);
+                    input.disabled = !habilitada;
+                    op.classList.toggle('deshabilitada', !habilitada);
+                });
+            },
         };
     }
 
@@ -1570,35 +1584,52 @@
     checkModoEtiqueta?.addEventListener('click', e => e.stopPropagation());
     checkModoEtiqueta?.addEventListener('change', aplicarFiltros);
 
+    /* Todos los filtros menos el de etiqueta: se separa porque también
+       se usa para saber qué etiquetas ofrecer (ver aplicarFiltros). */
+    function coincideSinEtiqueta(card, q, clasificacion) {
+        return (q === '' || card.dataset.planoNombre.includes(q))
+            && (msPlano.seleccionados.size === 0 || msPlano.seleccionados.has(card.dataset.planoNombre))
+            && (clasificacion === '' || card.dataset.clasificacion === clasificacion)
+            && (msUsuario.seleccionados.size === 0 || msUsuario.seleccionados.has(card.dataset.usuarioNombre || ''))
+            && (msDia.seleccionados.size === 0 || msDia.seleccionados.has(card.dataset.dia))
+            && (msMes.seleccionados.size === 0 || msMes.seleccionados.has(card.dataset.mes))
+            && (msAnio.seleccionados.size === 0 || msAnio.seleccionados.has(card.dataset.anio));
+    }
+
     function aplicarFiltros() {
         const q = (inputBuscarFoto?.value || '').trim().toLowerCase();
         const clasificacion = filtroClasificacion?.value || '';
+        const etiquetasElegidas = [...msEtiqueta.seleccionados];
 
         document.getElementById('btn-buscar-clear')?.classList.toggle('show', q.length > 0);
 
         indicesVisibles = [];
+        /* Etiquetas presentes en las fotos que pasan el resto de los
+           filtros (ej.: si se eligió "Primer piso" y ninguna foto de ese
+           plano tiene "Pachometría", esa opción queda deshabilitada). */
+        const etiquetasDisponibles = new Set();
 
         tarjetas.forEach(card => {
-            const coincideTexto = q === '' || card.dataset.planoNombre.includes(q);
-            const coincidePlano = msPlano.seleccionados.size === 0 || msPlano.seleccionados.has(card.dataset.planoNombre);
-            const coincideClasificacion = clasificacion === '' || card.dataset.clasificacion === clasificacion;
             const etiquetasCard = (card.dataset.etiquetas || '').split(',').filter(Boolean);
-            const etiquetasElegidas = [...msEtiqueta.seleccionados];
+            const pasaResto = coincideSinEtiqueta(card, q, clasificacion);
+
+            if (pasaResto) {
+                if (etiquetasCard.length === 0) etiquetasDisponibles.add('__sin_etiquetas__');
+                etiquetasCard.forEach(id => etiquetasDisponibles.add(id));
+            }
+
             const coincideValorEtiqueta = valor => valor === '__sin_etiquetas__'
                 ? etiquetasCard.length === 0
                 : etiquetasCard.includes(valor);
             const coincideEtiqueta = etiquetasElegidas.length === 0 ||
                 (checkModoEtiqueta?.checked ? etiquetasElegidas.every(coincideValorEtiqueta) : etiquetasElegidas.some(coincideValorEtiqueta));
-            const coincideUsuario = msUsuario.seleccionados.size === 0 || msUsuario.seleccionados.has(card.dataset.usuarioNombre || '');
-            const coincideDia = msDia.seleccionados.size === 0 || msDia.seleccionados.has(card.dataset.dia);
-            const coincideMes = msMes.seleccionados.size === 0 || msMes.seleccionados.has(card.dataset.mes);
-            const coincideAnio = msAnio.seleccionados.size === 0 || msAnio.seleccionados.has(card.dataset.anio);
-            const visible = coincideTexto && coincidePlano && coincideClasificacion && coincideEtiqueta &&
-                coincideUsuario && coincideDia && coincideMes && coincideAnio;
+            const visible = pasaResto && coincideEtiqueta;
 
             card.style.display = visible ? '' : 'none';
             if (visible) indicesVisibles.push(parseInt(card.dataset.index, 10));
         });
+
+        msEtiqueta.habilitarSolo(etiquetasDisponibles);
 
         if (emptyBusqueda) emptyBusqueda.style.display = indicesVisibles.length === 0 ? '' : 'none';
         actualizarBotonesDescarga();
@@ -1730,7 +1761,30 @@
         });
     });
 
-    async function descargarFotos(ids, boton) {
+    /* La descarga se hace con un form normal apuntado a un iframe oculto
+       (no con fetch + blob): así el navegador baja el ZIP directo a disco
+       con su propia barra de progreso, en vez de juntar cientos de MB en
+       memoria antes de poder guardarlo. Como un form no avisa cuándo
+       terminó, el servidor devuelve la cookie "descarga_galeria" con el
+       token que mandamos y acá se espera a verla. */
+    function crearIframeDescarga() {
+        let iframe = document.getElementById('iframe-descarga-galeria');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'iframe-descarga-galeria';
+            iframe.name = 'iframe-descarga-galeria';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+        }
+        return iframe;
+    }
+
+    function leerCookie(nombre) {
+        const par = document.cookie.split('; ').find(c => c.startsWith(nombre + '='));
+        return par ? decodeURIComponent(par.split('=')[1]) : null;
+    }
+
+    function descargarFotos(ids, boton) {
         if (!ids.length) return;
 
         /* Se guardan los nodos originales (no un string de innerHTML):
@@ -1745,42 +1799,51 @@
         boton.replaceChildren();
         const spinner = document.createElement('i');
         spinner.className = 'fas fa-spinner fa-spin';
-        boton.append(spinner, ' Descargando…');
+        boton.append(spinner, ' Preparando ZIP…');
 
-        try {
-            const respuesta = await fetch(urlDescargarFotos, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': CSRF_TOKEN,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ ids }),
-            });
+        const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
+        const iframe = crearIframeDescarga();
 
-            if (!respuesta.ok) throw new Error('No se pudo generar la descarga');
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = urlDescargarFotos;
+        form.target = iframe.name;
+        form.style.display = 'none';
+        [['_token', CSRF_TOKEN], ['ids', ids.join(',')], ['token_descarga', token]].forEach(([nombre, valor]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = nombre;
+            input.value = valor;
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
 
-            const blob = await respuesta.blob();
-            const disposicion = respuesta.headers.get('Content-Disposition') || '';
-            const coincidencia = disposicion.match(/filename="([^"]+)"/) || disposicion.match(/filename=([^;]+)/);
-            const nombreArchivo = coincidencia ? coincidencia[1].trim() : 'fotos.zip';
-
-            const url = window.URL.createObjectURL(blob);
-            const enlace = document.createElement('a');
-            enlace.href = url;
-            enlace.download = nombreArchivo;
-            document.body.appendChild(enlace);
-            enlace.click();
-            enlace.remove();
-            window.URL.revokeObjectURL(url);
-
-            boton.replaceChildren(...nodosOriginales);
-            desactivarSeleccion();
-        } catch (err) {
+        let terminado = false;
+        const finalizar = (ok) => {
+            if (terminado) return;
+            terminado = true;
+            clearInterval(intervalo);
+            iframe.removeEventListener('load', alCargarIframe);
+            form.remove();
             boton.disabled = false;
             boton.replaceChildren(...nodosOriginales);
-            alert('No se pudo descargar las fotos. Probá de nuevo.');
-        }
+            if (ok) {
+                desactivarSeleccion();
+            } else {
+                alert('No se pudo descargar las fotos. Probá de nuevo.');
+            }
+        };
+
+        /* Si llega la cookie, el ZIP ya se empezó a bajar. Si en cambio el
+           iframe "carga" una página, es que el servidor respondió con un
+           error en vez de un archivo (una descarga nunca dispara load). */
+        const intervalo = setInterval(() => {
+            if (leerCookie('descarga_galeria') === token) finalizar(true);
+        }, 500);
+        const alCargarIframe = () => finalizar(false);
+        iframe.addEventListener('load', alCargarIframe);
+
+        form.submit();
     }
 
     btnDescargarTodo?.addEventListener('click', function () {
@@ -1791,6 +1854,11 @@
     btnDescargarSeleccion?.addEventListener('click', function () {
         descargarFotos(Array.from(seleccionadas), btnDescargarSeleccion);
     });
+
+    /* Al final (y no junto a los filtros) porque aplicarFiltros() usa
+       las constantes de descarga declaradas más arriba. Deja grises de
+       entrada las etiquetas que no tiene ninguna foto. */
+    if (tarjetas.length) aplicarFiltros();
 </script>
 </body>
 </html>

@@ -126,7 +126,8 @@ self.addEventListener('fetch', (event) => {
     }
 });
 
-/* Botón "Descargar para trabajar sin conexión" (planos_tc/index.blade.php):
+/* Botones "Descargar para trabajar sin conexión" (Planos, Planillas,
+   Pachometrías y la obra entera; ver AppServicesDescargaOfflineService):
    la página no conoce el nombre del cache (adrede, para no tener que
    mantenerlo sincronizado a mano en dos archivos — eso fue justo lo que
    se rompió la vez pasada al subir CACHE_VERSION acá y no allá), así que
@@ -137,7 +138,10 @@ self.addEventListener('message', (event) => {
     const { paginas = [], recursos = [] } = event.data;
     const puerto = event.ports[0];
 
-    (async () => {
+    /* waitUntil: sin esto el navegador puede dar por terminado el
+       Service Worker a mitad de una descarga larga (la obra entera son
+       muchos PDFs) y lo que faltaba simplemente no se guarda. */
+    event.waitUntil((async () => {
         const cachePaginas = await caches.open(CACHE_PAGINAS);
         const cacheEstatico = await caches.open(CACHE_ESTATICO);
         const total = paginas.length + recursos.length;
@@ -146,6 +150,17 @@ self.addEventListener('message', (event) => {
 
         async function guardar(cache, url) {
             try {
+                /* PDFs, fotos y librerías de CDN nunca cambian (ver
+                   esInmutable): si ya están guardados no se vuelven a
+                   bajar. Así, reintentar una descarga que falló a medias
+                   (o descargar la obra después de haber bajado Planos)
+                   sólo trae lo que falta. Las páginas sí se refrescan
+                   siempre, porque traen los datos actuales. */
+                if (cache === cacheEstatico && esInmutable(new URL(url, self.location.origin)) && await cache.match(url)) {
+                    listos++;
+                    puerto?.postMessage({ listos, fallidos, total, terminado: false });
+                    return;
+                }
                 const respuesta = await fetch(url, { credentials: 'same-origin' });
                 if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
                 await cache.put(url, respuesta);
@@ -160,5 +175,5 @@ self.addEventListener('message', (event) => {
         for (const url of recursos) await guardar(cacheEstatico, url);
 
         puerto?.postMessage({ listos, fallidos, total, terminado: true });
-    })();
+    })());
 });
