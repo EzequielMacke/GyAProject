@@ -36,7 +36,7 @@ use App\Http\Controllers\GaleriaTcController;
 use App\Http\Controllers\PachometriaTcController;
 use App\Http\Controllers\PlanillaTcController;
 use App\Http\Controllers\PlanoController;
-use Illuminate\Support\Facades\Artisan;
+use App\Http\Controllers\InformeGeneradorController;use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 Route::get('/cache', function () {
@@ -92,6 +92,11 @@ Route::get('/', [AuthController::class , 'showLoginForm'])->name('welcome');
 Route::post('/login', [AuthController::class , 'login'])->name('login');
 Route::post('/logout', [AuthController::class , 'logout'])->name('logout');
 
+// Generador de informes.
+Route::middleware('permiso:gen_inf,ver')->group(function () {
+    Route::view('/generador-informe-gya', 'informe.generator')->name('informe.generador');
+    Route::post('/generador-informe-gya/generar', [InformeGeneradorController::class, 'generar'])->name('informe.generador.generar');
+});
 // Token CSRF vigente, para que las planillas guardadas sin conexión puedan
 // subirse al volver la señal aunque la página haya salido del cache
 // (public/js/planilla-offline.js). Indica también si hay sesión iniciada.

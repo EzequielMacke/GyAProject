@@ -208,7 +208,7 @@
                     @endpermiso
 
                     @permiso('her', 'ver')
-                    <a href="#" class="opcion-card" style="animation-delay:0.22s">
+                    <a href="{{ route('documentos.index') }}" class="opcion-card" style="animation-delay:0.22s">
                         <div class="opcion-icon ic-teal"><i class="fas fa-hammer"></i></div>
                         <span class="opcion-label">Herramientas</span>
                     </a>

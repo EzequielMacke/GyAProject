@@ -357,6 +357,13 @@
                     </a>
                     @endpermiso
 
+                    @permiso('gen_inf', 'ver')
+                    <a href="{{ route('informe.generador') }}" class="opcion-card" style="animation-delay:0.13s">
+                        <div class="opcion-icon ic-purple"><i class="fas fa-file-word"></i></div>
+                        <span class="opcion-label">Informe Preliminar</span>
+                    </a>
+                    @endpermiso
+
                 </div>
 
             </div>
