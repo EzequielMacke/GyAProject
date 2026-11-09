@@ -80,6 +80,13 @@
         }
         .parte:hover { background: var(--surface2); color: var(--text); }
         .parte.activa { background: var(--accent-s); color: var(--accent); }
+        .grupo + .grupo { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+        .grupo-titulo { font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 0.75rem; }
+        .documento {
+            border: 1px solid var(--border); border-radius: 0.5rem;
+            padding: 0.85rem; margin-bottom: 0.75rem;
+        }
+        .documento .btn-quitar { margin-top: 0.6rem; color: var(--muted); }
 
         .panel { display: none; }
         .panel.activo { display: block; }
@@ -111,6 +118,114 @@
         /* Lo que falta cargar se ve resaltado, para saber qué completar */
         .vista-previa .falta { background: #fff4d6; color: #a07400; border-radius: 0.25rem; padding: 0 0.25rem; }
 
+        /* Fotos de Características de la obra */
+        .bloque-foto {
+            border: 1px solid var(--border); border-radius: 0.5rem;
+            padding: 0.85rem; margin-top: 0.75rem; background: #fff;
+        }
+        .bloque-foto-imagenes { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-bottom: 0.75rem; }
+        .bloque-foto-imagenes img { height: 110px; max-width: 100%; border-radius: 0.35rem; object-fit: cover; }
+        .bloque-foto-letra { align-self: flex-end; margin: 0 0.5rem 0 -0.25rem; font-size: 0.8rem; color: var(--text2); }
+        .bloque-foto-pie { display: flex; gap: 0.5rem; align-items: center; }
+        .bloque-foto-pie .form-control { flex: 1; }
+        .bloque-foto .btn-quitar-bloque { color: var(--muted); }
+        .bloque-foto-aviso { font-size: 0.78rem; color: #a07400; background: #fff4d6; border-radius: 0.35rem; padding: 0.35rem 0.6rem; margin-bottom: 0.6rem; }
+
+        .alert { padding: 0.75rem 1rem; border-radius: 0.55rem; font-size: 0.83rem; font-weight: 500; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+        .alert-success { background: #e5f6f0; color: #1e9166; border: 1px solid #b6e8d6; }
+        .alert-danger  { background: #fff0f0; color: #c0392b; border: 1px solid #f5c2c2; }
+
+        .editor-side .card-box + .card-box { margin-top: 1rem; }
+        .informes { list-style: none; margin: 0; padding: 0.5rem; max-height: 320px; overflow-y: auto; }
+        .informe-item {
+            display: block; padding: 0.55rem 0.75rem; border-radius: 0.5rem;
+            text-decoration: none; color: var(--text2); transition: all 0.14s;
+        }
+        .informe-item:hover { background: var(--surface2); color: var(--text); text-decoration: none; }
+        .informe-item.activo { background: var(--accent-s); color: var(--accent); }
+        .informe-item-titulo { font-size: 0.82rem; font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .informe-item-meta { font-size: 0.72rem; color: var(--muted); }
+        .informes-vacio { padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--muted); }
+        .informes-nuevo { margin: 0 0.5rem 0.5rem; width: calc(100% - 1rem); justify-content: center; }
+        #btn-agregar-imagen { margin-top: 0.75rem; }
+
+        .modal-fotos {
+            position: fixed; inset: 0; z-index: 1060; display: none;
+            background: rgba(15, 23, 35, 0.55); padding: 1.5rem;
+            align-items: center; justify-content: center;
+        }
+        .modal-fotos.abierto { display: flex; }
+        .modal-fotos-caja {
+            /* Tamaño fijo según la pantalla: no cambia al filtrar o elegir fotos. */
+            background: var(--surface); border-radius: 0.75rem;
+            width: min(1100px, 100%); height: 100%; display: flex; flex-direction: column; overflow: hidden;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .modal-fotos-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.85rem 1.1rem; border-bottom: 1.5px solid var(--border);
+            font-weight: 700; color: var(--text);
+        }
+        .modal-fotos-cerrar { border: 0; background: none; font-size: 1.1rem; color: var(--muted); cursor: pointer; }
+        .modal-fotos-filtros {
+            display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+            padding: 0.75rem 1.1rem; border-bottom: 1px solid var(--border);
+        }
+        .filtro-multi { position: relative; }
+        .filtro-multi > summary {
+            list-style: none; cursor: pointer; height: 36px; padding: 0 0.85rem;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            border: 1.5px solid var(--border); border-radius: 0.5rem; background: #fff;
+            font-size: 0.8rem; font-weight: 600; color: var(--text2); min-width: 190px;
+        }
+        .filtro-multi > summary::-webkit-details-marker { display: none; }
+        .filtro-multi > summary span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+        .filtro-multi-panel {
+            position: absolute; top: calc(100% + 4px); left: 0; z-index: 5;
+            background: #fff; border: 1.5px solid var(--border); border-radius: 0.5rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 0.4rem; width: 280px;
+            max-height: 300px; overflow-y: auto;
+        }
+        .filtro-multi-panel input[type="text"] {
+            width: 100%; height: 32px; margin-bottom: 0.3rem; padding: 0 0.6rem;
+            border: 1.5px solid var(--border); border-radius: 0.4rem; font-size: 0.8rem;
+        }
+        .filtro-multi-panel label {
+            display: flex; align-items: center; gap: 0.5rem; margin: 0;
+            padding: 0.35rem 0.5rem; border-radius: 0.35rem; font-size: 0.8rem; font-weight: 500; cursor: pointer;
+        }
+        .filtro-multi-panel label:hover { background: var(--surface2); }
+        .modal-fotos-grilla {
+            flex: 1; overflow-y: auto; padding: 1rem 1.1rem;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem;
+            /* Sin esto, con muchas fotos las filas se achican para entrar en el
+               alto del modal (las tarjetas tienen overflow hidden) en vez de scrollear. */
+            grid-auto-rows: max-content;
+            align-content: start; min-height: 200px;
+        }
+        .modal-foto {
+            position: relative; border: 2px solid var(--border); border-radius: 0.5rem;
+            overflow: hidden; cursor: pointer; background: #fff; transition: border-color 0.12s;
+        }
+        .modal-foto img { width: 100%; height: 120px; object-fit: cover; display: block; }
+        .modal-foto-info { padding: 0.35rem 0.5rem; font-size: 0.72rem; color: var(--text2); }
+        .modal-foto-info div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .modal-foto-info .fecha { color: var(--muted); }
+        .modal-foto.seleccionada { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s); }
+        .modal-foto-orden {
+            position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%;
+            background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 700;
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal-foto.seleccionada .modal-foto-orden { display: flex; }
+        .modal-fotos-vacio { grid-column: 1 / -1; }
+        .modal-fotos-pie {
+            display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+            padding: 0.85rem 1.1rem; border-top: 1.5px solid var(--border);
+        }
+        .modal-fotos-pie .form-control { flex: 1; min-width: 220px; font-size: 0.85rem; border: 1.5px solid var(--border); border-radius: 0.5rem; }
+        .modal-fotos-contador { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+
         @media (max-width: 991px) {
             .editor { flex-direction: column-reverse; }
             .editor-side { width: 100%; position: static; }
@@ -131,16 +246,23 @@
                             <i class="fas fa-home"></i>
                             <a href="{{ route('home') }}">Inicio</a>
                             <i class="fas fa-chevron-right"></i>
+                            <a href="{{ route('obras_tc.index', $obraTc->id) }}">{{ $obraTc->descripcion }}</a>
+                            <i class="fas fa-chevron-right"></i>
                             <i class="fas fa-file-word"></i>
                             Generador de Informe
                         </div>
-                        <h1 class="ph-title"><em>Informe</em></h1>
+                        <h1 class="ph-title"><em>Informe</em>{{ $informe ? ': ' . ($informe->titulo ?: 'Sin título') : ' nuevo' }}</h1>
                     </div>
                     <div class="ph-right">
+                        {{-- Guardar envía el mismo formulario a otra ruta (formaction). --}}
+                        <button type="submit" form="form-informe" class="btn" id="btn-guardar"
+                                formaction="{{ $informe ? route('informe.generador.actualizar', [$obraTc->id, $informe->id]) : route('informe.generador.guardar', $obraTc->id) }}">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
                         <button type="submit" form="form-informe" class="btn btn-primary" id="btn-generar">
                             <i class="fas fa-file-word"></i> Generar
                         </button>
-                        <a href="{{ route('home') }}" class="btn">
+                        <a href="{{ route('obras_tc.index', $obraTc->id) }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
                     </div>
@@ -149,11 +271,19 @@
         </div>
         <section class="content">
             <div class="container-fluid">
+                @if (session('success'))
+                    <div class="alert alert-success"><i class="fas fa-check-circle"></i> {{ session('success') }}</div>
+                @endif
+                @if ($errors->any())
+                    <div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> {{ $errors->first() }}</div>
+                @endif
                 <div class="editor">
                     <div class="editor-main">
                         {{-- El botón Generar del encabezado envía este formulario (atributo form). --}}
-                        <form id="form-informe" method="POST" action="{{ route('informe.generador.generar') }}" class="card-box">
+                        <form id="form-informe" method="POST" action="{{ route('informe.generador.generar', $obraTc->id) }}" class="card-box">
                             @csrf
+                            {{-- Valor guardado (o recién enviado, si volvió con errores) de cada campo. --}}
+                            @php $v = fn (string $campo, $porDefecto = '') => $datos[$campo] ?? $porDefecto; @endphp
                             <div class="panel activo" id="panel-vacio">
                                 <div class="vacio">
                                     <i class="fas fa-hand-pointer"></i>
@@ -167,12 +297,12 @@
                                     <div class="row g-3">
                                         <div class="col-12 campo">
                                             <label for="car-titulo">Título del informe</label>
-                                            <input type="text" class="form-control" id="car-titulo" name="titulo" placeholder="Ej.: Evaluación estructural de losas del Sector B">
+                                            <input type="text" class="form-control" id="car-titulo" name="titulo" value="{{ $v('titulo') }}" placeholder="Ej.: Evaluación estructural de losas del Sector B">
                                             <small class="ayuda">Busca que la persona que lea el título sepa de qué trata el informe sin abrirlo: qué se hizo, sobre qué elemento y en qué sector.</small>
                                         </div>
                                         <div class="col-12 campo">
                                             <label for="car-obra">Obra</label>
-                                            <input type="text" class="form-control" id="car-obra" name="obra" placeholder="Ej.: Edificio Torre Central">
+                                            <input type="text" class="form-control" id="car-obra" name="obra" value="{{ $v('obra', $obraTc->descripcion) }}" placeholder="Ej.: Edificio Torre Central">
                                             <small class="ayuda">Nombre del lugar físico en el que se realizó el trabajo.</small>
                                         </div>
                                         <div class="col-md-6 campo">
@@ -180,24 +310,24 @@
                                             <select class="form-select" id="car-mes" name="mes">
                                                 <option value="">Seleccionar...</option>
                                                 @foreach (['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] as $mes)
-                                                    <option value="{{ $mes }}">{{ $mes }}</option>
+                                                    <option value="{{ $mes }}" @selected($v('mes') === $mes)>{{ $mes }}</option>
                                                 @endforeach
                                             </select>
                                             <small class="ayuda">Mes en el que se desarrollaron los trabajos.</small>
                                         </div>
                                         <div class="col-md-6 campo">
                                             <label for="car-anio">Año</label>
-                                            <input type="number" class="form-control" id="car-anio" name="anio" value="{{ date('Y') }}">
+                                            <input type="number" class="form-control" id="car-anio" name="anio" value="{{ $v('anio', date('Y')) }}">
                                             <small class="ayuda">Año en el que se desarrollaron los trabajos.</small>
                                         </div>
                                         <div class="col-12 campo">
                                             <label for="car-peticionario">Peticionario</label>
-                                            <input type="text" class="form-control" id="car-peticionario" name="peticionario" placeholder="Ej.: Constructora del Sur S.A.">
+                                            <input type="text" class="form-control" id="car-peticionario" name="peticionario" value="{{ $v('peticionario') }}" placeholder="Ej.: Constructora del Sur S.A.">
                                             <small class="ayuda">Nombre de la persona o entidad que financia el trabajo.</small>
                                         </div>
                                         <div class="col-12 campo">
                                             <label for="car-referencia">Referencia</label>
-                                            <input type="text" class="form-control" id="car-referencia" name="referencia" placeholder="Ej.: INF.: 55-25">
+                                            <input type="text" class="form-control" id="car-referencia" name="referencia" value="{{ $v('referencia') }}" placeholder="Ej.: INF.: 55-25">
                                             <small class="ayuda">Se usa para encontrar el informe rápidamente en el gestor de archivos. En el ejemplo, 55 es el número de informe y 25 el año.</small>
                                         </div>
                                     </div>
@@ -215,7 +345,7 @@
                                                     <select class="form-select" id="ig-fp-dia" name="presupuesto_dia" aria-label="Día">
                                                         <option value="">Día</option>
                                                         @for ($d = 1; $d <= 31; $d++)
-                                                            <option value="{{ $d }}">{{ $d }}</option>
+                                                            <option value="{{ $d }}" @selected((int) $v('presupuesto_dia') === $d)>{{ $d }}</option>
                                                         @endfor
                                                     </select>
                                                 </div>
@@ -223,40 +353,39 @@
                                                     <select class="form-select" id="ig-fp-mes" name="presupuesto_mes" aria-label="Mes">
                                                         <option value="">Mes</option>
                                                         @foreach (['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] as $mes)
-                                                            <option value="{{ $mes }}">{{ $mes }}</option>
+                                                            <option value="{{ $mes }}" @selected($v('presupuesto_mes') === $mes)>{{ $mes }}</option>
                                                         @endforeach
                                                     </select>
                                                 </div>
                                                 <div class="col-4">
                                                     <select class="form-select" id="ig-fp-anio" name="presupuesto_anio" aria-label="Año">
-                                                        @for ($a = date('Y') + 1; $a >= date('Y') - 5; $a--)
-                                                            <option value="{{ $a }}" @selected($a == date('Y'))>{{ $a }}</option>
-                                                        @endfor
+                                                        {{-- Si el informe guardado tiene un año fuera del rango, se agrega. --}}
+                                                        @php
+                                                            $anioPresupuesto = (int) $v('presupuesto_anio', date('Y'));
+                                                            $aniosPresupuesto = collect(range(date('Y') + 1, date('Y') - 5))->push($anioPresupuesto)->unique()->sortDesc();
+                                                        @endphp
+                                                        @foreach ($aniosPresupuesto as $a)
+                                                            <option value="{{ $a }}" @selected($a === $anioPresupuesto)>{{ $a }}</option>
+                                                        @endforeach
                                                     </select>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="col-12 campo">
                                             <label for="ig-motivo-presupuesto">Motivo del presupuesto</label>
-                                            <textarea class="form-control" id="ig-motivo-presupuesto" name="motivo_presupuesto" rows="3" placeholder="Ej.: la evaluación de la estructura de hormigón armado perteneciente al Edificio Torre Central"></textarea>
+                                            <textarea class="form-control" id="ig-motivo-presupuesto" name="motivo_presupuesto" rows="3" placeholder="Ej.: la evaluación de la estructura de hormigón armado perteneciente al Edificio Torre Central">{{ $v('motivo_presupuesto') }}</textarea>
                                             <small class="ayuda">Para qué se envió el presupuesto. Completa la frase "hemos presentado una propuesta técnica para…".</small>
                                         </div>
                                         <div class="col-12 campo">
                                             <label for="ig-ubicacion-obra">Ubicación de la obra</label>
-                                            <input type="text" class="form-control" id="ig-ubicacion-obra" name="ubicacion_obra" placeholder="Ej.: la Avda. Principal N° 1234 e/ Calle Uno y Calle Dos de la ciudad de San Lorenzo">
+                                            <input type="text" class="form-control" id="ig-ubicacion-obra" name="ubicacion_obra" value="{{ $v('ubicacion_obra') }}" placeholder="Ej.: la Avda. Principal N° 1234 e/ Calle Uno y Calle Dos de la ciudad de San Lorenzo">
                                             <small class="ayuda">Dónde se encuentra la obra. Completa la frase "ubicado sobre…".</small>
-                                        </div>
-                                        <div class="col-12 campo">
-                                            <label for="ig-info-adicional">Información adicional <span class="opcional">(opcional)</span></label>
-                                            <textarea class="form-control" id="ig-info-adicional" name="info_adicional" rows="4" placeholder="Ej.: Se solicitó el servicio de verificación de la capacidad portante de la estructura existente del galpón de depósito, ante la instalación de un nuevo equipo sobre la cubierta. El estudio debe comprender todas las tareas de ingeniería necesarias para verificar la aptitud de la estructura."></textarea>
-                                            <small class="ayuda">Detalle del servicio solicitado y su alcance: qué pidió el cliente, por qué motivo y qué debe abarcar el estudio. Va como un párrafo aparte, después del anterior.</small>
                                         </div>
                                     </div>
 
                                     <div class="vista-previa">
                                         <div class="vista-previa-head"><i class="fas fa-eye"></i> Así queda el texto</div>
                                         <p id="ig-vista-previa"></p>
-                                        <p id="ig-vista-previa-adicional" class="mt-2" hidden></p>
                                     </div>
                                 </div>
                             </div>
@@ -267,8 +396,120 @@
                                     <div class="row g-3">
                                         <div class="col-12 campo">
                                             <label for="obj-texto">Objetivo y alcance del informe</label>
-                                            <textarea class="form-control" id="obj-texto" name="objetivo_alcance" rows="5" placeholder="Ej. 1: El presente informe tiene por finalidad evaluar el estado estructural de las columnas de hormigón armado del galpón de depósito, a fin de determinar su condición estructural y su aptitud para continuar en servicio.&#10;&#10;Ej. 2: El presente informe tiene por objeto presentar los resultados de la evaluación de patologías en la estructura de hormigón armado en diversos sectores, a fin de determinar la trascendencia estructural de los daños visualizados."></textarea>
+                                            <textarea class="form-control" id="obj-texto" name="objetivo_alcance" rows="5" placeholder="Ej. 1: El presente informe tiene por finalidad evaluar el estado estructural de las columnas de hormigón armado del galpón de depósito, a fin de determinar su condición estructural y su aptitud para continuar en servicio.&#10;&#10;Ej. 2: El presente informe tiene por objeto presentar los resultados de la evaluación de patologías en la estructura de hormigón armado en diversos sectores, a fin de determinar la trascendencia estructural de los daños visualizados.">{{ $v('objetivo_alcance') }}</textarea>
                                             <small class="ayuda">Qué se busca evaluar con el informe, sobre qué elementos y para qué. Cada renglón se convierte en un párrafo del Word.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="panel" id="panel-datos-previos">
+                                <div class="card-box-head">Datos previos para la realización del estudio</div>
+                                <div class="panel-body">
+                                    <div class="grupo">
+                                        <div class="grupo-titulo">Documentación recibida</div>
+                                        <small class="ayuda d-block mb-2">Detalle de los documentos que envió el cliente: planos, memorias, planillas, fotografías, estudios, etc.</small>
+                                        <div id="documentos"></div>
+                                        <button type="button" class="btn btn-sm" id="btn-agregar-documento">
+                                            <i class="fas fa-plus"></i> Agregar documento
+                                        </button>
+                                        <datalist id="tipos-documento">
+                                            @foreach (['Plano', 'Memoria de cálculo', 'Memoria descriptiva', 'Planilla', 'Fotografías', 'Estudio de suelos', 'Informe'] as $tipo)
+                                                <option value="{{ $tipo }}">
+                                            @endforeach
+                                        </datalist>
+                                        {{-- Molde de un documento; __i__ se reemplaza por un índice único al agregarlo. --}}
+                                        <template id="molde-documento">
+                                            <div class="documento">
+                                                <div class="row g-2">
+                                                    <div class="col-md-4 campo">
+                                                        <label for="doc-tipo-__i__">Tipo de documento</label>
+                                                        <input type="text" class="form-control" id="doc-tipo-__i__" name="documentos[__i__][tipo]" list="tipos-documento" placeholder="Ej.: Plano">
+                                                    </div>
+                                                    <div class="col-md-8 campo">
+                                                        <label for="doc-nombre-__i__">Nombre del archivo</label>
+                                                        <input type="text" class="form-control" id="doc-nombre-__i__" name="documentos[__i__][nombre]" placeholder="Ej.: Encofrado Planta Baja">
+                                                    </div>
+                                                    <div class="col-md-4 campo">
+                                                        <label for="doc-fecha-__i__">Fecha de recepción</label>
+                                                        <input type="date" class="form-control" id="doc-fecha-__i__" name="documentos[__i__][fecha]">
+                                                    </div>
+                                                    <div class="col-md-8 campo">
+                                                        <label for="doc-remitente-__i__">Enviado por</label>
+                                                        <input type="text" class="form-control" id="doc-remitente-__i__" name="documentos[__i__][remitente]" placeholder="Ej.: Juan Pérez">
+                                                    </div>
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-quitar" title="Quitar documento">
+                                                    <i class="fas fa-trash-alt"></i> Quitar
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <div class="grupo">
+                                        <div class="grupo-titulo">Información recibida</div>
+                                        <div class="row g-3">
+                                            <div class="col-12 campo">
+                                                <textarea class="form-control" id="dp-informacion" name="informacion_recibida" rows="5" aria-label="Información recibida">{{ $v('informacion_recibida') }}</textarea>
+                                                <small class="ayuda">Breve descripción de la información que dio el cliente: por qué decide hacer el estudio, cuándo empezó a notar las patologías y, en síntesis, el contexto de lo que relató. Cada renglón se convierte en un párrafo del Word.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="grupo">
+                                        <div class="grupo-titulo">Características de la obra</div>
+                                        <div class="row g-3">
+                                            <div class="col-12 campo">
+                                                <textarea class="form-control" id="dp-caracteristicas" name="caracteristicas_obra" rows="5" aria-label="Características de la obra">{{ $v('caracteristicas_obra') }}</textarea>
+                                                <small class="ayuda">Descripción de la estructura: cómo está constituida, si es nueva o existente, si está terminada o en construcción, etc. Cada renglón se convierte en un párrafo del Word.</small>
+                                                <div id="bloques-fotos"></div>
+                                                <button type="button" class="btn btn-sm" id="btn-agregar-imagen">
+                                                    <i class="fas fa-image"></i> Agregar imagen
+                                                </button>
+                                                <small class="ayuda">Cada vez que agregás imágenes se crea un bloque: si elegís varias fotos van juntas con un solo pie. Van al Word después del texto, en el orden en que se agregan.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Equipo técnico: por ahora sólo se carga, todavía no va al Word. --}}
+                            <div class="panel" id="panel-equipo-tecnico">
+                                <div class="card-box-head">Equipo Técnico</div>
+                                <div class="panel-body">
+                                    <div class="row g-3">
+                                        <div class="col-12 campo">
+                                            <label for="et-coordinacion">Coordinación general de los trabajos</label>
+                                            <input type="text" class="form-control" id="et-coordinacion" name="equipo_coordinacion" value="{{ $v('equipo_coordinacion') }}" placeholder="Ej.: Prof. Dr. Ing. Sergio Gavilán">
+                                            <small class="ayuda">Nombre de la persona que va a firmar el documento.</small>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="grupo-titulo mb-2">Trabajos de campo</div>
+                                            <div class="row g-3">
+                                                <div class="col-12 campo">
+                                                    <label for="et-campo-descripcion">Descripción</label>
+                                                    <input type="text" class="form-control" id="et-campo-descripcion" name="equipo_campo_descripcion" value="{{ $v('equipo_campo_descripcion') }}" placeholder="Ej.: Relevamiento y Ensayos no destructivos">
+                                                    <small class="ayuda">Qué trabajos se hicieron en campo.</small>
+                                                </div>
+                                                <div class="col-12 campo">
+                                                    <label for="et-campo-personas">Personas</label>
+                                                    <textarea class="form-control" id="et-campo-personas" name="equipo_campo_personas" rows="3" placeholder="Ej.: Ing. Juan Pérez&#10;Ing. María González">{{ $v('equipo_campo_personas') }}</textarea>
+                                                    <small class="ayuda">Una persona por renglón (separadas con Enter).</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="grupo-titulo mb-2">Trabajos de gabinete</div>
+                                            <div class="row g-3">
+                                                <div class="col-12 campo">
+                                                    <label for="et-gabinete-descripcion">Descripción</label>
+                                                    <input type="text" class="form-control" id="et-gabinete-descripcion" name="equipo_gabinete_descripcion" value="{{ $v('equipo_gabinete_descripcion') }}" placeholder="Ej.: Procesamiento de datos y elaboración del informe">
+                                                    <small class="ayuda">Qué trabajos se hicieron en gabinete.</small>
+                                                </div>
+                                                <div class="col-12 campo">
+                                                    <label for="et-gabinete-personas">Personas</label>
+                                                    <textarea class="form-control" id="et-gabinete-personas" name="equipo_gabinete_personas" rows="3" placeholder="Ej.: Ing. Juan Pérez&#10;Ing. María González">{{ $v('equipo_gabinete_personas') }}</textarea>
+                                                    <small class="ayuda">Una persona por renglón (separadas con Enter).</small>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -277,6 +518,31 @@
                     </div>
 
                     <aside class="editor-side">
+                        <div class="card-box">
+                            <div class="card-box-head">Informes guardados</div>
+                            @if ($informes->isEmpty())
+                                <div class="informes-vacio">Todavía no hay informes guardados de esta obra.</div>
+                            @else
+                                <ul class="informes">
+                                    @foreach ($informes as $item)
+                                        <li>
+                                            <a href="{{ route('informe.generador.editar', [$obraTc->id, $item->id]) }}"
+                                               class="informe-item {{ $informe && $informe->id === $item->id ? 'activo' : '' }}">
+                                                <span class="informe-item-titulo">{{ $item->titulo ?: 'Sin título' }}</span>
+                                                <span class="informe-item-meta">
+                                                    {{ $item->referencia ? $item->referencia . ' · ' : '' }}{{ $item->updated_at->format('d/m/Y H:i') }}
+                                                </span>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                            @if ($informe)
+                                <a href="{{ route('informe.generador', $obraTc->id) }}" class="btn btn-sm informes-nuevo">
+                                    <i class="fas fa-plus"></i> Nuevo informe
+                                </a>
+                            @endif
+                        </div>
                         <div class="card-box">
                             <div class="card-box-head">Partes del informe</div>
                             <ul class="partes">
@@ -289,6 +555,12 @@
                                 <li class="parte" data-panel="panel-objetivo">
                                     <i class="fas fa-bullseye"></i> Objetivo y alcance
                                 </li>
+                                <li class="parte" data-panel="panel-datos-previos">
+                                    <i class="fas fa-folder-open"></i> Datos previos para la realización del estudio
+                                </li>
+                                <li class="parte" data-panel="panel-equipo-tecnico">
+                                    <i class="fas fa-users"></i> Equipo Técnico
+                                </li>
                             </ul>
                         </div>
                     </aside>
@@ -297,6 +569,55 @@
         </section>
     </div>
     @include('partials.footer')
+</div>
+
+{{-- Modal para elegir fotos de la galería de la obra --}}
+<div class="modal-fotos" id="modal-fotos" role="dialog" aria-modal="true" aria-labelledby="modal-fotos-titulo">
+    <div class="modal-fotos-caja">
+        <div class="modal-fotos-head">
+            <span id="modal-fotos-titulo"><i class="fas fa-images"></i> Agregar imagen</span>
+            <button type="button" class="modal-fotos-cerrar" data-cerrar-modal title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-fotos-filtros">
+            <details class="filtro-multi" id="filtro-planos">
+                <summary><span>Todos los planos</span><i class="fas fa-chevron-down"></i></summary>
+                <div class="filtro-multi-panel">
+                    <input type="text" placeholder="Buscar plano..." data-buscar>
+                    @foreach ($planos as $plano)
+                        <label data-texto="{{ Str::lower($plano['descripcion']) }}">
+                            <input type="checkbox" value="{{ $plano['id'] }}"> <span>{{ $plano['descripcion'] }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </details>
+            <details class="filtro-multi" id="filtro-etiquetas">
+                <summary><span>Toda etiqueta</span><i class="fas fa-chevron-down"></i></summary>
+                <div class="filtro-multi-panel">
+                    <input type="text" placeholder="Buscar etiqueta..." data-buscar>
+                    <label data-texto="sin etiquetas">
+                        <input type="checkbox" value="__sin__"> <span>Sin etiquetas</span>
+                    </label>
+                    @foreach ($etiquetas as $etiqueta)
+                        <label data-texto="{{ Str::lower($etiqueta->descripcion) }}">
+                            <input type="checkbox" value="{{ $etiqueta->id }}"> <span>{{ $etiqueta->descripcion }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </details>
+            <button type="button" class="btn btn-sm" id="btn-limpiar-filtros-fotos">
+                <i class="fas fa-filter-circle-xmark"></i> Limpiar
+            </button>
+        </div>
+        <div class="modal-fotos-grilla" id="modal-fotos-grilla"></div>
+        <div class="modal-fotos-pie">
+            <span class="modal-fotos-contador" id="modal-fotos-contador">Ninguna foto seleccionada</span>
+            <input type="text" class="form-control" id="modal-fotos-pie" maxlength="500" placeholder="Pie de foto (ej.: Vista general de la fachada principal)">
+            <button type="button" class="btn" data-cerrar-modal>Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btn-confirmar-fotos" disabled>
+                <i class="fas fa-plus"></i> Agregar
+            </button>
+        </div>
+    </div>
 </div>
 <script>
     // Al tocar una parte del informe se muestra su panel y se marca como activa.
@@ -309,6 +630,41 @@
         });
     });
 
+    // Documentación recibida: cada documento sale del molde con un índice
+    // propio, así los campos llegan agrupados como documentos[i][...].
+    (function () {
+        const lista = document.getElementById('documentos');
+        const molde = document.getElementById('molde-documento').innerHTML;
+        let indice = 0;
+
+        // doc: documento guardado para precargar sus campos (opcional).
+        function agregar(doc) {
+            const i = indice++;
+            lista.insertAdjacentHTML('beforeend', molde.replaceAll('__i__', i));
+            if (doc && typeof doc === 'object' && !(doc instanceof Event)) {
+                ['tipo', 'nombre', 'fecha', 'remitente'].forEach(function (campo) {
+                    document.getElementById('doc-' + campo + '-' + i).value = doc[campo] || '';
+                });
+            }
+        }
+
+        lista.addEventListener('click', function (e) {
+            const quitar = e.target.closest('.btn-quitar');
+            if (quitar) {
+                quitar.closest('.documento').remove();
+            }
+        });
+
+        document.getElementById('btn-agregar-documento').addEventListener('click', () => agregar());
+
+        const guardados = Object.values(@json($v('documentos', [])) || {});
+        if (guardados.length) {
+            guardados.forEach(agregar);
+        } else {
+            agregar();
+        }
+    })();
+
     // Vista previa del párrafo de Información general, se arma mientras se carga.
     (function () {
         const dia = document.getElementById('ig-fp-dia');
@@ -316,9 +672,7 @@
         const anio = document.getElementById('ig-fp-anio');
         const motivo = document.getElementById('ig-motivo-presupuesto');
         const ubicacion = document.getElementById('ig-ubicacion-obra');
-        const adicional = document.getElementById('ig-info-adicional');
         const vista = document.getElementById('ig-vista-previa');
-        const vistaAdicional = document.getElementById('ig-vista-previa-adicional');
 
         // Va armando el párrafo con nodos de texto (no innerHTML) para que lo
         // que escribe el usuario nunca se interprete como HTML.
@@ -351,17 +705,244 @@
             agregar(' ubicado sobre ');
             agregarDato(lugar, '[ubicación de la obra]');
             agregar('.');
-
-            // Información adicional: párrafo aparte, solo si se cargó.
-            vistaAdicional.textContent = adicional.value.trim();
-            vistaAdicional.hidden = !vistaAdicional.textContent;
         }
 
-        [dia, mes, anio, motivo, ubicacion, adicional].forEach(function (campo) {
+        [dia, mes, anio, motivo, ubicacion].forEach(function (campo) {
             campo.addEventListener('input', actualizar);
             campo.addEventListener('change', actualizar);
         });
         actualizar();
+    })();
+
+    // Fotos de Características de la obra: el modal muestra la galería de
+    // la obra (filtrable por plano y etiqueta); cada confirmación crea un
+    // bloque con las fotos elegidas y un único pie.
+    (function () {
+        const FOTOS = @json($fotos);
+        const modal = document.getElementById('modal-fotos');
+        const grilla = document.getElementById('modal-fotos-grilla');
+        const contador = document.getElementById('modal-fotos-contador');
+        const inputPie = document.getElementById('modal-fotos-pie');
+        const btnConfirmar = document.getElementById('btn-confirmar-fotos');
+        const filtroPlanos = document.getElementById('filtro-planos');
+        const filtroEtiquetas = document.getElementById('filtro-etiquetas');
+        const bloques = document.getElementById('bloques-fotos');
+        let seleccion = [];
+        let indiceBloque = 0;
+
+        // Tarjetas armadas una sola vez; los filtros sólo las ocultan.
+        const tarjetas = FOTOS.map(function (foto) {
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'modal-foto';
+            tarjeta.dataset.id = foto.id;
+
+            const img = document.createElement('img');
+            img.src = foto.miniatura;
+            img.alt = 'Foto';
+            img.loading = 'lazy';
+
+            const orden = document.createElement('span');
+            orden.className = 'modal-foto-orden';
+
+            const info = document.createElement('div');
+            info.className = 'modal-foto-info';
+            const plano = document.createElement('div');
+            plano.textContent = foto.plano;
+            const fecha = document.createElement('div');
+            fecha.className = 'fecha';
+            fecha.textContent = foto.fecha || '';
+            info.append(plano, fecha);
+
+            tarjeta.append(img, orden, info);
+            tarjeta.addEventListener('click', function () { alternar(foto); });
+            grilla.appendChild(tarjeta);
+            return { foto: foto, el: tarjeta };
+        });
+
+        const vacio = document.createElement('div');
+        vacio.className = 'vacio modal-fotos-vacio';
+        vacio.innerHTML = '<i class="fas fa-images"></i>';
+        vacio.appendChild(document.createTextNode(FOTOS.length ? 'No hay fotos que coincidan con el filtro.' : 'Esta obra todavía no tiene fotos en la galería.'));
+        grilla.appendChild(vacio);
+
+        function marcados(filtro) {
+            return Array.from(filtro.querySelectorAll('input[type="checkbox"]:checked'));
+        }
+
+        function actualizarTextoFiltro(filtro, textoVacio) {
+            const elegidos = marcados(filtro).map(c => c.nextElementSibling.textContent.trim());
+            filtro.querySelector('summary span').textContent = elegidos.length ? elegidos.join(', ') : textoVacio;
+        }
+
+        function filtrar() {
+            const planos = marcados(filtroPlanos).map(c => c.value);
+            const etiquetas = marcados(filtroEtiquetas).map(c => c.value);
+            let visibles = 0;
+
+            tarjetas.forEach(function ({ foto, el }) {
+                const pasaPlano = !planos.length || planos.includes(String(foto.plano_id));
+                const pasaEtiqueta = !etiquetas.length || etiquetas.some(function (e) {
+                    return e === '__sin__' ? foto.etiquetas.length === 0 : foto.etiquetas.includes(Number(e));
+                });
+                const visible = pasaPlano && pasaEtiqueta;
+                el.hidden = !visible;
+                if (visible) visibles++;
+            });
+
+            vacio.hidden = visibles > 0;
+            actualizarTextoFiltro(filtroPlanos, 'Todos los planos');
+            actualizarTextoFiltro(filtroEtiquetas, 'Toda etiqueta');
+        }
+
+        [filtroPlanos, filtroEtiquetas].forEach(function (filtro) {
+            filtro.addEventListener('change', filtrar);
+            filtro.querySelector('[data-buscar]').addEventListener('input', function () {
+                const texto = this.value.trim().toLowerCase();
+                filtro.querySelectorAll('label[data-texto]').forEach(function (label) {
+                    label.hidden = texto !== '' && !label.dataset.texto.includes(texto);
+                });
+            });
+        });
+
+        // Un solo desplegable abierto a la vez, y se cierra al tocar afuera.
+        document.addEventListener('click', function (e) {
+            [filtroPlanos, filtroEtiquetas].forEach(function (filtro) {
+                if (!filtro.contains(e.target)) filtro.open = false;
+            });
+        });
+
+        document.getElementById('btn-limpiar-filtros-fotos').addEventListener('click', function () {
+            [filtroPlanos, filtroEtiquetas].forEach(function (filtro) {
+                marcados(filtro).forEach(c => { c.checked = false; });
+            });
+            filtrar();
+        });
+
+        function alternar(foto) {
+            const posicion = seleccion.indexOf(foto);
+            if (posicion === -1) {
+                seleccion.push(foto);
+            } else {
+                seleccion.splice(posicion, 1);
+            }
+            pintarSeleccion();
+        }
+
+        function pintarSeleccion() {
+            tarjetas.forEach(function ({ foto, el }) {
+                const posicion = seleccion.indexOf(foto);
+                el.classList.toggle('seleccionada', posicion !== -1);
+                el.querySelector('.modal-foto-orden').textContent = posicion !== -1 ? posicion + 1 : '';
+            });
+            contador.textContent = seleccion.length === 0
+                ? 'Ninguna foto seleccionada'
+                : seleccion.length === 1 ? '1 foto seleccionada' : seleccion.length + ' fotos seleccionadas (un solo pie)';
+            btnConfirmar.disabled = seleccion.length === 0;
+        }
+
+        function abrir() {
+            seleccion = [];
+            inputPie.value = '';
+            pintarSeleccion();
+            filtrar();
+            modal.classList.add('abierto');
+        }
+
+        function cerrar() {
+            modal.classList.remove('abierto');
+        }
+
+        document.getElementById('btn-agregar-imagen').addEventListener('click', abrir);
+        modal.querySelectorAll('[data-cerrar-modal]').forEach(b => b.addEventListener('click', cerrar));
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) cerrar();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('abierto')) cerrar();
+        });
+        // Enter en el pie confirma, sin enviar el formulario del informe.
+        inputPie.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (!btnConfirmar.disabled) btnConfirmar.click();
+            }
+        });
+
+        btnConfirmar.addEventListener('click', function () {
+            if (!seleccion.length) return;
+            agregarBloque(seleccion.slice(), inputPie.value.trim());
+            cerrar();
+        });
+
+        // faltantes: fotos del bloque guardado que ya no están en la galería.
+        function agregarBloque(fotos, pie, faltantes) {
+            const i = indiceBloque++;
+            const bloque = document.createElement('div');
+            bloque.className = 'bloque-foto';
+
+            if (faltantes) {
+                const aviso = document.createElement('div');
+                aviso.className = 'bloque-foto-aviso';
+                aviso.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ';
+                aviso.appendChild(document.createTextNode(faltantes === 1
+                    ? 'Una foto de este bloque se borró de la galería y ya no va al Word.'
+                    : faltantes + ' fotos de este bloque se borraron de la galería y ya no van al Word.'));
+                bloque.appendChild(aviso);
+            }
+
+            const imagenes = document.createElement('div');
+            imagenes.className = 'bloque-foto-imagenes';
+            // De a varias, cada foto lleva su letra (a), (b)… igual que en el Word.
+            fotos.forEach(function (foto, n) {
+                const img = document.createElement('img');
+                img.src = foto.miniatura;
+                img.alt = 'Foto';
+                imagenes.appendChild(img);
+                if (fotos.length > 1) {
+                    const letra = document.createElement('span');
+                    letra.className = 'bloque-foto-letra';
+                    letra.textContent = '(' + String.fromCharCode(97 + n) + ')';
+                    imagenes.appendChild(letra);
+                }
+            });
+
+            const ids = document.createElement('input');
+            ids.type = 'hidden';
+            ids.name = 'fotos_caracteristicas[' + i + '][ids]';
+            ids.value = fotos.map(f => f.id).join(',');
+
+            const fila = document.createElement('div');
+            fila.className = 'bloque-foto-pie';
+            const inputBloque = document.createElement('input');
+            inputBloque.type = 'text';
+            inputBloque.className = 'form-control';
+            inputBloque.name = 'fotos_caracteristicas[' + i + '][pie]';
+            inputBloque.maxLength = 500;
+            inputBloque.placeholder = 'Pie de foto';
+            inputBloque.value = pie;
+            inputBloque.setAttribute('aria-label', 'Pie de foto');
+
+            const quitar = document.createElement('button');
+            quitar.type = 'button';
+            quitar.className = 'btn btn-sm btn-quitar-bloque';
+            quitar.title = 'Quitar imagen';
+            quitar.innerHTML = '<i class="fas fa-trash-alt"></i> Quitar';
+            quitar.addEventListener('click', () => bloque.remove());
+
+            fila.append(inputBloque, quitar);
+            bloque.append(imagenes, ids, fila);
+            bloques.appendChild(bloque);
+        }
+
+        // Bloques del informe guardado, con las fotos que siguen existiendo.
+        Object.values(@json($v('fotos_caracteristicas', [])) || {}).forEach(function (guardado) {
+            const ids = String(guardado.ids || '').split(',').map(Number).filter(Boolean);
+            const fotos = ids.map(id => FOTOS.find(f => f.id === id)).filter(Boolean);
+            const faltantes = ids.length - fotos.length;
+            if (fotos.length || faltantes) {
+                agregarBloque(fotos, guardado.pie || '', faltantes);
+            }
+        });
     })();
 </script>
 </body>

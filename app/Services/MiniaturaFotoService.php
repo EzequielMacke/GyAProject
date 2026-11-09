@@ -86,6 +86,47 @@ class MiniaturaFotoService
     }
 
     /**
+     * Versión de la foto para insertar en un Word: JPG con la orientación
+     * corregida y achicada a $ladoMaximo, para que el documento no pese lo
+     * que pesan los originales. Devuelve [contenido, ancho, alto] o null si
+     * el original no existe o GD no lo puede leer.
+     */
+    public static function paraDocumento(string $archivo, int $ladoMaximo = 1600): ?array
+    {
+        $disco = Storage::disk('public');
+        $rutaOriginal = self::rutaRelativa($archivo);
+
+        if (! $disco->exists($rutaOriginal)) {
+            return null;
+        }
+
+        $origen = @imagecreatefromstring($disco->get($rutaOriginal));
+        if (! $origen) {
+            return null;
+        }
+
+        $origen = self::corregirOrientacion($origen, $disco->path($rutaOriginal));
+
+        $ancho = imagesx($origen);
+        $alto = imagesy($origen);
+        $escala = min(1, $ladoMaximo / max($ancho, $alto));
+        $nuevoAncho = max(1, (int) round($ancho * $escala));
+        $nuevoAlto = max(1, (int) round($alto * $escala));
+
+        $imagen = imagecreatetruecolor($nuevoAncho, $nuevoAlto);
+        imagefill($imagen, 0, 0, imagecolorallocate($imagen, 255, 255, 255));
+        imagecopyresampled($imagen, $origen, 0, 0, 0, 0, $nuevoAncho, $nuevoAlto, $ancho, $alto);
+        imagedestroy($origen);
+
+        ob_start();
+        imagejpeg($imagen, null, 85);
+        $contenido = ob_get_clean();
+        imagedestroy($imagen);
+
+        return [$contenido, $nuevoAncho, $nuevoAlto];
+    }
+
+    /**
      * GD descarta los metadatos EXIF, así que una foto de celular sacada
      * "de costado" quedaría girada en la miniatura aunque el navegador
      * muestre bien el original.
