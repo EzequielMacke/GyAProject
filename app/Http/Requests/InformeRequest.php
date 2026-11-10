@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\InformeTc;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -45,6 +46,9 @@ class InformeRequest extends FormRequest
             'equipo_campo_personas' => 'nullable|string',
             'equipo_gabinete_descripcion' => 'nullable|string|max:255',
             'equipo_gabinete_personas' => 'nullable|string',
+            'trabajos_descripcion' => 'nullable|string',
+            'trabajos_activos' => 'nullable|array',
+            'trabajos_activos.*' => 'string|in:' . implode(',', array_keys(InformeTc::TRABAJOS)),
         ];
     }
 }

@@ -243,11 +243,13 @@ class PlanillaTcController extends Controller
         }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
 
         $datosCarbonatacion = $carbonatacion ? [
+            'fecha' => optional($carbonatacion->fecha)->format('Y-m-d'),
             'puntos' => $carbonatacion->detalles->map(function ($detalle) {
                 return [
                     'elemento' => $detalle->elemento,
                     'nivel' => $detalle->nivel?->descripcion,
-                    'muestras' => $detalle->muestras ?? [],
+                    'recubrimiento' => $detalle->recubrimiento,
+                    'espesores' => $detalle->espesores ?? [],
                 ];
             })->values()->all(),
         ] : null;

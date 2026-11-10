@@ -80,6 +80,24 @@
         }
         .parte:hover { background: var(--surface2); color: var(--text); }
         .parte.activa { background: var(--accent-s); color: var(--accent); }
+        .parte[hidden] { display: none; }
+        .subparte { padding-left: 1.9rem; font-size: 0.8rem; font-weight: 500; }
+
+        /* Botones de Trabajos desarrollados: apagados por defecto */
+        .trabajos-toggles { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .trabajo-toggle { margin: 0; cursor: pointer; }
+        .trabajo-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+        .trabajo-toggle span {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.45rem 0.8rem; border: 1.5px solid var(--border); border-radius: 999px;
+            font-size: 0.8rem; font-weight: 600; color: var(--text2); background: var(--surface);
+            transition: all 0.14s; user-select: none;
+        }
+        .trabajo-toggle span i { display: none; }
+        .trabajo-toggle:hover span { border-color: var(--accent); }
+        .trabajo-toggle input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .trabajo-toggle input:checked + span i { display: inline; }
+        .trabajo-toggle input:focus-visible + span { box-shadow: 0 0 0 3px var(--accent-s); }
         .grupo + .grupo { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
         .grupo-titulo { font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 0.75rem; }
         .documento {
@@ -471,7 +489,7 @@
                                 </div>
                             </div>
 
-                            {{-- Equipo técnico: por ahora sólo se carga, todavía no va al Word. --}}
+                            {{-- Equipo técnico. --}}
                             <div class="panel" id="panel-equipo-tecnico">
                                 <div class="card-box-head">Equipo Técnico</div>
                                 <div class="panel-body">
@@ -514,6 +532,40 @@
                                     </div>
                                 </div>
                             </div>
+
+                            {{-- Trabajos desarrollados (Titulo Uno, página nueva en el Word).
+                                 Cada trabajo activado aparece como subparte del informe. --}}
+                            @php $trabajosActivos = (array) $v('trabajos_activos', []); @endphp
+                            <div class="panel" id="panel-trabajos-desarrollados">
+                                <div class="card-box-head">Trabajos desarrollados</div>
+                                <div class="panel-body">
+                                    <div class="campo">
+                                        <label for="td-descripcion">Descripción</label>
+                                        <textarea class="form-control" id="td-descripcion" name="trabajos_descripcion" rows="4" placeholder="Ej.: Los trabajos y ensayos ejecutados a fin de evaluar el estado del hormigón fueron los siguientes:">{{ $v('trabajos_descripcion') }}</textarea>
+                                        <small class="ayuda">Frase que introduce la lista de los trabajos realizados para un determinado objetivo.</small>
+                                    </div>
+                                    <div class="grupo-titulo mt-4 mb-2">Trabajos realizados</div>
+                                    <div class="trabajos-toggles">
+                                        @foreach (\App\Models\InformeTc::TRABAJOS as $clave => $nombre)
+                                            <label class="trabajo-toggle">
+                                                <input type="checkbox" name="trabajos_activos[]" value="{{ $clave }}" data-trabajo="{{ $clave }}" @checked(in_array($clave, $trabajosActivos, true))>
+                                                <span><i class="fas fa-check"></i> {{ $nombre }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    <small class="ayuda d-block mt-2">Los trabajos activados se agregan a las partes del informe.</small>
+                                </div>
+                            </div>
+
+                            @foreach (\App\Models\InformeTc::TRABAJOS as $clave => $nombre)
+                                {{-- Por ahora vacío. --}}
+                                <div class="panel" id="panel-trabajo-{{ $clave }}">
+                                    <div class="card-box-head">{{ $nombre }}</div>
+                                    <div class="panel-body">
+                                        <small class="ayuda">Todavía no hay contenido para esta sección.</small>
+                                    </div>
+                                </div>
+                            @endforeach
                         </form>
                     </div>
 
@@ -561,6 +613,14 @@
                                 <li class="parte" data-panel="panel-equipo-tecnico">
                                     <i class="fas fa-users"></i> Equipo Técnico
                                 </li>
+                                <li class="parte" data-panel="panel-trabajos-desarrollados">
+                                    <i class="fas fa-tools"></i> Trabajos desarrollados
+                                </li>
+                                @foreach (\App\Models\InformeTc::TRABAJOS as $clave => $nombre)
+                                    <li class="parte subparte" data-panel="panel-trabajo-{{ $clave }}" data-subparte="{{ $clave }}" @unless (in_array($clave, $trabajosActivos, true)) hidden @endunless>
+                                        <i class="fas fa-angle-right"></i> {{ $nombre }}
+                                    </li>
+                                @endforeach
                             </ul>
                         </div>
                     </aside>
@@ -627,6 +687,18 @@
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('activo'));
             parte.classList.add('activa');
             document.getElementById(parte.dataset.panel).classList.add('activo');
+        });
+    });
+
+    // Trabajos desarrollados: cada botón activado muestra su subparte en el
+    // menú. Si se apaga el que se está viendo, se vuelve a Trabajos desarrollados.
+    document.querySelectorAll('[data-trabajo]').forEach(function (toggle) {
+        toggle.addEventListener('change', function () {
+            const subparte = document.querySelector('[data-subparte="' + toggle.dataset.trabajo + '"]');
+            subparte.hidden = ! toggle.checked;
+            if (! toggle.checked && subparte.classList.contains('activa')) {
+                document.querySelector('[data-panel="panel-trabajos-desarrollados"]').click();
+            }
         });
     });
 

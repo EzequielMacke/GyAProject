@@ -167,10 +167,12 @@ class InformeGeneradorController extends Controller
         set_time_limit(0);
 
         $cuerpo = $this->caratula($datos)
+            . $this->indice()
             . $this->informacionGeneral($datos)
             . $this->objetivoAlcance($datos)
             . $this->datosPrevios($datos)
-            . $this->equipoTecnico($datos);
+            . $this->equipoTecnico($datos)
+            . $this->trabajosDesarrollados($datos);
 
         $plantilla = storage_path('app/Plantilla/Ejemplo pantilla.docx');
         $temporal = tempnam(sys_get_temp_dir(), 'informe_') . '.docx';
@@ -184,6 +186,8 @@ class InformeGeneradorController extends Controller
         $documento = preg_replace('/<w:body>.*?(<w:sectPr\b)/s', '<w:body>' . str_replace('$', '\$', $cuerpo) . '$1', $documento, 1);
 
         $zip->addFromString('word/document.xml', $documento);
+        $this->actualizarCamposAlAbrir($zip);
+        $this->indiceEnNegritaYMayusculas($zip);
         $this->agregarImagenes($zip);
         $zip->close();
 
@@ -207,6 +211,78 @@ class InformeGeneradorController extends Controller
             . $this->vacios(9, $estilo)
             . $this->parrafo('Peticionario: ' . ($datos['peticionario'] ?? ''), $estilo, 'left')
             . $this->parrafo('Ref.: ' . ($datos['referencia'] ?? ''), $estilo, 'left', true);
+    }
+
+    /**
+     * Índice en una página sola, después de la carátula. Es un campo TOC con
+     * los títulos de nivel 1 y 2; Word lo completa al abrir el documento
+     * (ver actualizarCamposAlAbrir).
+     */
+    private function indice(): string
+    {
+        $campo = '<w:p><w:pPr><w:pStyle w:val="Normal"/></w:pPr>'
+            . '<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>'
+            . '<w:r><w:instrText xml:space="preserve"> TOC \o "1-2" \h \z \u </w:instrText></w:r>'
+            . '<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
+            . '<w:r><w:t>Actualizá el índice (clic derecho → Actualizar campos).</w:t></w:r>'
+            . '<w:r><w:fldChar w:fldCharType="end"/></w:r>'
+            . '</w:p>';
+
+        return $this->parrafo('Contenido', 'Caratula')
+            . $campo
+            . $this->parrafo('', 'Normal', saltoPagina: true);
+    }
+
+    /**
+     * Marca el documento para que Word actualice los campos (el índice) al
+     * abrirlo. updateFields va antes de hdrShapeDefaults según el esquema.
+     */
+    private function actualizarCamposAlAbrir(ZipArchive $zip): void
+    {
+        $settings = $zip->getFromName('word/settings.xml');
+        if ($settings === false || str_contains($settings, '<w:updateFields')) {
+            return;
+        }
+
+        $marca = '<w:updateFields w:val="true"/>';
+        $nuevo = preg_replace('/<w:(hdrShapeDefaults|footnotePr|endnotePr|compat|docVars|rsids)\b/', $marca . '$0', $settings, 1, $reemplazos);
+        if (! $reemplazos) {
+            $nuevo = str_replace('</w:settings>', $marca . '</w:settings>', $settings);
+        }
+
+        $zip->addFromString('word/settings.xml', $nuevo);
+    }
+
+    /**
+     * Las entradas del índice las arma Word con los estilos TDC 1, 2 y 3, así
+     * que la negrita y las mayúsculas se ponen en esos estilos (en la copia
+     * generada, la plantilla no se toca).
+     */
+    private function indiceEnNegritaYMayusculas(ZipArchive $zip): void
+    {
+        $estilos = $zip->getFromName('word/styles.xml');
+        if ($estilos === false) {
+            return;
+        }
+
+        $formato = '<w:b/><w:bCs/><w:caps/>';
+        $estilos = preg_replace_callback(
+            '/(<w:style\b[^>]*w:styleId="TDC[123]"[^>]*>)(.*?)(<\/w:style>)/s',
+            function ($m) use ($formato) {
+                $contenido = $m[2];
+                if (preg_match('/<w:rPr>(.*?)<\/w:rPr>/s', $contenido, $rPr)) {
+                    $propias = preg_replace('/<w:(b|bCs|caps)\/>/', '', $rPr[1]);
+                    $contenido = str_replace($rPr[0], '<w:rPr>' . $formato . $propias . '</w:rPr>', $contenido);
+                } else {
+                    $contenido .= '<w:rPr>' . $formato . '</w:rPr>';
+                }
+
+                return $m[1] . $contenido . $m[3];
+            },
+            $estilos
+        );
+
+        $zip->addFromString('word/styles.xml', $estilos);
     }
 
     /**
@@ -262,17 +338,61 @@ class InformeGeneradorController extends Controller
      */
     private function equipoTecnico(array $datos): string
     {
-        return $this->parrafo('Equipo Técnico', 'TituloUno')
+        return $this->parrafo('Equipo Técnico', 'TituloUno', paginaNueva: true)
             . $this->parrafo('Para el desarrollo de los distintos trabajos necesarios para dar cumplimiento a los objetivos estipulados en el presente informe se contó con la participación de los siguientes profesionales en cada uno de los aspectos estudiados.', 'Normal')
             . $this->parrafo('Los trabajos desarrollados fueron los siguientes:', 'Normal')
             . $this->parrafo('Coordinación general de los trabajos', 'Normal', negrita: true)
-            . $this->parrafos($datos['equipo_coordinacion'] ?? '', 'Listaconmarcador')
+            . $this->parrafos($datos['equipo_coordinacion'] ?? '', 'Listaconmarcador', true)
             . $this->parrafo('Trabajos de Campo', 'Normal', negrita: true)
-            . $this->parrafos($datos['equipo_campo_descripcion'] ?? '', 'Normal')
-            . $this->parrafos($datos['equipo_campo_personas'] ?? '', 'Listaconmarcador')
+            . $this->descripcionTrabajo($datos['equipo_campo_descripcion'] ?? '')
+            . $this->parrafos($datos['equipo_campo_personas'] ?? '', 'Listaconmarcador', true)
             . $this->parrafo('Trabajos de Gabinete', 'Normal', negrita: true)
-            . $this->parrafos($datos['equipo_gabinete_descripcion'] ?? '', 'Normal')
-            . $this->parrafos($datos['equipo_gabinete_personas'] ?? '', 'Listaconmarcador');
+            . $this->descripcionTrabajo($datos['equipo_gabinete_descripcion'] ?? '')
+            . $this->parrafos($datos['equipo_gabinete_personas'] ?? '', 'Listaconmarcador', true);
+    }
+
+    /**
+     * Trabajos desarrollados, en página nueva: título en Titulo Uno, la
+     * descripción en Normal y los trabajos activados (en el orden del menú)
+     * en Lista con marcador.
+     */
+    private function trabajosDesarrollados(array $datos): string
+    {
+        $activos = $datos['trabajos_activos'] ?? [];
+
+        $lista = '';
+        foreach (InformeTc::TRABAJOS as $clave => $nombre) {
+            if (in_array($clave, $activos, true)) {
+                $lista .= $this->parrafo($this->conPuntoFinal($nombre), 'Listaconmarcador');
+            }
+        }
+
+        return $this->parrafo('Trabajos desarrollados', 'TituloUno', paginaNueva: true)
+            . $this->descripcionTrabajo($datos['trabajos_descripcion'] ?? '')
+            . $lista;
+    }
+
+    /**
+     * Descripción de un rubro del equipo técnico: termina en dos puntos
+     * porque a continuación va la lista de personas.
+     */
+    private function descripcionTrabajo(string $texto): string
+    {
+        $renglones = preg_split('/\R+/', trim($texto), -1, PREG_SPLIT_NO_EMPTY);
+        if (! $renglones) {
+            return '';
+        }
+
+        // Sólo el último renglón (el que precede a la lista) lleva los dos puntos.
+        $ultimo = rtrim(trim(array_pop($renglones)), " \t.:;,");
+        $renglones[] = $ultimo . ':';
+
+        $xml = '';
+        foreach ($renglones as $renglon) {
+            $xml .= $this->parrafo(trim($renglon), 'Normal');
+        }
+
+        return $xml;
     }
 
     /**
@@ -486,11 +606,19 @@ class InformeGeneradorController extends Controller
      * $alineacion pisa la del estilo (left, center, right, both).
      * $saltoPagina agrega el salto al final del mismo renglón.
      */
-    private function parrafo(string $texto, string $estilo, ?string $alineacion = null, bool $saltoPagina = false, bool $negrita = false): string
+    private function parrafo(string $texto, string $estilo, ?string $alineacion = null, bool $saltoPagina = false, bool $negrita = false, bool $paginaNueva = false): string
     {
         $propiedades = '<w:pStyle w:val="' . $estilo . '"/>';
+        if ($paginaNueva) {
+            $propiedades .= '<w:pageBreakBefore/>';
+        }
         if ($alineacion) {
             $propiedades .= '<w:jc w:val="' . $alineacion . '"/>';
+        }
+        // Titulo Dos hereda el nivel de esquema 1 de Titulo Uno; se lo baja a 2
+        // para que el índice lo muestre como subtítulo.
+        if ($estilo === 'TituloDos') {
+            $propiedades .= '<w:outlineLvl w:val="1"/>';
         }
 
         $runs = '';
