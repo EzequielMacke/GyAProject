@@ -114,6 +114,21 @@
         .btn-cancel { height: 36px; padding: 0 1rem; border-radius: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; border: 1.5px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.14s; }
         .btn-cancel:hover { background: var(--surface2); }
 
+        /* ── Obras similares (modal nueva obra) ── */
+        .sim-box {
+            margin-top: 0.9rem; background: #fffbeb; border: 1.5px solid #fcd34d;
+            border-radius: 0.55rem; padding: 0.7rem 0.8rem; font-size: 0.8rem; color: #78350f;
+        }
+        .sim-box[hidden] { display: none; }
+        .sim-head { display: flex; gap: 0.45rem; align-items: flex-start; font-weight: 600; margin-bottom: 0.5rem; }
+        .sim-head i { color: #d97706; margin-top: 0.15rem; }
+        .sim-list { list-style: none; margin: 0 0 0.6rem; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; max-height: 220px; overflow-y: auto; }
+        .sim-list li { background: #fff; border: 1px solid #fde68a; border-radius: 0.45rem; padding: 0.45rem 0.6rem; }
+        .sim-name { font-weight: 600; color: var(--text); }
+        .sim-meta { font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem; }
+        .sim-meta a { color: var(--accent); font-weight: 600; text-decoration: none; }
+        .sim-confirm { display: flex; gap: 0.45rem; align-items: center; font-weight: 600; cursor: pointer; margin: 0; }
+
         /* ── MODAL SELECCIÓN DE USUARIOS ── */
         .modal-automatico {
             display: flex; flex-direction: column;
@@ -330,7 +345,20 @@
             <div class="modal-body">
                 <div class="form-group" style="margin-bottom:0">
                     <label class="form-label" for="input-nombre">Nombre <span>*</span></label>
-                    <input type="text" id="input-nombre" name="nombre" class="form-control" placeholder="Nombre de la obra" autocomplete="off">
+                    <input type="text" id="input-nombre" name="nombre" class="form-control" placeholder="Nombre de la obra" autocomplete="off" value="{{ old('nombre') }}">
+                </div>
+
+                {{-- Obras con nombre parecido (se completa al escribir) --}}
+                <div id="similares" class="sim-box" hidden>
+                    <div class="sim-head">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Ya existen obras con nombre parecido. Verificá que no sea la misma antes de crearla.</span>
+                    </div>
+                    <ul id="similares-lista" class="sim-list"></ul>
+                    <label class="sim-confirm">
+                        <input type="checkbox" name="confirmar_distinta" value="1" id="confirmar_distinta">
+                        Confirmo que es una obra distinta
+                    </label>
                 </div>
             </div>
 
@@ -433,6 +461,99 @@
     @if($errors->any())
     abrirModalNuevaObra();
     @endif
+
+    // ── Búsqueda de obras con nombre parecido ──
+    (function () {
+        const input    = document.getElementById('input-nombre');
+        const box      = document.getElementById('similares');
+        const lista    = document.getElementById('similares-lista');
+        const confirma = document.getElementById('confirmar_distinta');
+        // Misma lógica que App\Services\ObraSimilitudService (que vuelve a validar al guardar).
+        const obras      = @json($obrasSimilitud);
+        const GENERICAS  = new Set(@json(\App\Services\ObraSimilitudService::PALABRAS_GENERICAS));
+        const UMBRAL     = @json(\App\Services\ObraSimilitudService::UMBRAL);
+
+        const normalizar = t => String(t).toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^a-z0-9]+/g, ' ').trim();
+
+        const palabras = norm => {
+            const todas = norm.split(' ').filter(Boolean);
+            const signif = todas.filter(p => !GENERICAS.has(p));
+            return [...new Set(signif.length ? signif : todas)];
+        };
+
+        function levenshtein(a, b) {
+            let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+            for (let i = 1; i <= a.length; i++) {
+                const cur = [i];
+                for (let j = 1; j <= b.length; j++) {
+                    cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+                }
+                prev = cur;
+            }
+            return prev[b.length];
+        }
+
+        function coinciden(a, b) {
+            if (a === b) return true;
+            const [corta, larga] = a.length <= b.length ? [a, b] : [b, a];
+            if (corta.length >= 4 && larga.startsWith(corta)) return true;
+            return corta.length >= 5 && levenshtein(a, b) <= 1;
+        }
+
+        // Se precalcula una sola vez por obra.
+        obras.forEach(o => { o._norm = normalizar(o.nombre); o._pal = palabras(o._norm); });
+
+        function puntaje(norm, pal, o) {
+            if (!norm || !o._norm) return 0;
+            if (norm.replace(/ /g, '') === o._norm.replace(/ /g, '')) return 1;
+            const n = pal.filter(pa => o._pal.some(pb => coinciden(pa, pb))).length;
+            return n / Math.max(1, Math.min(pal.length, o._pal.length));
+        }
+
+        function similares(nombre) {
+            const norm = normalizar(nombre);
+            if (norm.length < 3) return [];
+            const pal = palabras(norm);
+            return obras
+                .map(o => ({ o, p: puntaje(norm, pal, o), d: levenshtein(norm, o._norm) }))
+                .filter(x => x.p >= UMBRAL)
+                .sort((x, y) => y.p - x.p || x.d - y.d)
+                .slice(0, 8)
+                .map(x => x.o);
+        }
+
+        const esc = t => {
+            const d = document.createElement('div');
+            d.textContent = t == null ? '' : String(t);
+            return d.innerHTML;
+        };
+
+        function render(encontradas) {
+            if (!encontradas.length) {
+                box.hidden = true;
+                lista.innerHTML = '';
+                confirma.checked = false;
+                return;
+            }
+            lista.innerHTML = encontradas.map(o => {
+                const acceso = o.acceso
+                    ? ' · <a href="' + esc(o.url) + '" target="_blank"><i class="fas fa-external-link-alt"></i> Abrir</a>'
+                    : ' · <i class="fas fa-lock"></i> No estás en su directorio';
+                return '<li><div class="sim-name">' + esc(o.nombre) + '</div>' +
+                    '<div class="sim-meta">Creada por ' + esc(o.creador) + ' el ' + esc(o.fecha) + acceso + '</div></li>';
+            }).join('');
+            box.hidden = false;
+        }
+
+        const buscar = () => render(similares(input.value));
+
+        input.addEventListener('input', buscar);
+
+        // Si volvió del servidor con el nombre cargado, mostrar coincidencias.
+        if (input.value.trim()) buscar();
+    })();
 
     document.getElementById('buscador')?.addEventListener('input', function () {
         const q = this.value.toLowerCase();

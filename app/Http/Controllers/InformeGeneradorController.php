@@ -31,47 +31,39 @@ class InformeGeneradorController extends Controller
     private array $imagenes = [];
 
     /**
-     * Generador con el formulario vacío (informe nuevo).
+     * Generador del informe de la obra: cada obra tiene un único informe.
+     * Si ya existe se carga para editarlo; si no, el formulario arranca vacío.
      */
     public function index(ObraTc $obraTc)
     {
-        return $this->formulario($obraTc, null);
+        return $this->formulario($obraTc, $this->informeDeLaObra($obraTc));
     }
 
     /**
-     * Generador con un informe guardado cargado para seguir editándolo.
+     * Guarda el informe de la obra: lo crea la primera vez y después lo actualiza.
      */
-    public function editar(ObraTc $obraTc, InformeTc $informe)
-    {
-        if ($informe->obra_tc_id !== $obraTc->id) {
-            abort(404);
-        }
-
-        return $this->formulario($obraTc, $informe);
-    }
-
     public function guardar(InformeRequest $request, ObraTc $obraTc)
     {
         if (! $this->verificarAcceso($obraTc)) {
             abort(403);
         }
 
-        $informe = InformeTc::create(['obra_tc_id' => $obraTc->id] + $this->datosParaGuardar($request));
+        $informe = $this->informeDeLaObra($obraTc);
 
-        return redirect()->route('informe.generador.editar', [$obraTc->id, $informe->id])
+        if ($informe) {
+            $informe->update($this->datosParaGuardar($request));
+        } else {
+            InformeTc::create(['obra_tc_id' => $obraTc->id] + $this->datosParaGuardar($request));
+        }
+
+        return redirect()->route('informe.generador', $obraTc->id)
             ->with('success', 'Informe guardado correctamente.');
     }
 
-    public function actualizar(InformeRequest $request, ObraTc $obraTc, InformeTc $informe)
+    /** El informe de la obra (si hubiera más de uno, el último modificado). */
+    private function informeDeLaObra(ObraTc $obraTc): ?InformeTc
     {
-        if (! $this->verificarAcceso($obraTc) || $informe->obra_tc_id !== $obraTc->id) {
-            abort(403);
-        }
-
-        $informe->update($this->datosParaGuardar($request));
-
-        return redirect()->route('informe.generador.editar', [$obraTc->id, $informe->id])
-            ->with('success', 'Informe guardado correctamente.');
+        return InformeTc::where('obra_tc_id', $obraTc->id)->latest('updated_at')->first();
     }
 
     /**
@@ -129,15 +121,10 @@ class InformeGeneradorController extends Controller
             ->orderBy('descripcion')
             ->get(['id', 'descripcion']);
 
-        // Informes ya guardados de la obra, para el listado del costado.
-        $informes = InformeTc::where('obra_tc_id', $obraTc->id)
-            ->orderByDesc('updated_at')
-            ->get(['id', 'titulo', 'referencia', 'updated_at']);
-
         // Con errores de validación se muestra lo que se acababa de enviar.
         $datos = session()->hasOldInput() ? session()->getOldInput() : ($informe->datos ?? []);
 
-        return view('informe.generator', compact('obraTc', 'fotos', 'planos', 'etiquetas', 'informe', 'informes', 'datos'));
+        return view('informe.generator', compact('obraTc', 'fotos', 'planos', 'etiquetas', 'informe', 'datos'));
     }
 
     private function verificarAcceso(ObraTc $obraTc): bool

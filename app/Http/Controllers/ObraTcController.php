@@ -8,6 +8,7 @@ use App\Models\ObraTc;
 use App\Models\Plano;
 use App\Models\Usuarios;
 use App\Services\DescargaOfflineService;
+use App\Services\ObraSimilitudService;
 use App\Services\PermisoService;
 use Illuminate\Http\Request;
 
@@ -37,7 +38,11 @@ class ObraTcController extends Controller
             $usuariosAutomaticos = DirectorioTcAutomatico::pluck('usuario_id');
         }
 
-        return view('trabajo_campo.index', compact('obrasTc', 'usuariosDisponibles', 'usuariosAutomaticos'));
+        $obrasSimilitud = app(PermisoService::class)->puede('obr_tc', 'agregar')
+            ? $this->obrasParaSimilitud()
+            : [];
+
+        return view('trabajo_campo.index', compact('obrasTc', 'usuariosDisponibles', 'usuariosAutomaticos', 'obrasSimilitud'));
     }
 
     public function show($id)
@@ -70,11 +75,62 @@ class ObraTcController extends Controller
         return view('obras_tc.index', compact('obraTc', 'pendientesPlanos', 'descargaOffline'));
     }
 
+    /** Obras no eliminadas, con su creador. */
+    private function queryObrasVigentes()
+    {
+        return ObraTc::where('estado', '!=', 2)
+            ->with('usuario:id,nombre,nombre_completo')
+            ->select(['id', 'descripcion', 'estado', 'usuario_id', 'created_at']);
+    }
+
+    /**
+     * Todas las obras vigentes (de todos los usuarios) para detectar duplicados
+     * en el navegador mientras se escribe el nombre de una obra nueva.
+     */
+    private function obrasParaSimilitud(): array
+    {
+        $accesibles = DirectorioTc::where('usuario_id', session('usuario_id'))->pluck('obra_tc_id')->flip();
+
+        return $this->queryObrasVigentes()->get()->map(function (ObraTc $obra) use ($accesibles) {
+            $tieneAcceso = $accesibles->has($obra->id);
+
+            return [
+                'id'      => $obra->id,
+                'nombre'  => $obra->descripcion,
+                'creador' => $obra->usuario->nombre_completo ?? $obra->usuario->nombre ?? '—',
+                'fecha'   => optional($obra->created_at)->format('d/m/Y'),
+                'acceso'  => $tieneAcceso,
+                'url'     => $tieneAcceso ? route('obras_tc.index', $obra->id) : null,
+            ];
+        })->all();
+    }
+
     public function store(Request $request)
     {
         $request->validate([
             'nombre' => 'required|string|max:255',
         ]);
+
+        // Mismo nombre salvo mayúsculas, tildes, espacios o signos: se bloquea.
+        $identica = ObraSimilitudService::existeIdentica($request->nombre, $this->queryObrasVigentes(), 'descripcion');
+        if ($identica) {
+            return back()->withInput()->withErrors([
+                'nombre' => "Ya existe la obra \"{$identica->descripcion}\" (creada por "
+                    . ($identica->usuario->nombre_completo ?? $identica->usuario->nombre ?? '—')
+                    . "). Pedile que te agregue a su directorio.",
+            ]);
+        }
+
+        // Nombres parecidos: se exige confirmar que es una obra distinta.
+        if (! $request->boolean('confirmar_distinta')) {
+            $similares = ObraSimilitudService::buscar($request->nombre, $this->queryObrasVigentes(), 'descripcion');
+            if ($similares->isNotEmpty()) {
+                return back()->withInput()
+                    ->withErrors([
+                        'nombre' => 'Hay obras con nombre parecido. Revisá la lista y, si es una obra distinta, marcá la confirmación.',
+                    ]);
+            }
+        }
 
         $usuarioId = session('usuario_id');
 

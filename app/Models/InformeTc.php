@@ -22,7 +22,7 @@ class InformeTc extends Model
      * del menú.
      */
     public const TRABAJOS = [
-        'relevamiento_encofrado' => 'Relevamiento de encofrado',
+        'relevamiento_encofrado' => 'Relevamiento geométrico',
         'esclerometria' => 'Ensayo de esclerometría',
         'ultrasonido' => 'Ensayo de ultrasonido',
         'carbonatacion' => 'Ensayo de carbonatación',

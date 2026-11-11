@@ -154,17 +154,10 @@
         .alert-danger  { background: #fff0f0; color: #c0392b; border: 1px solid #f5c2c2; }
 
         .editor-side .card-box + .card-box { margin-top: 1rem; }
-        .informes { list-style: none; margin: 0; padding: 0.5rem; max-height: 320px; overflow-y: auto; }
-        .informe-item {
-            display: block; padding: 0.55rem 0.75rem; border-radius: 0.5rem;
-            text-decoration: none; color: var(--text2); transition: all 0.14s;
-        }
-        .informe-item:hover { background: var(--surface2); color: var(--text); text-decoration: none; }
-        .informe-item.activo { background: var(--accent-s); color: var(--accent); }
-        .informe-item-titulo { font-size: 0.82rem; font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .informe-item-meta { font-size: 0.72rem; color: var(--muted); }
-        .informes-vacio { padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--muted); }
-        .informes-nuevo { margin: 0 0.5rem 0.5rem; width: calc(100% - 1rem); justify-content: center; }
+        .generar-box { padding: 0.85rem 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .btn-generar { width: 100%; justify-content: center; background: #1e9166; border-color: #1e9166; color: #fff; }
+        .btn-generar:hover { background: #187a56; border-color: #187a56; color: #fff; }
+        .generar-box .ayuda { font-size: 0.74rem; color: var(--muted); line-height: 1.35; }
         #btn-agregar-imagen { margin-top: 0.75rem; }
 
         .modal-fotos {
@@ -273,12 +266,9 @@
                     </div>
                     <div class="ph-right">
                         {{-- Guardar envía el mismo formulario a otra ruta (formaction). --}}
-                        <button type="submit" form="form-informe" class="btn" id="btn-guardar"
-                                formaction="{{ $informe ? route('informe.generador.actualizar', [$obraTc->id, $informe->id]) : route('informe.generador.guardar', $obraTc->id) }}">
+                        <button type="submit" form="form-informe" class="btn btn-primary" id="btn-guardar"
+                                formaction="{{ route('informe.generador.guardar', $obraTc->id) }}">
                             <i class="fas fa-save"></i> Guardar
-                        </button>
-                        <button type="submit" form="form-informe" class="btn btn-primary" id="btn-generar">
-                            <i class="fas fa-file-word"></i> Generar
                         </button>
                         <a href="{{ route('obras_tc.index', $obraTc->id) }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
@@ -297,7 +287,7 @@
                 @endif
                 <div class="editor">
                     <div class="editor-main">
-                        {{-- El botón Generar del encabezado envía este formulario (atributo form). --}}
+                        {{-- El botón "Generar Word" del panel lateral envía este formulario (atributo form). --}}
                         <form id="form-informe" method="POST" action="{{ route('informe.generador.generar', $obraTc->id) }}" class="card-box">
                             @csrf
                             {{-- Valor guardado (o recién enviado, si volvió con errores) de cada campo. --}}
@@ -570,30 +560,15 @@
                     </div>
 
                     <aside class="editor-side">
+                        {{-- Separado de "Guardar" para no confundirlos: Generar solo descarga el Word. --}}
                         <div class="card-box">
-                            <div class="card-box-head">Informes guardados</div>
-                            @if ($informes->isEmpty())
-                                <div class="informes-vacio">Todavía no hay informes guardados de esta obra.</div>
-                            @else
-                                <ul class="informes">
-                                    @foreach ($informes as $item)
-                                        <li>
-                                            <a href="{{ route('informe.generador.editar', [$obraTc->id, $item->id]) }}"
-                                               class="informe-item {{ $informe && $informe->id === $item->id ? 'activo' : '' }}">
-                                                <span class="informe-item-titulo">{{ $item->titulo ?: 'Sin título' }}</span>
-                                                <span class="informe-item-meta">
-                                                    {{ $item->referencia ? $item->referencia . ' · ' : '' }}{{ $item->updated_at->format('d/m/Y H:i') }}
-                                                </span>
-                                            </a>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @endif
-                            @if ($informe)
-                                <a href="{{ route('informe.generador', $obraTc->id) }}" class="btn btn-sm informes-nuevo">
-                                    <i class="fas fa-plus"></i> Nuevo informe
-                                </a>
-                            @endif
+                            <div class="card-box-head">Documento Word</div>
+                            <div class="generar-box">
+                                <button type="submit" form="form-informe" class="btn btn-generar" id="btn-generar">
+                                    <i class="fas fa-file-word"></i> Generar Word
+                                </button>
+                                <small class="ayuda">Descarga el informe con lo cargado en pantalla. No guarda los cambios.</small>
+                            </div>
                         </div>
                         <div class="card-box">
                             <div class="card-box-head">Partes del informe</div>
@@ -841,9 +816,9 @@
             return Array.from(filtro.querySelectorAll('input[type="checkbox"]:checked'));
         }
 
-        function actualizarTextoFiltro(filtro, textoVacio) {
+        function actualizarTextoFiltro(filtro, textoVacio, separador = ', ') {
             const elegidos = marcados(filtro).map(c => c.nextElementSibling.textContent.trim());
-            filtro.querySelector('summary span').textContent = elegidos.length ? elegidos.join(', ') : textoVacio;
+            filtro.querySelector('summary span').textContent = elegidos.length ? elegidos.join(separador) : textoVacio;
         }
 
         function filtrar() {
@@ -852,8 +827,10 @@
             let visibles = 0;
 
             tarjetas.forEach(function ({ foto, el }) {
+                // Planos: la foto está en alguno de los marcados (cada foto tiene un solo plano).
                 const pasaPlano = !planos.length || planos.includes(String(foto.plano_id));
-                const pasaEtiqueta = !etiquetas.length || etiquetas.some(function (e) {
+                // Etiquetas: la foto tiene TODAS las marcadas (ej. Fisura + Planta alta).
+                const pasaEtiqueta = etiquetas.every(function (e) {
                     return e === '__sin__' ? foto.etiquetas.length === 0 : foto.etiquetas.includes(Number(e));
                 });
                 const visible = pasaPlano && pasaEtiqueta;
@@ -863,8 +840,18 @@
 
             vacio.hidden = visibles > 0;
             actualizarTextoFiltro(filtroPlanos, 'Todos los planos');
-            actualizarTextoFiltro(filtroEtiquetas, 'Toda etiqueta');
+            actualizarTextoFiltro(filtroEtiquetas, 'Toda etiqueta', ' + ');
         }
+
+        // "Sin etiquetas" no se puede combinar con etiquetas (no daría ninguna foto):
+        // marcar uno desmarca el otro.
+        filtroEtiquetas.addEventListener('change', function (e) {
+            if (!e.target.checked) return;
+            const esSin = e.target.value === '__sin__';
+            marcados(filtroEtiquetas).forEach(function (c) {
+                if (c !== e.target && (c.value === '__sin__') !== esSin) c.checked = false;
+            });
+        });
 
         [filtroPlanos, filtroEtiquetas].forEach(function (filtro) {
             filtro.addEventListener('change', filtrar);
