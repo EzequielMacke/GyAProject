@@ -334,27 +334,7 @@ class PlanillaTcController extends Controller
             return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
         }
 
-        $esclerometria = EsclerometriaTc::with(['detalles' => function ($query) {
-            $query->orderBy('id');
-        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
-
-        $puntos = $esclerometria
-            ? $esclerometria->detalles->values()->map(function ($detalle, $i) {
-                return [
-                    'nivel' => $detalle->nivel?->descripcion ?: '-',
-                    'identificacion' => 'E'.($i + 1),
-                    'elemento' => $detalle->elemento ?: '-',
-                    'direccion' => $detalle->direccion.'°',
-                    'n_final' => $detalle->n_final !== null ? number_format(round((float) $detalle->n_final), 0, '', '.') : '-',
-                ];
-            })
-            : collect();
-
-        return response()->json([
-            'obra' => $obraTc->descripcion,
-            'fecha' => $esclerometria?->fecha?->format('d/m/Y'),
-            'puntos' => $puntos,
-        ]);
+        return response()->json(EsclerometriaTc::reporte($obraTc));
     }
 
     public function reporteUltrasonidoIndirecto(ObraTc $obraTc)

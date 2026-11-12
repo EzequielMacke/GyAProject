@@ -90,7 +90,7 @@ class DescargaOfflineService
            propios e íconos de la barra de herramientas. */
         $recursos = array_merge($recursos, [self::PDFJS, self::PDFJS_WORKER, self::PDF_LIB, self::JSZIP]);
         $recursos = array_merge($recursos, self::assetsLocales(array_merge(
-            ['js/plano-offline.js', 'js/plano-dxf.js'],
+            ['js/plano-offline.js', 'js/plano-dxf.js', 'js/plano-render.js'],
             self::iconosPlano()
         )));
 

@@ -37,4 +37,34 @@ class EsclerometriaTc extends Model
     {
         return $this->hasMany(EsclerometriaDetalleTc::class, 'esclerometria_tc_id');
     }
+
+    /**
+     * Datos del reporte de la planilla de la obra (una fila por punto
+     * ensayado). Lo usan el reporte PNG de Planillas y el generador de
+     * informes.
+     */
+    public static function reporte(ObraTc $obraTc): array
+    {
+        $esclerometria = static::with(['detalles' => function ($query) {
+            $query->orderBy('id');
+        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
+
+        $puntos = $esclerometria
+            ? $esclerometria->detalles->values()->map(function ($detalle, $i) {
+                return [
+                    'nivel' => $detalle->nivel?->descripcion ?: '-',
+                    'identificacion' => 'E'.($i + 1),
+                    'elemento' => $detalle->elemento ?: '-',
+                    'direccion' => $detalle->direccion.'°',
+                    'n_final' => $detalle->n_final !== null ? number_format(round((float) $detalle->n_final), 0, '', '.') : '-',
+                ];
+            })
+            : collect();
+
+        return [
+            'obra' => $obraTc->descripcion,
+            'fecha' => $esclerometria?->fecha?->format('d/m/Y'),
+            'puntos' => $puntos,
+        ];
+    }
 }

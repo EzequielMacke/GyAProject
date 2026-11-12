@@ -4,17 +4,32 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\InformeRequest;
 use App\Models\DirectorioTc;
+use App\Models\EsclerometriaTc;
 use App\Models\EtiquetaTc;
 use App\Models\FotoTc;
 use App\Models\InformeTc;
 use App\Models\ObraTc;
+use App\Models\Plano;
 use App\Services\MiniaturaFotoService;
+use Illuminate\Support\Facades\Storage;
 use ZipArchive;
 
 class InformeGeneradorController extends Controller
 {
     /** Ancho útil de la hoja de la plantilla (A4 menos márgenes), en EMU. */
     private const ANCHO_UTIL_EMU = 6120000;
+
+    /** Alto máximo de un plano en el Word (22 cm), en EMU. */
+    private const ALTO_MAXIMO_PLANO_EMU = 7920000;
+
+    /**
+     * Píxeles del PNG de una planilla por cada píxel CSS (el navegador la
+     * dibuja al doble para que se lea nítida); ver planillaConPie.
+     */
+    private const ESCALA_PLANILLA = 2;
+
+    /** EMU por píxel CSS (96 por pulgada). */
+    private const EMU_POR_PX = 9525;
 
     /** Separación entre fotos de un mismo bloque, en EMU. */
     private const SEPARACION_EMU = 90000;
@@ -76,6 +91,16 @@ class InformeGeneradorController extends Controller
         $datos = $request->validated();
         $datos['documentos'] = array_values($datos['documentos'] ?? []);
         $datos['fotos_caracteristicas'] = array_values($datos['fotos_caracteristicas'] ?? []);
+        // La imagen del plano se arma de nuevo al generar: no se guarda.
+        foreach (InformeTc::SECCIONES_CON_CONTENIDO as $seccion) {
+            $datos[$seccion . '_elementos'] = array_map(
+                fn (array $elemento) => array_diff_key($elemento, ['imagen' => true]),
+                array_values($datos[$seccion . '_elementos'] ?? [])
+            );
+        }
+        foreach (InformeTc::SECCIONES_CON_FOTOS as $seccion) {
+            $datos[$seccion . '_fotos'] = array_values($datos[$seccion . '_fotos'] ?? []);
+        }
 
         return [
             'usuario_id' => session('usuario_id'),
@@ -121,10 +146,55 @@ class InformeGeneradorController extends Controller
             ->orderBy('descripcion')
             ->get(['id', 'descripcion']);
 
+        // Planos de la obra para el modal "Agregar plano" (los ya nombrados,
+        // igual que en el índice de planos).
+        $planosObra = Plano::where('obra_id', $obraTc->id)
+            ->whereNotNull('descripcion')
+            ->with(['grupo', 'subgrupo'])
+            ->get()
+            ->map(fn (Plano $plano) => [
+                'id' => $plano->id,
+                'descripcion' => $plano->descripcion,
+                'carpeta' => implode(' / ', array_filter([$plano->grupo->descripcion ?? null, $plano->subgrupo->descripcion ?? null])) ?: 'Sin clasificar',
+                'anotaciones' => $plano->tiene_anotaciones,
+            ])
+            ->sort(fn ($a, $b) => strnatcasecmp($a['carpeta'], $b['carpeta']) ?: strnatcasecmp($a['descripcion'], $b['descripcion']))
+            ->values();
+
         // Con errores de validación se muestra lo que se acababa de enviar.
         $datos = session()->hasOldInput() ? session()->getOldInput() : ($informe->datos ?? []);
 
-        return view('informe.generator', compact('obraTc', 'fotos', 'planos', 'etiquetas', 'informe', 'datos'));
+        return view('informe.generator', compact('obraTc', 'fotos', 'planos', 'etiquetas', 'planosObra', 'informe', 'datos'));
+    }
+
+    /**
+     * Lo que necesita el generador para dibujar un plano con sus
+     * anotaciones (el mismo PDF, rotación y estado que usa el visor).
+     */
+    public function plano(ObraTc $obraTc, Plano $plano)
+    {
+        if (! $this->verificarAcceso($obraTc) || (int) $plano->obra_id !== (int) $obraTc->id) {
+            abort(404);
+        }
+
+        return response()->json([
+            'url' => Storage::url('planos/' . $plano->archivo),
+            'rotacion' => (int) ($plano->rotacion ?? 0),
+            'estado' => $plano->estado ? json_decode($plano->estado, true) : null,
+        ]);
+    }
+
+    /**
+     * Datos de la planilla de esclerometría de la obra, para dibujarla como
+     * tabla en el generador (los mismos del reporte PNG de Planillas).
+     */
+    public function planillaEsclerometria(ObraTc $obraTc)
+    {
+        if (! $this->verificarAcceso($obraTc)) {
+            abort(404);
+        }
+
+        return response()->json(EsclerometriaTc::reporte($obraTc));
     }
 
     private function verificarAcceso(ObraTc $obraTc): bool
@@ -149,6 +219,9 @@ class InformeGeneradorController extends Controller
         $datos = $request->validated();
 
         $datos['fotos_caracteristicas'] = $this->bloquesDeFotos($obraTc, $datos['fotos_caracteristicas'] ?? []);
+        foreach (InformeTc::SECCIONES_CON_CONTENIDO as $seccion) {
+            $datos[$seccion . '_elementos'] = array_values($datos[$seccion . '_elementos'] ?? []);
+        }
 
         // Con varias fotos achicarlas puede llevar más que el límite por defecto.
         set_time_limit(0);
@@ -159,7 +232,10 @@ class InformeGeneradorController extends Controller
             . $this->objetivoAlcance($datos)
             . $this->datosPrevios($datos)
             . $this->equipoTecnico($datos)
-            . $this->trabajosDesarrollados($datos);
+            . $this->trabajosDesarrollados($datos)
+            . $this->seccionConContenido($obraTc, $datos, 'relevamiento_geometrico', InformeTc::TRABAJOS['relevamiento_encofrado'], ['relevamiento_encofrado'])
+            . $this->seccionConContenido($obraTc, $datos, 'ensayos_resistencia', InformeTc::GRUPOS_ENSAYOS['resistencia']['titulo'], InformeTc::GRUPOS_ENSAYOS['resistencia']['trabajos'])
+            . $this->esclerometria($obraTc, $datos);
 
         $plantilla = storage_path('app/Plantilla/Ejemplo pantilla.docx');
         $temporal = tempnam(sys_get_temp_dir(), 'informe_') . '.docx';
@@ -360,6 +436,113 @@ class InformeGeneradorController extends Controller
     }
 
     /**
+     * Sección con contenido (Relevamiento geométrico, grupo de ensayos), si
+     * alguno de sus $trabajos está activado en Trabajos desarrollados: título
+     * en Titulo Dos, la descripción en Normal y después los elementos
+     * (planos, fotos y textos) en el orden en que se cargaron.
+     */
+    private function seccionConContenido(ObraTc $obraTc, array $datos, string $seccion, string $titulo, array $trabajos): string
+    {
+        if (! array_intersect($trabajos, $datos['trabajos_activos'] ?? [])) {
+            return '';
+        }
+
+        $xml = $this->parrafo($titulo, 'TituloDos')
+            . $this->parrafos($datos[$seccion . '_descripcion'] ?? '', 'Normal', true);
+
+        foreach ($datos[$seccion . '_elementos'] as $elemento) {
+            $xml .= match ($elemento['tipo']) {
+                'plano' => $this->planoConPie($elemento['imagen'] ?? '', $elemento['pie'] ?? ''),
+                'fotos' => $this->fotos($this->bloquesDeFotos($obraTc, [$elemento])),
+                'texto' => $this->parrafos($elemento['texto'] ?? '', 'Normal', true),
+                default => '',
+            };
+        }
+
+        return $xml;
+    }
+
+    /**
+     * Ensayo de esclerometría, si está activado: título en Titulo Tres (va
+     * dentro de los ensayos de resistencia), la descripción en Normal, las
+     * fotografías como en Características de la obra y después las
+     * planillas y textos en el orden en que se cargaron.
+     */
+    private function esclerometria(ObraTc $obraTc, array $datos): string
+    {
+        if (! in_array('esclerometria', $datos['trabajos_activos'] ?? [], true)) {
+            return '';
+        }
+
+        $xml = $this->parrafo(InformeTc::TRABAJOS['esclerometria'], 'TituloTres')
+            . $this->parrafos($datos['esclerometria_descripcion'] ?? '', 'Normal', true)
+            . $this->fotos($this->bloquesDeFotos($obraTc, $datos['esclerometria_fotos'] ?? []));
+
+        foreach ($datos['esclerometria_elementos'] as $elemento) {
+            $xml .= match ($elemento['tipo']) {
+                'planilla' => $this->planillaConPie($elemento['imagen'] ?? '', $elemento['pie'] ?? ''),
+                'texto' => $this->parrafos($elemento['texto'] ?? '', 'Normal', true),
+                default => '',
+            };
+        }
+
+        return $xml;
+    }
+
+    /**
+     * Una planilla: su pie en estilo Tabla arriba y la tabla (el PNG que
+     * armó el navegador) en un párrafo Normal centrado. Va en su tamaño natural
+     * (la letra queda como en el texto) y se achica sólo si no entra.
+     */
+    private function planillaConPie(string $imagen, string $pie): string
+    {
+        if (! preg_match('#^data:image/png;base64,(.+)$#s', $imagen, $m)) {
+            return '';
+        }
+        $contenido = base64_decode($m[1], true);
+        $tamano = $contenido !== false ? @getimagesizefromstring($contenido) : false;
+        if (! $tamano || $tamano[2] !== IMAGETYPE_PNG) {
+            return '';
+        }
+
+        $ancho = $tamano[0] / self::ESCALA_PLANILLA * self::EMU_POR_PX;
+        $alto = $tamano[1] / self::ESCALA_PLANILLA * self::EMU_POR_PX;
+        $escala = min(1, self::ANCHO_UTIL_EMU / $ancho, self::ALTO_MAXIMO_PLANO_EMU / $alto);
+        $pie = trim($pie);
+
+        // El pie de tabla va arriba de la tabla.
+        return $this->parrafo($pie !== '' ? $this->conPuntoFinal($pie) : '', 'Tabla')
+            . '<w:p><w:pPr><w:pStyle w:val="Normal"/><w:jc w:val="center"/></w:pPr>'
+            . $this->imagen($contenido, (int) ($ancho * $escala), (int) ($alto * $escala), 'png')
+            . '</w:p>';
+    }
+
+    /**
+     * Un plano (el JPG que armó el navegador con las capas prendidas) en un
+     * párrafo Normal centrado, a todo el ancho útil, y su pie en estilo Figura.
+     */
+    private function planoConPie(string $imagen, string $pie): string
+    {
+        if (! preg_match('#^data:image/jpeg;base64,(.+)$#s', $imagen, $m)) {
+            return '';
+        }
+        $contenido = base64_decode($m[1], true);
+        $tamano = $contenido !== false ? @getimagesizefromstring($contenido) : false;
+        if (! $tamano || $tamano[2] !== IMAGETYPE_JPEG) {
+            return '';
+        }
+
+        [$ancho, $alto] = $tamano;
+        $escala = min(self::ANCHO_UTIL_EMU / $ancho, self::ALTO_MAXIMO_PLANO_EMU / $alto);
+        $pie = trim($pie);
+
+        return '<w:p><w:pPr><w:pStyle w:val="Normal"/><w:jc w:val="center"/></w:pPr>'
+            . $this->imagen($contenido, (int) ($ancho * $escala), (int) ($alto * $escala))
+            . '</w:p>'
+            . $this->parrafo($pie !== '' ? $this->conPuntoFinal($pie) : '', 'Figura');
+    }
+
+    /**
      * Descripción de un rubro del equipo técnico: termina en dos puntos
      * porque a continuación va la lista de personas.
      */
@@ -482,11 +665,12 @@ class InformeGeneradorController extends Controller
      * Run con la imagen en línea; el archivo se registra para agregarlo
      * al .docx después.
      */
-    private function imagen(string $contenido, int $ancho, int $alto): string
+    private function imagen(string $contenido, int $ancho, int $alto, string $extension = 'jpeg'): string
     {
         $numero = count($this->imagenes) + 1;
         $rid = 'rIdFotoInforme' . $numero;
-        $this->imagenes[] = ['rid' => $rid, 'archivo' => 'foto_informe_' . $numero . '.jpeg', 'contenido' => $contenido];
+        $archivo = 'foto_informe_' . $numero . '.' . $extension;
+        $this->imagenes[] = ['rid' => $rid, 'archivo' => $archivo, 'contenido' => $contenido];
 
         // Ids altos para no chocar con las imágenes de encabezado y pie.
         $id = 90000 + $numero;
@@ -498,7 +682,7 @@ class InformeGeneradorController extends Controller
             . '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
             . '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
             . '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
-            . '<pic:nvPicPr><pic:cNvPr id="' . $id . '" name="foto_informe_' . $numero . '.jpeg"/><pic:cNvPicPr/></pic:nvPicPr>'
+            . '<pic:nvPicPr><pic:cNvPr id="' . $id . '" name="' . $archivo . '"/><pic:cNvPicPr/></pic:nvPicPr>'
             . '<pic:blipFill><a:blip r:embed="' . $rid . '"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
             . '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' . $ancho . '" cy="' . $alto . '"/></a:xfrm>'
             . '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
@@ -507,7 +691,7 @@ class InformeGeneradorController extends Controller
 
     /**
      * Copia las fotos a word/media y agrega su relación en document.xml.rels.
-     * Si la plantilla no declara la extensión jpeg, se la agrega.
+     * Si la plantilla no declara las extensiones usadas (jpeg, png), se agregan.
      */
     private function agregarImagenes(ZipArchive $zip): void
     {
@@ -527,10 +711,13 @@ class InformeGeneradorController extends Controller
         $zip->addFromString('word/_rels/document.xml.rels', str_replace('</Relationships>', $relaciones . '</Relationships>', $rels));
 
         $tipos = $zip->getFromName('[Content_Types].xml');
-        if (! str_contains($tipos, 'Extension="jpeg"')) {
-            $tipos = preg_replace('/(<Types[^>]*>)/', '$1<Default Extension="jpeg" ContentType="image/jpeg"/>', $tipos, 1);
-            $zip->addFromString('[Content_Types].xml', $tipos);
+        $extensiones = array_unique(array_map(fn (array $imagen) => pathinfo($imagen['archivo'], PATHINFO_EXTENSION), $this->imagenes));
+        foreach ($extensiones as $extension) {
+            if (! preg_match('/Extension="' . $extension . '"/i', $tipos)) {
+                $tipos = preg_replace('/(<Types[^>]*>)/', '$1<Default Extension="' . $extension . '" ContentType="image/' . $extension . '"/>', $tipos, 1);
+            }
         }
+        $zip->addFromString('[Content_Types].xml', $tipos);
     }
 
     /**

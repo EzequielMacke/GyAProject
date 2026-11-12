@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generador de Informe</title>
     @include('partials.head')
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=EB+Garamond:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg:       #f0f3f7;
@@ -82,6 +82,7 @@
         .parte.activa { background: var(--accent-s); color: var(--accent); }
         .parte[hidden] { display: none; }
         .subparte { padding-left: 1.9rem; font-size: 0.8rem; font-weight: 500; }
+        .subparte-2 { padding-left: 3.1rem; }
 
         /* Botones de Trabajos desarrollados: apagados por defecto */
         .trabajos-toggles { display: flex; flex-wrap: wrap; gap: 0.5rem; }
@@ -236,6 +237,61 @@
         }
         .modal-fotos-pie .form-control { flex: 1; min-width: 220px; font-size: 0.85rem; border: 1.5px solid var(--border); border-radius: 0.5rem; }
         .modal-fotos-contador { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+        .modal-fotos-pie .btn[hidden] { display: none; }
+
+        /* Relevamiento geométrico: planos, fotos y textos en orden */
+        .rg-botones { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+        .rg-elemento {
+            border: 1px solid var(--border); border-radius: 0.5rem;
+            padding: 0.85rem; margin-top: 0.75rem; background: #fff;
+        }
+        .rg-elemento-head { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.6rem; font-size: 0.78rem; font-weight: 700; color: var(--text2); }
+        .rg-elemento-head .titulo { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .rg-elemento-head .titulo i { color: var(--muted); margin-right: 0.3rem; }
+        .rg-elemento-head button { border: 0; background: none; color: var(--muted); padding: 0.2rem 0.45rem; border-radius: 0.35rem; font-size: 0.78rem; }
+        .rg-elemento-head button:hover { background: var(--surface2); color: var(--text); }
+        .rg-elemento-head button:disabled { opacity: 0.35; pointer-events: none; }
+        .rg-elemento .bloque-foto { border: 0; padding: 0; margin: 0; }
+        .rg-plano-vista {
+            border: 1px solid var(--border); border-radius: 0.4rem; background: #fff;
+            min-height: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .rg-plano-vista canvas { display: block; max-width: 100%; max-height: 520px; width: auto; height: auto; }
+        .rg-planilla-vista { margin-bottom: 0.75rem; padding: 0.5rem; overflow-x: auto; justify-content: flex-start; }
+        .rg-planilla-vista img { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+        .rg-plano-estado { font-size: 0.8rem; color: var(--muted); padding: 1rem; text-align: center; }
+        .rg-plano-estado.error { color: #c0392b; }
+        .rg-capas { margin: 0.6rem 0 0.75rem; }
+        .rg-capas-head { display: flex; align-items: center; gap: 0.75rem; font-size: 0.74rem; color: var(--muted); margin-bottom: 0.35rem; }
+        .rg-capas-head button { border: 0; background: none; padding: 0; color: var(--accent); font-size: 0.74rem; font-weight: 600; }
+        .rg-capas-lista { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .rg-capa {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.25rem 0.65rem; border: 1.5px solid var(--border); border-radius: 999px;
+            background: #fff; font-size: 0.75rem; font-weight: 600; color: var(--text2); cursor: pointer;
+        }
+        .rg-capa img { width: 16px; height: 16px; object-fit: contain; }
+        .rg-capa .letra { font-size: 0.65rem; font-weight: 800; color: #ff0000; }
+        .rg-capa .ojo { color: var(--accent); font-size: 0.7rem; }
+        .rg-capa.apagada { color: var(--muted); background: var(--surface2); }
+        .rg-capa.apagada img { opacity: 0.4; }
+        .rg-capa.apagada .ojo { color: var(--muted); }
+        .rg-campo-pie { display: flex; gap: 0.5rem; align-items: center; }
+        .rg-campo-pie .form-control, .rg-elemento textarea.form-control { font-size: 0.85rem; border: 1.5px solid var(--border); border-radius: 0.5rem; }
+        .rg-aviso { font-size: 0.78rem; color: #a07400; background: #fff4d6; border-radius: 0.35rem; padding: 0.35rem 0.6rem; }
+
+        .modal-planos-caja { width: min(640px, 100%); height: min(80vh, 100%); }
+        .modal-fotos-filtros .form-control { font-size: 0.85rem; border: 1.5px solid var(--border); border-radius: 0.5rem; }
+        .modal-planos-lista { flex: 1; overflow-y: auto; padding: 0.5rem 0.75rem 1rem; }
+        .modal-planos-carpeta { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 0.75rem 0.5rem 0.3rem; }
+        .modal-plano {
+            display: flex; align-items: center; gap: 0.6rem; width: 100%;
+            padding: 0.55rem 0.6rem; border: 0; border-radius: 0.4rem; background: none;
+            font-size: 0.85rem; font-weight: 500; color: var(--text); text-align: left; cursor: pointer;
+        }
+        .modal-plano:hover { background: var(--accent-s); color: var(--accent); }
+        .modal-plano i { color: var(--muted); }
+        .modal-plano .marca { margin-left: auto; font-size: 0.7rem; color: var(--muted); white-space: nowrap; }
 
         @media (max-width: 991px) {
             .editor { flex-direction: column-reverse; }
@@ -472,7 +528,7 @@
                                                 <button type="button" class="btn btn-sm" id="btn-agregar-imagen">
                                                     <i class="fas fa-image"></i> Agregar imagen
                                                 </button>
-                                                <small class="ayuda">Cada vez que agregás imágenes se crea un bloque: si elegís varias fotos van juntas con un solo pie. Van al Word después del texto, en el orden en que se agregan.</small>
+                                                <small class="ayuda">Cada vez que agregás imágenes se crea un bloque: si elegís varias fotos podés agregarlas juntas con un solo pie, o por separado (una por bloque, cada una con su pie). Van al Word después del texto, en el orden en que se agregan.</small>
                                             </div>
                                         </div>
                                     </div>
@@ -525,7 +581,25 @@
 
                             {{-- Trabajos desarrollados (Titulo Uno, página nueva en el Word).
                                  Cada trabajo activado aparece como subparte del informe. --}}
-                            @php $trabajosActivos = (array) $v('trabajos_activos', []); @endphp
+                            @php
+                                $trabajosActivos = (array) $v('trabajos_activos', []);
+                                // Menú de trabajos: los sueltos en su orden y cada grupo de
+                                // ensayos donde aparece su primer ensayo, con los suyos adentro.
+                                $grupoDe = [];
+                                foreach (\App\Models\InformeTc::GRUPOS_ENSAYOS as $claveGrupo => $grupo) {
+                                    foreach ($grupo['trabajos'] as $claveTrabajo) {
+                                        $grupoDe[$claveTrabajo] = $claveGrupo;
+                                    }
+                                }
+                                $menuTrabajos = [];
+                                foreach (array_keys(\App\Models\InformeTc::TRABAJOS) as $claveTrabajo) {
+                                    if (! isset($grupoDe[$claveTrabajo])) {
+                                        $menuTrabajos[] = ['trabajo' => $claveTrabajo];
+                                    } elseif (! in_array(['grupo' => $grupoDe[$claveTrabajo]], $menuTrabajos, true)) {
+                                        $menuTrabajos[] = ['grupo' => $grupoDe[$claveTrabajo]];
+                                    }
+                                }
+                            @endphp
                             <div class="panel" id="panel-trabajos-desarrollados">
                                 <div class="card-box-head">Trabajos desarrollados</div>
                                 <div class="panel-body">
@@ -548,11 +622,54 @@
                             </div>
 
                             @foreach (\App\Models\InformeTc::TRABAJOS as $clave => $nombre)
-                                {{-- Por ahora vacío. --}}
                                 <div class="panel" id="panel-trabajo-{{ $clave }}">
                                     <div class="card-box-head">{{ $nombre }}</div>
                                     <div class="panel-body">
-                                        <small class="ayuda">Todavía no hay contenido para esta sección.</small>
+                                        @if ($clave === 'relevamiento_encofrado')
+                                            @include('informe.partials.contenido-seccion', [
+                                                'seccion' => 'relevamiento_geometrico',
+                                                'trabajosWord' => ['relevamiento_encofrado'],
+                                                'placeholder' => 'Ej.: Se realizó el relevamiento geométrico de la estructura a fin de obtener la planta de encofrado, determinando las dimensiones de vigas, columnas y losas, y la ubicación de los elementos estructurales.',
+                                                'ayuda' => 'Qué se relevó, cómo y con qué fin. Cada renglón se convierte en un párrafo del Word.',
+                                            ])
+                                        @elseif ($clave === 'esclerometria')
+                                            @include('informe.partials.descripcion-fotos', [
+                                                'seccion' => 'esclerometria',
+                                                'placeholder' => 'Ej.: Se realizaron ensayos de esclerometría sobre los elementos estructurales a fin de estimar la resistencia superficial del hormigón.',
+                                                'ayuda' => 'Cómo y dónde se hizo el ensayo de esclerometría. Cada renglón se convierte en un párrafo del Word.',
+                                            ])
+                                            {{-- Sin descripción: la de arriba ya se guarda como esclerometria_descripcion. --}}
+                                            @include('informe.partials.contenido-seccion', [
+                                                'seccion' => 'esclerometria',
+                                                'trabajosWord' => ['esclerometria'],
+                                                'botones' => ['planilla', 'texto'],
+                                                'planilla' => 'esclerometria',
+                                                'tituloContenido' => 'Planillas y textos',
+                                                'ayudaContenido' => 'Van después de las fotografías, en este orden (se puede cambiar con las flechas). La planilla sale como imagen con los datos que tenga al generar el Word, y lleva su propio pie de tabla.',
+                                            ])
+                                        @else
+                                            {{-- Por ahora vacío. --}}
+                                            <small class="ayuda">Todavía no hay contenido para esta sección.</small>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+
+                            @foreach (\App\Models\InformeTc::GRUPOS_ENSAYOS as $claveGrupo => $grupo)
+                                <div class="panel" id="panel-grupo-{{ $claveGrupo }}">
+                                    <div class="card-box-head">{{ $grupo['titulo'] }}</div>
+                                    <div class="panel-body">
+                                        @if ($claveGrupo === 'resistencia')
+                                            @include('informe.partials.contenido-seccion', [
+                                                'seccion' => 'ensayos_resistencia',
+                                                'trabajosWord' => $grupo['trabajos'],
+                                                'placeholder' => 'Ej.: Con el objeto de estimar la resistencia del hormigón de los elementos estructurales se realizaron los siguientes ensayos.',
+                                                'ayuda' => 'Qué ensayos se hicieron para determinar la resistencia del hormigón y con qué fin. Cada renglón se convierte en un párrafo del Word.',
+                                            ])
+                                        @else
+                                            {{-- Por ahora vacío. --}}
+                                            <small class="ayuda">Todavía no hay contenido para esta sección.</small>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
@@ -591,10 +708,23 @@
                                 <li class="parte" data-panel="panel-trabajos-desarrollados">
                                     <i class="fas fa-tools"></i> Trabajos desarrollados
                                 </li>
-                                @foreach (\App\Models\InformeTc::TRABAJOS as $clave => $nombre)
-                                    <li class="parte subparte" data-panel="panel-trabajo-{{ $clave }}" data-subparte="{{ $clave }}" @unless (in_array($clave, $trabajosActivos, true)) hidden @endunless>
-                                        <i class="fas fa-angle-right"></i> {{ $nombre }}
-                                    </li>
+                                {{-- Un grupo se ve si tiene algún ensayo activado; sus ensayos van debajo. --}}
+                                @foreach ($menuTrabajos as $item)
+                                    @if (isset($item['grupo']))
+                                        @php $grupo = \App\Models\InformeTc::GRUPOS_ENSAYOS[$item['grupo']]; @endphp
+                                        <li class="parte subparte" data-panel="panel-grupo-{{ $item['grupo'] }}" data-grupo="{{ $item['grupo'] }}" data-trabajos="{{ implode(',', $grupo['trabajos']) }}" @unless (array_intersect($grupo['trabajos'], $trabajosActivos)) hidden @endunless>
+                                            <i class="fas fa-angle-right"></i> {{ $grupo['titulo'] }}
+                                        </li>
+                                        @foreach ($grupo['trabajos'] as $clave)
+                                            <li class="parte subparte subparte-2" data-panel="panel-trabajo-{{ $clave }}" data-subparte="{{ $clave }}" @unless (in_array($clave, $trabajosActivos, true)) hidden @endunless>
+                                                <i class="fas fa-angle-right"></i> {{ \App\Models\InformeTc::TRABAJOS[$clave] }}
+                                            </li>
+                                        @endforeach
+                                    @else
+                                        <li class="parte subparte" data-panel="panel-trabajo-{{ $item['trabajo'] }}" data-subparte="{{ $item['trabajo'] }}" @unless (in_array($item['trabajo'], $trabajosActivos, true)) hidden @endunless>
+                                            <i class="fas fa-angle-right"></i> {{ \App\Models\InformeTc::TRABAJOS[$item['trabajo']] }}
+                                        </li>
+                                    @endif
                                 @endforeach
                             </ul>
                         </div>
@@ -648,12 +778,31 @@
             <span class="modal-fotos-contador" id="modal-fotos-contador">Ninguna foto seleccionada</span>
             <input type="text" class="form-control" id="modal-fotos-pie" maxlength="500" placeholder="Pie de foto (ej.: Vista general de la fachada principal)">
             <button type="button" class="btn" data-cerrar-modal>Cancelar</button>
+            <button type="button" class="btn" id="btn-confirmar-separadas" hidden
+                    title="Cada foto va en su propio bloque; el pie de cada una se carga después, en el formulario">
+                <i class="fas fa-clone"></i> Agregar por separado
+            </button>
             <button type="button" class="btn btn-primary" id="btn-confirmar-fotos" disabled>
-                <i class="fas fa-plus"></i> Agregar
+                <i class="fas fa-plus"></i> <span id="btn-confirmar-fotos-texto">Agregar</span>
             </button>
         </div>
     </div>
 </div>
+{{-- Modal para elegir un plano de la obra --}}
+<div class="modal-fotos" id="modal-planos" role="dialog" aria-modal="true" aria-labelledby="modal-planos-titulo">
+    <div class="modal-fotos-caja modal-planos-caja">
+        <div class="modal-fotos-head">
+            <span id="modal-planos-titulo"><i class="fas fa-map"></i> Agregar plano</span>
+            <button type="button" class="modal-fotos-cerrar" data-cerrar-modal title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-fotos-filtros">
+            <input type="text" class="form-control" id="modal-planos-buscar" placeholder="Buscar plano..." aria-label="Buscar plano">
+        </div>
+        <div class="modal-planos-lista" id="modal-planos-lista"></div>
+    </div>
+</div>
+<script src="{{ \App\Services\DescargaOfflineService::PDFJS }}"></script>
+<script src="{{ asset('js/plano-render.js') }}"></script>
 <script>
     // Al tocar una parte del informe se muestra su panel y se marca como activa.
     document.querySelectorAll('.parte').forEach(function (parte) {
@@ -666,12 +815,18 @@
     });
 
     // Trabajos desarrollados: cada botón activado muestra su subparte en el
-    // menú. Si se apaga el que se está viendo, se vuelve a Trabajos desarrollados.
+    // menú, y un grupo de ensayos se muestra si tiene alguno activado. Si se
+    // oculta lo que se está viendo, se vuelve a Trabajos desarrollados.
     document.querySelectorAll('[data-trabajo]').forEach(function (toggle) {
         toggle.addEventListener('change', function () {
+            const activos = [...document.querySelectorAll('[data-trabajo]:checked')].map(t => t.dataset.trabajo);
             const subparte = document.querySelector('[data-subparte="' + toggle.dataset.trabajo + '"]');
             subparte.hidden = ! toggle.checked;
-            if (! toggle.checked && subparte.classList.contains('activa')) {
+            document.querySelectorAll('[data-grupo]').forEach(function (grupo) {
+                grupo.hidden = ! grupo.dataset.trabajos.split(',').some(t => activos.includes(t));
+            });
+            const activa = document.querySelector('.parte.activa');
+            if (activa && activa.hidden) {
                 document.querySelector('[data-panel="panel-trabajos-desarrollados"]').click();
             }
         });
@@ -771,11 +926,16 @@
         const contador = document.getElementById('modal-fotos-contador');
         const inputPie = document.getElementById('modal-fotos-pie');
         const btnConfirmar = document.getElementById('btn-confirmar-fotos');
+        const textoConfirmar = document.getElementById('btn-confirmar-fotos-texto');
+        const btnSeparadas = document.getElementById('btn-confirmar-separadas');
         const filtroPlanos = document.getElementById('filtro-planos');
         const filtroEtiquetas = document.getElementById('filtro-etiquetas');
         const bloques = document.getElementById('bloques-fotos');
         let seleccion = [];
         let indiceBloque = 0;
+        // Quién recibe los bloques al confirmar: Características de la obra
+        // (por defecto) o el Relevamiento geométrico. Devuelve el input del pie.
+        let destino = null;
 
         // Tarjetas armadas una sola vez; los filtros sólo las ocultan.
         const tarjetas = FOTOS.map(function (foto) {
@@ -895,11 +1055,15 @@
             });
             contador.textContent = seleccion.length === 0
                 ? 'Ninguna foto seleccionada'
-                : seleccion.length === 1 ? '1 foto seleccionada' : seleccion.length + ' fotos seleccionadas (un solo pie)';
+                : seleccion.length === 1 ? '1 foto seleccionada' : seleccion.length + ' fotos seleccionadas';
             btnConfirmar.disabled = seleccion.length === 0;
+            // Con varias fotos se puede elegir: juntas con un solo pie, o cada una en su bloque.
+            btnSeparadas.hidden = seleccion.length < 2;
+            textoConfirmar.textContent = seleccion.length < 2 ? 'Agregar' : 'Agregar juntas';
         }
 
-        function abrir() {
+        function abrir(nuevoDestino) {
+            destino = typeof nuevoDestino === 'function' ? nuevoDestino : agregarBloque;
             seleccion = [];
             inputPie.value = '';
             pintarSeleccion();
@@ -911,7 +1075,7 @@
             modal.classList.remove('abierto');
         }
 
-        document.getElementById('btn-agregar-imagen').addEventListener('click', abrir);
+        document.getElementById('btn-agregar-imagen').addEventListener('click', () => abrir());
         modal.querySelectorAll('[data-cerrar-modal]').forEach(b => b.addEventListener('click', cerrar));
         modal.addEventListener('click', function (e) {
             if (e.target === modal) cerrar();
@@ -929,13 +1093,29 @@
 
         btnConfirmar.addEventListener('click', function () {
             if (!seleccion.length) return;
-            agregarBloque(seleccion.slice(), inputPie.value.trim());
+            destino(seleccion.slice(), inputPie.value.trim());
             cerrar();
         });
 
-        // faltantes: fotos del bloque guardado que ya no están en la galería.
+        // Una foto por bloque, sin pie: se completa cada uno fuera del modal.
+        btnSeparadas.addEventListener('click', function () {
+            if (!seleccion.length) return;
+            const inputs = seleccion.map(foto => destino([foto], ''));
+            cerrar();
+            inputs[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            inputs[0].focus({ preventScroll: true });
+        });
+
+        // Bloque de Características de la obra.
         function agregarBloque(fotos, pie, faltantes) {
-            const i = indiceBloque++;
+            const { bloque, input } = crearBloqueFotos(fotos, pie, faltantes, 'fotos_caracteristicas[' + indiceBloque++ + ']', true);
+            bloques.appendChild(bloque);
+            return input;
+        }
+
+        // Bloque de fotos con sus campos (nombreBase[ids], nombreBase[pie]).
+        // faltantes: fotos del bloque guardado que ya no están en la galería.
+        function crearBloqueFotos(fotos, pie, faltantes, nombreBase, conQuitar) {
             const bloque = document.createElement('div');
             bloque.className = 'bloque-foto';
 
@@ -967,7 +1147,7 @@
 
             const ids = document.createElement('input');
             ids.type = 'hidden';
-            ids.name = 'fotos_caracteristicas[' + i + '][ids]';
+            ids.name = nombreBase + '[ids]';
             ids.value = fotos.map(f => f.id).join(',');
 
             const fila = document.createElement('div');
@@ -975,7 +1155,7 @@
             const inputBloque = document.createElement('input');
             inputBloque.type = 'text';
             inputBloque.className = 'form-control';
-            inputBloque.name = 'fotos_caracteristicas[' + i + '][pie]';
+            inputBloque.name = nombreBase + '[pie]';
             inputBloque.maxLength = 500;
             inputBloque.placeholder = 'Pie de foto';
             inputBloque.value = pie;
@@ -988,10 +1168,44 @@
             quitar.innerHTML = '<i class="fas fa-trash-alt"></i> Quitar';
             quitar.addEventListener('click', () => bloque.remove());
 
-            fila.append(inputBloque, quitar);
+            fila.appendChild(inputBloque);
+            if (conQuitar) fila.appendChild(quitar);
             bloque.append(imagenes, ids, fila);
-            bloques.appendChild(bloque);
+            return { bloque, input: inputBloque };
         }
+
+        // Para el Relevamiento geométrico (y otras secciones con fotos).
+        window.InformeFotos = {
+            abrir,
+            crearBloque: crearBloqueFotos,
+            // Fotos de la galería a partir de "1,2,3"; faltantes = las que ya no están.
+            buscar(idsTexto) {
+                const ids = String(idsTexto || '').split(',').map(Number).filter(Boolean);
+                const fotos = ids.map(id => FOTOS.find(f => f.id === id)).filter(Boolean);
+                return { fotos, faltantes: ids.length - fotos.length };
+            },
+        };
+
+        // Secciones con descripción + fotografías (ver
+        // informe/partials/descripcion-fotos): bloques {seccion}_fotos[k].
+        document.querySelectorAll('[data-seccion-fotos]').forEach(function (seccion) {
+            const prefijo = seccion.dataset.seccionFotos + '_fotos';
+            const contenedor = seccion.querySelector('[data-bloques-fotos]');
+            let indice = 0;
+
+            function agregar(fotos, pie, faltantes) {
+                const { bloque, input } = crearBloqueFotos(fotos, pie, faltantes, prefijo + '[' + indice++ + ']', true);
+                contenedor.appendChild(bloque);
+                return input;
+            }
+
+            seccion.querySelector('[data-agregar-fotos]').addEventListener('click', () => abrir(agregar));
+
+            JSON.parse(seccion.dataset.guardados || '[]').forEach(function (guardado) {
+                const { fotos, faltantes } = window.InformeFotos.buscar(guardado.ids);
+                if (fotos.length || faltantes) agregar(fotos, guardado.pie || '', faltantes);
+            });
+        });
 
         // Bloques del informe guardado, con las fotos que siguen existiendo.
         Object.values(@json($v('fotos_caracteristicas', [])) || {}).forEach(function (guardado) {
@@ -1000,6 +1214,672 @@
             const faltantes = ids.length - fotos.length;
             if (fotos.length || faltantes) {
                 agregarBloque(fotos, guardado.pie || '', faltantes);
+            }
+        });
+    })();
+
+    // Secciones con contenido (Relevamiento geométrico, grupos de ensayos):
+    // planos (con sus capas), bloques de fotos y textos, en el orden en que
+    // se agregan. Cada sección es un [data-seccion] (ver
+    // informe/partials/contenido-seccion) y sus campos llegan como
+    // {seccion}_elementos[k][...], en el orden en que se ven en pantalla.
+    (function () {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = @json(\App\Services\DescargaOfflineService::PDFJS_WORKER);
+
+        const PLANOS = @json($planosObra);
+        const URL_PLANO = @json(route('informe.generador.plano', [$obraTc->id, '__id__']));
+        const icono = archivo => @json(asset('img/iconos')) + '/' + archivo;
+
+        /* Capas que puede tener un plano: las mismas herramientas del visor
+           (planos_tc/plano.blade.php), con su nombre, grupo e ícono. `escala`
+           es el grupo de escala del visor (íconos de daños, ensayos y fotos). */
+        const CAPAS = {
+            fisura: { nombre: 'Fisura', icono: icono('Fisura.svg') },
+            corrosion: { nombre: 'Corrosión', icono: icono('Corrosion.svg') },
+            humedad: { nombre: 'Humedad', icono: icono('Humedad.svg') },
+            coqueras: { nombre: 'Coqueras', icono: icono('Coqueras.svg') },
+            fisura_ducto: { nombre: 'Fisura por ducto', icono: icono('Fisuras por ductos.svg') },
+            junta_fria: { nombre: 'Junta fría', icono: icono('Junta fria.svg') },
+            armadura_expuesta: { nombre: 'Armadura expuesta', icono: icono('Armadura expuesta.svg') },
+            eflorescencia: { nombre: 'Eflorescencia', icono: icono('Eflorescencia.svg') },
+            socavacion: { nombre: 'Socavación', icono: icono('socavacion.svg') },
+            desprendimiento: { nombre: 'Desprendimiento', icono: icono('desprendimiento.svg') },
+            exfoliacion: { nombre: 'Exfoliación', icono: icono('exfoliacion.svg') },
+            desaplome: { nombre: 'Desaplome', icono: icono('desaplome.svg') },
+            fisura_vertical: { nombre: 'Fisura vertical', icono: icono('Fisura vertical.svg'), escala: 'danos' },
+            fisura_inclinada: { nombre: 'Fisura inclinada', icono: icono('Fisura inclinada.svg'), escala: 'danos' },
+            fisura_semiinclinada: { nombre: 'Fisura semi-inclinada', icono: icono('Fisura seminclinada.svg'), escala: 'danos' },
+            esclerometria: { nombre: 'Esclerometría', icono: icono('esclerometria.svg'), escala: 'ensayos' },
+            carbonatacion: { nombre: 'Carbonatación', icono: icono('carbonatacion.svg'), escala: 'ensayos' },
+            pachometria: { nombre: 'Pachometría', icono: icono('pachometria.svg'), escala: 'ensayos' },
+            testigos: { nombre: 'Testigos', icono: icono('testigos.svg'), escala: 'ensayos' },
+            ultrasonido: { nombre: 'Ultrasonido', icono: icono('ultrasonido.svg'), escala: 'ensayos' },
+            resistividad: { nombre: 'Resistividad', icono: icono('Resistividad.svg'), escala: 'ensayos' },
+            potencial: { nombre: 'Potencial', icono: icono('Potencial.svg'), escala: 'ensayos' },
+            cloruros: { nombre: 'Cloruros', icono: icono('Cloruros.svg'), escala: 'ensayos' },
+            georradar: { nombre: 'Georradar', icono: icono('georradar.svg'), escala: 'ensayos' },
+            computo_fisuras: { nombre: 'Cómputo de fisuras', letra: 'F', escala: 'ensayos' },
+            foto: { nombre: 'Fotografía', icono: icono('foto.svg'), escala: 'fotos' },
+            texto: { nombre: 'Texto', icono: icono('texto.svg') },
+            dibujo_libre: { nombre: 'Dibujo a mano alzada', icono: icono('mano_alzada.svg') },
+            dibujo_libre_relleno: { nombre: 'Mano alzada con relleno', icono: icono('mano_alzada_relleno.svg') },
+            circulo: { nombre: 'Círculo', icono: icono('circulo.svg') },
+            circulo_relleno: { nombre: 'Círculo con relleno', icono: icono('circulo_relleno.svg') },
+            rectangulo: { nombre: 'Rectángulo', icono: icono('rectangulo.svg') },
+            rectangulo_relleno: { nombre: 'Rectángulo con relleno', icono: icono('rectangulo_relleno.svg') },
+            linea_recta: { nombre: 'Línea recta', icono: icono('linea_recta.svg') },
+        };
+        const ORDEN_CAPAS = Object.keys(CAPAS);
+        const GRUPO_ESCALA = {};
+        ORDEN_CAPAS.forEach(tool => { if (CAPAS[tool].escala) GRUPO_ESCALA[tool] = CAPAS[tool].escala; });
+
+        // Tamaño de la imagen que va al Word (≈ 300 ppp en el ancho útil de la hoja).
+        const ANCHO_WORD_PX = 2400;
+        const ALTO_WORD_PX = 3100;
+        // Tamaño de la vista previa en pantalla.
+        const LADO_VISTA_PX = 1400;
+
+        /* ── Carga y dibujo de planos ── */
+        const cacheIconos = {};
+        function cargarIcono(url) {
+            if (!url) return Promise.resolve(null);
+            if (!cacheIconos[url]) {
+                cacheIconos[url] = new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = () => resolve(null);
+                    img.src = url;
+                });
+            }
+            return cacheIconos[url];
+        }
+
+        // Una sola carga por plano aunque se agregue varias veces.
+        const cachePlanos = {};
+        function cargarPlano(id) {
+            if (!cachePlanos[id]) {
+                cachePlanos[id] = (async function () {
+                    const respuesta = await fetch(URL_PLANO.replace('__id__', id), { headers: { Accept: 'application/json' } });
+                    if (!respuesta.ok) throw new Error('No se pudo cargar el plano.');
+                    const datos = await respuesta.json();
+                    const pdf = await pdfjsLib.getDocument(datos.url).promise;
+                    const pagina = await pdf.getPage(1);
+                    const base = pagina.getViewport({ scale: 1, rotation: datos.rotacion });
+                    const estado = datos.estado || {};
+                    const trazos = (estado.trazos || []).map(t => Object.assign({}, t));
+                    await Promise.all(trazos.filter(t => t.tipo === 'icono').map(async function (t) {
+                        t.imagen = await cargarIcono(CAPAS[t.tool] && CAPAS[t.tool].icono);
+                    }));
+                    const usadas = new Set(trazos.map(t => t.tool));
+                    return {
+                        pagina,
+                        rotacion: datos.rotacion,
+                        ancho: base.width,
+                        alto: base.height,
+                        trazos,
+                        escalas: Object.assign({ danos: 1, ensayos: 1, fotos: 1, texto: 1 }, estado.escalas || {}),
+                        // Las del catálogo en su orden y, al final, cualquier otra.
+                        capas: ORDEN_CAPAS.filter(t => usadas.has(t)).concat([...usadas].filter(t => !CAPAS[t])),
+                    };
+                })();
+                cachePlanos[id].catch(() => { delete cachePlanos[id]; });
+            }
+            return cachePlanos[id];
+        }
+
+        async function renderizarPdf(info, factor) {
+            const viewport = info.pagina.getViewport({ scale: factor, rotation: info.rotacion });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(viewport.width);
+            canvas.height = Math.round(viewport.height);
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            await info.pagina.render({ canvasContext: ctx, viewport }).promise;
+            return canvas;
+        }
+
+        function dibujarAnotaciones(ctx, info, factor, ocultas) {
+            const capasVisibles = {};
+            ocultas.forEach(tool => { capasVisibles[tool] = false; });
+            PlanoRender.dibujarItems(ctx, info.trazos, {
+                proyectar: (x, y) => ({ x: x * factor, y: y * factor }),
+                escala: factor,
+                escalas: info.escalas,
+                grupoEscala: GRUPO_ESCALA,
+                capasVisibles,
+            });
+        }
+
+        /* ── Elementos ── */
+        function crearHidden(nombre, valor) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = nombre;
+            input.value = valor;
+            return input;
+        }
+
+        function botonCabecera(iconoClase, titulo, accion) {
+            const boton = document.createElement('button');
+            boton.type = 'button';
+            boton.title = titulo;
+            boton.setAttribute('aria-label', titulo);
+            boton.innerHTML = '<i class="fas ' + iconoClase + '"></i>';
+            boton.addEventListener('click', accion);
+            return boton;
+        }
+
+        /* ── Planillas de ensayo como tabla (PNG) ──
+           Se dibujan con los datos que tenga la planilla de la obra en ese
+           momento. Garamond 16 px = 12 pt, como el Normal de la plantilla;
+           el PNG va al doble (ESCALA_PLANILLA en InformeGeneradorController). */
+        const FUENTE_PLANILLA = "'EB Garamond', Garamond, serif";
+        const ESCALA_PLANILLA = 2;
+        const PLANILLAS = {
+            esclerometria: {
+                nombre: 'Planilla de esclerometría',
+                url: @json(route('informe.generador.planilla.esclerometria', $obraTc->id)),
+                columnas: ['Nivel', 'Elemento', 'Identificación', 'Dirección', 'Índice esclerométrico corregido'],
+                fila: p => [p.nivel, p.elemento, p.identificacion, p.direccion, p.n_final],
+            },
+        };
+
+        async function cargarPlanilla(clave) {
+            const config = PLANILLAS[clave];
+            const respuesta = await fetch(config.url, { headers: { 'Accept': 'application/json' } });
+            if (!respuesta.ok) throw new Error('No se pudo cargar la planilla');
+            const datos = await respuesta.json();
+            await Promise.all([
+                document.fonts.load('400 16px ' + FUENTE_PLANILLA),
+                document.fonts.load('700 16px ' + FUENTE_PLANILLA),
+            ]);
+            return (datos.puntos || []).map(config.fila);
+        }
+
+        // Tabla con encabezado en negrita, bordes negros y fondo blanco.
+        function dibujarPlanilla(columnas, filas) {
+            const tamano = 16;
+            const margenCelda = 12;
+            const altoFila = 30;
+            const medidor = document.createElement('canvas').getContext('2d');
+            const ancho = (texto, negrita) => {
+                medidor.font = (negrita ? '700 ' : '400 ') + tamano + 'px ' + FUENTE_PLANILLA;
+                return medidor.measureText(String(texto)).width;
+            };
+            const anchos = columnas.map((titulo, c) => Math.ceil(Math.max(ancho(titulo, true), ...filas.map(f => ancho(f[c], false))) + margenCelda * 2));
+            const anchoTotal = anchos.reduce((a, b) => a + b, 0) + 1;
+            const altoTotal = altoFila * (filas.length + 1) + 1;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = anchoTotal * ESCALA_PLANILLA;
+            canvas.height = altoTotal * ESCALA_PLANILLA;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(ESCALA_PLANILLA, ESCALA_PLANILLA);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, anchoTotal, altoTotal);
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            [columnas, ...filas].forEach(function (fila, n) {
+                ctx.font = (n === 0 ? '700 ' : '400 ') + tamano + 'px ' + FUENTE_PLANILLA;
+                let x = 0.5;
+                fila.forEach(function (valor, c) {
+                    ctx.fillText(String(valor), x + anchos[c] / 2, 0.5 + altoFila * n + altoFila / 2);
+                    x += anchos[c];
+                });
+            });
+
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let n = 0; n <= filas.length + 1; n++) {
+                ctx.moveTo(0.5, 0.5 + altoFila * n);
+                ctx.lineTo(anchoTotal - 0.5, 0.5 + altoFila * n);
+            }
+            let x = 0.5;
+            [0, ...anchos].forEach(function (a) {
+                x += a;
+                ctx.moveTo(x, 0.5);
+                ctx.lineTo(x, altoTotal - 0.5);
+            });
+            ctx.stroke();
+            return canvas;
+        }
+
+        // Arma una sección: sus elementos, los botones de agregar y lo guardado.
+        function iniciarSeccion(contenedor) {
+            const lista = contenedor.querySelector('[data-elementos]');
+            const prefijo = contenedor.dataset.seccion + '_elementos';
+            let indice = 0;
+
+            // Las flechas de subir/bajar se deshabilitan en los extremos.
+            function actualizarFlechas() {
+                const elementos = [...lista.children];
+                elementos.forEach(function (el, n) {
+                    el.querySelector('[data-subir]').disabled = n === 0;
+                    el.querySelector('[data-bajar]').disabled = n === elementos.length - 1;
+                });
+            }
+
+            // Contenedor común: cabecera (tipo, flechas, quitar) + campo tipo.
+            function crearElemento(tipo, iconoClase, titulo) {
+                const k = indice++;
+                const nombreBase = prefijo + '[' + k + ']';
+                const el = document.createElement('div');
+                el.className = 'rg-elemento';
+
+                const cabecera = document.createElement('div');
+                cabecera.className = 'rg-elemento-head';
+                const tituloEl = document.createElement('span');
+                tituloEl.className = 'titulo';
+                tituloEl.innerHTML = '<i class="fas ' + iconoClase + '"></i>';
+                tituloEl.appendChild(document.createTextNode(titulo));
+                tituloEl.title = titulo;
+
+                const subir = botonCabecera('fa-arrow-up', 'Subir', function () {
+                    if (el.previousElementSibling) lista.insertBefore(el, el.previousElementSibling);
+                    actualizarFlechas();
+                });
+                subir.dataset.subir = '';
+                const bajar = botonCabecera('fa-arrow-down', 'Bajar', function () {
+                    if (el.nextElementSibling) lista.insertBefore(el.nextElementSibling, el);
+                    actualizarFlechas();
+                });
+                bajar.dataset.bajar = '';
+                const quitar = botonCabecera('fa-trash-alt', 'Quitar', function () {
+                    el.remove();
+                    actualizarFlechas();
+                });
+
+                cabecera.append(tituloEl, subir, bajar, quitar);
+                el.append(cabecera, crearHidden(nombreBase + '[tipo]', tipo));
+                lista.appendChild(el);
+                actualizarFlechas();
+                return { el, nombreBase };
+            }
+
+            function crearCampoPie(nombre, valor, placeholder) {
+                const fila = document.createElement('div');
+                fila.className = 'rg-campo-pie';
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-control';
+                input.name = nombre;
+                input.maxLength = 500;
+                input.placeholder = placeholder;
+                input.value = valor || '';
+                input.setAttribute('aria-label', 'Pie de figura');
+                fila.appendChild(input);
+                return { fila, input };
+            }
+
+            // Plano con vista previa, capas para prender/apagar y su pie.
+            function agregarPlano(planoId, guardado) {
+                guardado = guardado || {};
+                const plano = PLANOS.find(p => p.id === Number(planoId));
+                const { el, nombreBase } = crearElemento('plano', 'fa-map', plano ? 'Plano: ' + plano.descripcion : 'Plano');
+
+                if (!plano) {
+                    const aviso = document.createElement('div');
+                    aviso.className = 'rg-aviso';
+                    aviso.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Este plano se borró de la obra y ya no va al Word.';
+                    el.appendChild(aviso);
+                    el.querySelector('input[name$="[tipo]"]').remove();
+                    return null;
+                }
+
+                const ocultas = new Set(String(guardado.capas_ocultas || '').split(',').filter(Boolean));
+                const inputOcultas = crearHidden(nombreBase + '[capas_ocultas]', [...ocultas].join(','));
+                const inputImagen = crearHidden(nombreBase + '[imagen]', '');
+                inputImagen.dataset.planoImagen = '';
+
+                const vista = document.createElement('div');
+                vista.className = 'rg-plano-vista';
+                const estadoEl = document.createElement('div');
+                estadoEl.className = 'rg-plano-estado';
+                estadoEl.textContent = 'Cargando plano…';
+                vista.appendChild(estadoEl);
+
+                const capasEl = document.createElement('div');
+                capasEl.className = 'rg-capas';
+
+                const { fila, input } = crearCampoPie(nombreBase + '[pie]', guardado.pie, 'Pie de figura (ej.: Planta de encofrado obtenida en el relevamiento geométrico)');
+
+                el.append(vista, capasEl, fila, crearHidden(nombreBase + '[plano_id]', plano.id), inputOcultas, inputImagen);
+
+                let info = null;
+                let fondo = null;
+                let lienzo = null;
+                let factorVista = 1;
+
+                function redibujarVista() {
+                    if (!info || !fondo) return;
+                    const ctx = lienzo.getContext('2d');
+                    ctx.drawImage(fondo, 0, 0);
+                    dibujarAnotaciones(ctx, info, factorVista, ocultas);
+                }
+
+                function pintarCapas() {
+                    capasEl.textContent = '';
+                    if (!info.capas.length) {
+                        const nada = document.createElement('small');
+                        nada.className = 'ayuda';
+                        nada.textContent = 'Este plano no tiene anotaciones.';
+                        capasEl.appendChild(nada);
+                        return;
+                    }
+                    const cabecera = document.createElement('div');
+                    cabecera.className = 'rg-capas-head';
+                    cabecera.appendChild(document.createTextNode('Capas'));
+                    [['Prender todas', false], ['Apagar todas', true]].forEach(function ([texto, apagar]) {
+                        const boton = document.createElement('button');
+                        boton.type = 'button';
+                        boton.textContent = texto;
+                        boton.addEventListener('click', function () {
+                            info.capas.forEach(tool => apagar ? ocultas.add(tool) : ocultas.delete(tool));
+                            cambiarCapas();
+                        });
+                        cabecera.appendChild(boton);
+                    });
+
+                    const chips = document.createElement('div');
+                    chips.className = 'rg-capas-lista';
+                    info.capas.forEach(function (tool) {
+                        const meta = CAPAS[tool] || { nombre: tool };
+                        const apagada = ocultas.has(tool);
+                        const chip = document.createElement('button');
+                        chip.type = 'button';
+                        chip.className = 'rg-capa' + (apagada ? ' apagada' : '');
+                        chip.setAttribute('aria-pressed', apagada ? 'false' : 'true');
+                        chip.title = (apagada ? 'Prender ' : 'Apagar ') + meta.nombre;
+                        const ojo = document.createElement('i');
+                        ojo.className = 'ojo fas ' + (apagada ? 'fa-eye-slash' : 'fa-eye');
+                        chip.appendChild(ojo);
+                        if (meta.icono) {
+                            const img = document.createElement('img');
+                            img.src = meta.icono;
+                            img.alt = '';
+                            chip.appendChild(img);
+                        } else if (meta.letra) {
+                            const letra = document.createElement('span');
+                            letra.className = 'letra';
+                            letra.textContent = meta.letra;
+                            chip.appendChild(letra);
+                        }
+                        chip.appendChild(document.createTextNode(meta.nombre));
+                        chip.addEventListener('click', function () {
+                            if (ocultas.has(tool)) ocultas.delete(tool); else ocultas.add(tool);
+                            cambiarCapas();
+                        });
+                        chips.appendChild(chip);
+                    });
+                    capasEl.append(cabecera, chips);
+                }
+
+                function cambiarCapas() {
+                    inputOcultas.value = [...ocultas].join(',');
+                    pintarCapas();
+                    redibujarVista();
+                }
+
+                const listo = (async function () {
+                    try {
+                        info = await cargarPlano(plano.id);
+                        factorVista = Math.min(LADO_VISTA_PX / info.ancho, LADO_VISTA_PX / info.alto);
+                        fondo = await renderizarPdf(info, factorVista);
+                        lienzo = document.createElement('canvas');
+                        lienzo.width = fondo.width;
+                        lienzo.height = fondo.height;
+                        vista.textContent = '';
+                        vista.appendChild(lienzo);
+                        // Las capas guardadas que el plano ya no tiene no cuentan.
+                        [...ocultas].forEach(tool => { if (!info.capas.includes(tool)) ocultas.delete(tool); });
+                        cambiarCapas();
+                    } catch (error) {
+                        estadoEl.classList.add('error');
+                        estadoEl.textContent = 'No se pudo cargar el plano. Recargá la página para reintentar.';
+                        throw error;
+                    }
+                })();
+                listo.catch(() => {});
+
+                // JPG del plano con las capas prendidas, para el Word.
+                el.exportar = async function () {
+                    await listo;
+                    const factor = Math.min(ANCHO_WORD_PX / info.ancho, ALTO_WORD_PX / info.alto);
+                    const canvas = await renderizarPdf(info, factor);
+                    dibujarAnotaciones(canvas.getContext('2d'), info, factor, ocultas);
+                    return canvas.toDataURL('image/jpeg', 0.9);
+                };
+                el.inputImagen = inputImagen;
+                el.descripcion = plano.descripcion;
+                return input;
+            }
+
+            // Bloque de fotos, igual que en Características de la obra.
+            function agregarFotos(fotos, pie, faltantes) {
+                const { el, nombreBase } = crearElemento('fotos', 'fa-image', fotos.length > 1 ? fotos.length + ' fotos' : 'Foto');
+                const { bloque, input } = InformeFotos.crearBloque(fotos, pie, faltantes, nombreBase, false);
+                el.appendChild(bloque);
+                return input;
+            }
+
+            // Planilla de ensayo de la obra como tabla, con su pie de tabla.
+            // La vista previa se arma al agregarla; la imagen del Word se
+            // vuelve a armar al generar, con los datos de ese momento.
+            function agregarPlanilla(clave, pie) {
+                const config = PLANILLAS[clave];
+                if (!config) return null;
+                const { el, nombreBase } = crearElemento('planilla', 'fa-table', config.nombre);
+
+                const vista = document.createElement('div');
+                vista.className = 'rg-plano-vista rg-planilla-vista';
+                const estadoEl = document.createElement('div');
+                estadoEl.className = 'rg-plano-estado';
+                estadoEl.textContent = 'Cargando planilla…';
+                vista.appendChild(estadoEl);
+
+                const { fila, input } = crearCampoPie(nombreBase + '[pie]', pie, 'Pie de tabla (ej.: Resultados del ensayo de esclerometría)');
+                input.setAttribute('aria-label', 'Pie de tabla');
+                const inputImagen = crearHidden(nombreBase + '[imagen]', '');
+                inputImagen.dataset.planoImagen = '';
+                el.append(vista, fila, crearHidden(nombreBase + '[planilla]', clave), inputImagen);
+
+                cargarPlanilla(clave).then(function (filas) {
+                    if (!filas.length) {
+                        estadoEl.classList.add('error');
+                        estadoEl.textContent = 'La planilla todavía no tiene puntos ensayados: no va al Word hasta que los tenga.';
+                        return;
+                    }
+                    const img = document.createElement('img');
+                    img.alt = config.nombre;
+                    img.src = dibujarPlanilla(config.columnas, filas).toDataURL('image/png');
+                    vista.replaceChildren(img);
+                }).catch(function () {
+                    estadoEl.classList.add('error');
+                    estadoEl.textContent = 'No se pudo cargar la planilla. Recargá la página para reintentar.';
+                });
+
+                // PNG de la tabla para el Word; sin puntos no va nada.
+                el.exportar = async function () {
+                    const filas = await cargarPlanilla(clave);
+                    return filas.length ? dibujarPlanilla(config.columnas, filas).toDataURL('image/png') : '';
+                };
+                el.inputImagen = inputImagen;
+                el.descripcion = config.nombre;
+                return input;
+            }
+
+            function agregarTexto(texto) {
+                const { el, nombreBase } = crearElemento('texto', 'fa-paragraph', 'Texto');
+                const area = document.createElement('textarea');
+                area.className = 'form-control';
+                area.name = nombreBase + '[texto]';
+                area.rows = 4;
+                area.placeholder = 'Cada renglón se convierte en un párrafo del Word.';
+                area.setAttribute('aria-label', 'Texto');
+                area.value = texto || '';
+                el.appendChild(area);
+                return area;
+            }
+
+            // Sólo los botones que tiene la sección (ver contenido-seccion).
+            const boton = tipo => contenedor.querySelector('[data-agregar="' + tipo + '"]');
+            boton('plano')?.addEventListener('click', () => abrirModal(agregarPlano));
+            boton('fotos')?.addEventListener('click', () => InformeFotos.abrir(agregarFotos));
+            boton('planilla')?.addEventListener('click', () => enfocar(agregarPlanilla(contenedor.dataset.planilla, '')));
+            boton('texto')?.addEventListener('click', () => enfocar(agregarTexto('')));
+
+            // Elementos del informe guardado.
+            JSON.parse(contenedor.dataset.guardados || '[]').forEach(function (guardado) {
+                if (guardado.tipo === 'plano') {
+                    agregarPlano(guardado.plano_id, guardado);
+                } else if (guardado.tipo === 'fotos') {
+                    const { fotos, faltantes } = InformeFotos.buscar(guardado.ids);
+                    if (fotos.length || faltantes) agregarFotos(fotos, guardado.pie || '', faltantes);
+                } else if (guardado.tipo === 'planilla') {
+                    agregarPlanilla(guardado.planilla, guardado.pie);
+                } else if (guardado.tipo === 'texto') {
+                    agregarTexto(guardado.texto);
+                }
+            });
+        }
+
+        function enfocar(campo) {
+            if (!campo) return;
+            campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            campo.focus({ preventScroll: true });
+        }
+
+        /* ── Modal de planos ── */
+        const modal = document.getElementById('modal-planos');
+        const buscador = document.getElementById('modal-planos-buscar');
+        const listaPlanos = document.getElementById('modal-planos-lista');
+        // agregarPlano de la sección desde la que se abrió el modal.
+        let destinoPlano = null;
+
+        function pintarPlanos() {
+            const filtro = buscador.value.trim().toLowerCase();
+            listaPlanos.textContent = '';
+            let carpetaActual = null;
+            const visibles = PLANOS.filter(p => !filtro || (p.descripcion + ' ' + p.carpeta).toLowerCase().includes(filtro));
+            visibles.forEach(function (plano) {
+                if (plano.carpeta !== carpetaActual) {
+                    carpetaActual = plano.carpeta;
+                    const titulo = document.createElement('div');
+                    titulo.className = 'modal-planos-carpeta';
+                    titulo.textContent = carpetaActual;
+                    listaPlanos.appendChild(titulo);
+                }
+                const boton = document.createElement('button');
+                boton.type = 'button';
+                boton.className = 'modal-plano';
+                boton.innerHTML = '<i class="fas fa-map"></i>';
+                boton.appendChild(document.createTextNode(plano.descripcion));
+                if (plano.anotaciones) {
+                    const marca = document.createElement('span');
+                    marca.className = 'marca';
+                    marca.textContent = 'Con anotaciones';
+                    boton.appendChild(marca);
+                }
+                boton.addEventListener('click', function () {
+                    cerrarModal();
+                    enfocar(destinoPlano(plano.id));
+                });
+                listaPlanos.appendChild(boton);
+            });
+            if (!visibles.length) {
+                const vacio = document.createElement('div');
+                vacio.className = 'vacio';
+                vacio.innerHTML = '<i class="fas fa-map"></i>';
+                vacio.appendChild(document.createTextNode(PLANOS.length ? 'No hay planos que coincidan con la búsqueda.' : 'Esta obra todavía no tiene planos.'));
+                listaPlanos.appendChild(vacio);
+            }
+        }
+
+        function abrirModal(destino) {
+            destinoPlano = destino;
+            buscador.value = '';
+            pintarPlanos();
+            modal.classList.add('abierto');
+            buscador.focus();
+        }
+        function cerrarModal() {
+            modal.classList.remove('abierto');
+        }
+
+        buscador.addEventListener('input', pintarPlanos);
+        buscador.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') e.preventDefault();
+        });
+        modal.querySelectorAll('[data-cerrar-modal]').forEach(b => b.addEventListener('click', cerrarModal));
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) cerrarModal();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('abierto')) cerrarModal();
+        });
+
+        document.querySelectorAll('[data-seccion]').forEach(iniciarSeccion);
+
+        /* ── Generar Word: antes de enviar se arma el JPG de cada plano con
+           las capas prendidas en ese momento y el PNG de cada planilla con
+           sus datos actuales. Guardar no manda imágenes. ── */
+        const form = document.getElementById('form-informe');
+        const btnGenerar = document.getElementById('btn-generar');
+        let imagenesListas = false;
+
+        function limpiarImagenes() {
+            form.querySelectorAll('[data-plano-imagen]').forEach(input => { input.value = ''; });
+        }
+
+        // Planos y planillas de las secciones que van al Word (las que tienen
+        // data-trabajos-word y alguno de esos trabajos activado).
+        function planosParaWord() {
+            return [...form.querySelectorAll('[data-trabajos-word]')]
+                .filter(seccion => seccion.dataset.trabajosWord.split(',')
+                    .some(trabajo => document.querySelector('[data-trabajo="' + trabajo + '"]').checked))
+                .flatMap(seccion => [...seccion.querySelector('[data-elementos]').children].filter(el => el.exportar));
+        }
+
+        form.addEventListener('submit', async function (e) {
+            if (e.submitter !== btnGenerar) {
+                limpiarImagenes();
+                return;
+            }
+            if (imagenesListas) {
+                imagenesListas = false;
+                return;
+            }
+            const planos = planosParaWord();
+            if (!planos.length) return;
+
+            e.preventDefault();
+            const contenidoBoton = btnGenerar.innerHTML;
+            btnGenerar.disabled = true;
+            btnGenerar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando imágenes…';
+            try {
+                for (const el of planos) {
+                    try {
+                        el.inputImagen.value = await el.exportar();
+                    } catch (error) {
+                        throw new Error('No se pudo preparar "' + el.descripcion + '".');
+                    }
+                }
+                imagenesListas = true;
+                // requestSubmit no funciona con el botón deshabilitado.
+                btnGenerar.disabled = false;
+                form.requestSubmit(btnGenerar);
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                // Los datos del envío ya se armaron: las imágenes no hacen falta más.
+                imagenesListas = false;
+                limpiarImagenes();
+                btnGenerar.disabled = false;
+                btnGenerar.innerHTML = contenidoBoton;
             }
         });
     })();

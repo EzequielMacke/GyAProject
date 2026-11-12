@@ -1074,6 +1074,7 @@
     <script src="{{ \App\Services\DescargaOfflineService::JSZIP }}"></script>
     <script src="{{ asset('js/plano-offline.js') }}"></script>
     <script src="{{ asset('js/plano-dxf.js') }}"></script>
+    <script src="{{ asset('js/plano-render.js') }}"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = @json(\App\Services\DescargaOfflineService::PDFJS_WORKER);
 
@@ -1111,7 +1112,6 @@
         const SOBREMUESTREO = Math.min(Math.max(dpr, 1) * 1.5, 3);
         const ZOOM_MIN = 0.05;
         const ZOOM_MAX = 40;
-        const ESPACIO_TRAMA = 4;
         /* Ancho/alto máximo (en px) del canvas del PDF al hacer zoom (ver
            calcularFactorMaxSeguro). En dispositivos con dpr > 1 este tope
            se queda corto para zooms moderados (un plano A3 a dpr 1.5 y
@@ -2469,104 +2469,19 @@
         /* Motor de dibujo compartido entre la vista en pantalla
            (drawCtx + mundoAPantalla + vista.scale, con pan/zoom) y la
            exportación a PDF/PNG (un canvas offscreen + una proyección
-           simple "mundo * factor", sin pan: se exporta el plano entero). */
+           simple "mundo * factor", sin pan: se exporta el plano entero).
+           El dibujo en sí está en public/js/plano-render.js, que también
+           usa el generador de informes. */
         function dibujarItems(ctx, proyectar, escala) {
-            estadoPlano.trazos.forEach(item => {
-                if (capasVisibles[item.tool] === false) return;
-
-                if (item.tipo === 'icono') {
-                    if (!item.imagen.complete || !item.imagen.naturalWidth) return;
-                    const ratio = item.imagen.naturalWidth / item.imagen.naturalHeight;
-                    const factorEscala = estadoPlano.escalas[GRUPO_ESCALA[item.tool]] ?? 1;
-                    const base = item.tamano * escala * factorEscala;
-                    const anchoItem = ratio >= 1 ? base : base * ratio;
-                    const altoItem = ratio >= 1 ? base / ratio : base;
-                    const centro = proyectar(item.x, item.y);
-                    ctx.drawImage(
-                        item.imagen,
-                        centro.x - anchoItem / 2,
-                        centro.y - altoItem / 2,
-                        anchoItem,
-                        altoItem
-                    );
-
-                    if (item.etiqueta) {
-                        const tamanoFuente = base * 0.32;
-                        ctx.font = `bold ${tamanoFuente}px sans-serif`;
-                        ctx.textBaseline = 'middle';
-                        ctx.textAlign = 'left';
-                        const textoX = centro.x + anchoItem / 2 - base * 0.14;
-                        ctx.fillStyle = item.colorEtiqueta || '#000';
-                        ctx.fillText(item.etiqueta, textoX, centro.y);
-                    }
-                    return;
-                }
-
-                if (item.tipo === 'texto') {
-                    // Mientras se edita, el input flotante ocupa su lugar.
-                    if (edicionTextoPendiente?.item === item) return;
-                    const centro = proyectar(item.x, item.y);
-                    const grupoEscala = GRUPO_ESCALA[item.tool] ?? 'texto';
-                    const tamanoFuente = item.tamano * escala * (estadoPlano.escalas[grupoEscala] ?? 1);
-                    ctx.font = `600 ${tamanoFuente}px sans-serif`;
-                    ctx.textBaseline = 'middle';
-                    ctx.textAlign = 'left';
-                    ctx.fillStyle = item.color;
-                    if (item.rotacion) {
-                        ctx.save();
-                        ctx.translate(centro.x, centro.y);
-                        ctx.rotate(item.rotacion * Math.PI / 180);
-                        ctx.fillText(item.texto, 0, 0);
-                        ctx.restore();
-                    } else {
-                        ctx.fillText(item.texto, centro.x, centro.y);
-                    }
-                    return;
-                }
-
-                if (item.puntos.length < 2) return;
-                const puntosProyectados = item.puntos.map(p => proyectar(p.x, p.y));
-                const path = new Path2D();
-                path.moveTo(puntosProyectados[0].x, puntosProyectados[0].y);
-                for (let i = 1; i < puntosProyectados.length; i++) {
-                    path.lineTo(puntosProyectados[i].x, puntosProyectados[i].y);
-                }
-
-                if (item.cerrado) {
-                    path.closePath();
-                    if (item.relleno) dibujarTramaDiagonal(ctx, item, puntosProyectados, path, escala);
-                }
-
-                ctx.strokeStyle = item.color;
-                ctx.lineWidth = item.grosor * escala;
-                ctx.stroke(path);
+            PlanoRender.dibujarItems(ctx, estadoPlano.trazos, {
+                proyectar,
+                escala,
+                escalas: estadoPlano.escalas,
+                grupoEscala: GRUPO_ESCALA,
+                capasVisibles,
+                // Mientras se edita un texto, el input flotante ocupa su lugar.
+                omitir: item => edicionTextoPendiente?.item === item,
             });
-        }
-
-        function dibujarTramaDiagonal(ctx, item, puntosProyectados, path, escala) {
-            const xs = puntosProyectados.map(p => p.x);
-            const ys = puntosProyectados.map(p => p.y);
-            const minX = Math.min(...xs), maxX = Math.max(...xs);
-            const minY = Math.min(...ys), maxY = Math.max(...ys);
-            const centroX = (minX + maxX) / 2;
-            const centroY = (minY + maxY) / 2;
-            const diagonal = Math.hypot(maxX - minX, maxY - minY) || 1;
-            const espaciado = Math.max(1.5, ESPACIO_TRAMA * escala);
-
-            ctx.save();
-            ctx.clip(path);
-            ctx.translate(centroX, centroY);
-            ctx.rotate(Math.PI / 4);
-            ctx.strokeStyle = item.color;
-            ctx.lineWidth = Math.max(0.5, item.grosor * escala * 0.5);
-            ctx.globalAlpha = 0.75;
-            ctx.beginPath();
-            for (let x = -diagonal; x <= diagonal; x += espaciado) {
-                ctx.moveTo(x, -diagonal);
-                ctx.lineTo(x, diagonal);
-            }
-            ctx.stroke();
-            ctx.restore();
         }
 
         /* ─── Exportación a PDF/PNG: renderiza la página completa del PDF

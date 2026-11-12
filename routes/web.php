@@ -97,6 +97,11 @@ Route::middleware('permiso:gen_inf,ver')->group(function () {
     Route::get('/generador-informe-gya/{obraTc}', [InformeGeneradorController::class, 'index'])->name('informe.generador');
     Route::post('/generador-informe-gya/{obraTc}/generar', [InformeGeneradorController::class, 'generar'])->name('informe.generador.generar');
     Route::post('/generador-informe-gya/{obraTc}/informe', [InformeGeneradorController::class, 'guardar'])->name('informe.generador.guardar');
+    Route::get('/generador-informe-gya/{obraTc}/planos/{plano}', [InformeGeneradorController::class, 'plano'])
+        ->where('plano', '[0-9]+')
+        ->name('informe.generador.plano');
+    Route::get('/generador-informe-gya/{obraTc}/planillas/esclerometria', [InformeGeneradorController::class, 'planillaEsclerometria'])
+        ->name('informe.generador.planilla.esclerometria');
 });
 // Token CSRF vigente, para que las planillas guardadas sin conexión puedan
 // subirse al volver la señal aunque la página haya salido del cache

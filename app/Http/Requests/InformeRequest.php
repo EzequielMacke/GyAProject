@@ -18,6 +18,59 @@ class InformeRequest extends FormRequest
 
     public function rules(): array
     {
+        return $this->reglasBase()
+            + array_merge(...array_map(
+                fn (string $seccion) => $this->reglasSeccionConContenido($seccion),
+                InformeTc::SECCIONES_CON_CONTENIDO
+            ))
+            + array_merge(...array_map(
+                fn (string $seccion) => $this->reglasSeccionConFotos($seccion),
+                InformeTc::SECCIONES_CON_FOTOS
+            ));
+    }
+
+    /**
+     * Descripción y bloques de fotos de una sección; ver
+     * InformeTc::SECCIONES_CON_FOTOS.
+     */
+    private function reglasSeccionConFotos(string $seccion): array
+    {
+        $fotos = $seccion . '_fotos';
+
+        return [
+            $seccion . '_descripcion' => 'nullable|string',
+            $fotos => 'nullable|array',
+            $fotos . '.*.ids' => 'nullable|string',
+            $fotos . '.*.pie' => 'nullable|string|max:500',
+        ];
+    }
+
+    /**
+     * Descripción y elementos en orden (plano, bloque de fotos, planilla o texto) de
+     * una sección con contenido; ver InformeTc::SECCIONES_CON_CONTENIDO.
+     */
+    private function reglasSeccionConContenido(string $seccion): array
+    {
+        $elementos = $seccion . '_elementos';
+
+        return [
+            $seccion . '_descripcion' => 'nullable|string',
+            $elementos => 'nullable|array',
+            $elementos . '.*.tipo' => 'required|string|in:plano,fotos,planilla,texto',
+            $elementos . '.*.plano_id' => 'nullable|integer',
+            $elementos . '.*.planilla' => 'nullable|string|in:' . implode(',', InformeTc::PLANILLAS),
+            $elementos . '.*.capas_ocultas' => 'nullable|string',
+            $elementos . '.*.ids' => 'nullable|string',
+            $elementos . '.*.pie' => 'nullable|string|max:500',
+            $elementos . '.*.texto' => 'nullable|string',
+            // JPG del plano con las capas prendidas o PNG de la planilla (data URL);
+            // sólo lo manda "Generar".
+            $elementos . '.*.imagen' => 'nullable|string',
+        ];
+    }
+
+    private function reglasBase(): array
+    {
         return [
             'titulo' => 'nullable|string|max:255',
             'obra' => 'nullable|string|max:255',
