@@ -63,9 +63,15 @@ class InformeRequest extends FormRequest
             $elementos . '.*.ids' => 'nullable|string',
             $elementos . '.*.pie' => 'nullable|string|max:500',
             $elementos . '.*.texto' => 'nullable|string',
+            // Disposición de la planilla en el informe (los datos salen siempre
+            // de Planillas): JSON { columnas: [claves], filas: [ids de punto] }.
+            $elementos . '.*.tabla' => 'nullable|json',
             // JPG del plano con las capas prendidas o PNG de la planilla (data URL);
             // sólo lo manda "Generar".
             $elementos . '.*.imagen' => 'nullable|string',
+            // Tabla "Referencias de ensayos" del plano (PNG en data URL) con
+            // los ensayos de capas prendidas; sólo lo manda "Generar".
+            $elementos . '.*.referencias' => 'nullable|string',
         ];
     }
 

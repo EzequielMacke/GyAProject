@@ -102,6 +102,8 @@ Route::middleware('permiso:gen_inf,ver')->group(function () {
         ->name('informe.generador.plano');
     Route::get('/generador-informe-gya/{obraTc}/planillas/esclerometria', [InformeGeneradorController::class, 'planillaEsclerometria'])
         ->name('informe.generador.planilla.esclerometria');
+    Route::get('/generador-informe-gya/{obraTc}/planillas/ultrasonido', [InformeGeneradorController::class, 'planillaUltrasonido'])
+        ->name('informe.generador.planilla.ultrasonido');
 });
 // Token CSRF vigente, para que las planillas guardadas sin conexión puedan
 // subirse al volver la señal aunque la página haya salido del cache

@@ -257,8 +257,24 @@
             min-height: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
         .rg-plano-vista canvas { display: block; max-width: 100%; max-height: 520px; width: auto; height: auto; }
-        .rg-planilla-vista { margin-bottom: 0.75rem; padding: 0.5rem; overflow-x: auto; justify-content: flex-start; }
-        .rg-planilla-vista img { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+        /* Planilla en el informe: datos de sólo lectura, controles de filas (izquierda) y columnas (arriba). */
+        .rg-tabla-wrap { border: 1px solid var(--border); border-radius: 0.4rem; background: #fff; overflow-x: auto; padding: 0.5rem; }
+        .rg-tabla { border-collapse: collapse; margin: 0 auto; font-family: 'EB Garamond', Garamond, serif; font-size: 15px; color: #000; }
+        .rg-tabla th, .rg-tabla td { border: 1px solid #000; padding: 0; vertical-align: middle; }
+        .rg-tabla th.ctl, .rg-tabla td.ctl { border: 0; background: none; padding: 0 0.15rem; }
+        .rg-tabla .celda { padding: 0.25rem 0.6rem; min-width: 2.5rem; text-align: center; white-space: nowrap; }
+        .rg-tabla thead .celda { font-weight: 700; }
+        .rg-tabla tbody tr:hover td:not(.ctl) { background: #f5f8ff; }
+        .rg-ctl { display: flex; justify-content: center; gap: 0.05rem; white-space: nowrap; }
+        .rg-ctl button { border: 0; background: none; color: var(--muted); padding: 0.1rem 0.3rem; border-radius: 0.3rem; font-size: 0.68rem; line-height: 1.4; }
+        .rg-ctl button:hover { background: var(--surface2); color: var(--text); }
+        .rg-ctl button.peligro:hover { color: #c0392b; }
+        .rg-ctl button:disabled { opacity: 0.3; pointer-events: none; }
+        .rg-tabla-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; font-size: 0.74rem; color: var(--muted); margin: 0.35rem 0 0.75rem; }
+        .rg-tabla-pie .resumen { flex: 1; min-width: 0; }
+        .rg-tabla-pie .resumen.error { color: #c0392b; }
+        .rg-tabla-pie button { border: 0; background: none; padding: 0; color: var(--accent); font-size: 0.74rem; font-weight: 600; }
+        .rg-tabla-pie button:disabled { opacity: 0.5; }
         .rg-plano-estado { font-size: 0.8rem; color: var(--muted); padding: 1rem; text-align: center; }
         .rg-plano-estado.error { color: #c0392b; }
         .rg-capas { margin: 0.6rem 0 0.75rem; }
@@ -281,6 +297,11 @@
         .rg-aviso { font-size: 0.78rem; color: #a07400; background: #fff4d6; border-radius: 0.35rem; padding: 0.35rem 0.6rem; }
 
         .modal-planos-caja { width: min(640px, 100%); height: min(80vh, 100%); }
+        .modal-confirmar-caja { width: min(460px, 100%); height: auto; }
+        .modal-confirmar-cuerpo { display: flex; gap: 0.85rem; align-items: flex-start; padding: 1.1rem; font-size: 0.88rem; color: var(--text2); line-height: 1.45; }
+        .modal-confirmar-cuerpo i { color: #d39e00; font-size: 1.3rem; margin-top: 0.1rem; }
+        .modal-confirmar-cuerpo p { margin: 0; }
+        .modal-confirmar-pie { justify-content: flex-end; }
         .modal-fotos-filtros .form-control { font-size: 0.85rem; border: 1.5px solid var(--border); border-radius: 0.5rem; }
         .modal-planos-lista { flex: 1; overflow-y: auto; padding: 0.5rem 0.75rem 1rem; }
         .modal-planos-carpeta { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 0.75rem 0.5rem 0.3rem; }
@@ -632,20 +653,32 @@
                                                 'placeholder' => 'Ej.: Se realizó el relevamiento geométrico de la estructura a fin de obtener la planta de encofrado, determinando las dimensiones de vigas, columnas y losas, y la ubicación de los elementos estructurales.',
                                                 'ayuda' => 'Qué se relevó, cómo y con qué fin. Cada renglón se convierte en un párrafo del Word.',
                                             ])
-                                        @elseif ($clave === 'esclerometria')
+                                        @elseif (in_array($clave, ['esclerometria', 'ultrasonido'], true))
+                                            @php
+                                                $textosEnsayo = [
+                                                    'esclerometria' => [
+                                                        'placeholder' => 'Ej.: Se realizaron ensayos de esclerometría sobre los elementos estructurales a fin de estimar la resistencia superficial del hormigón.',
+                                                        'ayuda' => 'Cómo y dónde se hizo el ensayo de esclerometría. Cada renglón se convierte en un párrafo del Word.',
+                                                    ],
+                                                    'ultrasonido' => [
+                                                        'placeholder' => 'Ej.: Se realizaron ensayos de ultrasonido por el método indirecto sobre los elementos estructurales a fin de evaluar la calidad y homogeneidad del hormigón.',
+                                                        'ayuda' => 'Cómo y dónde se hizo el ensayo de ultrasonido. Cada renglón se convierte en un párrafo del Word.',
+                                                    ],
+                                                ][$clave];
+                                            @endphp
                                             @include('informe.partials.descripcion-fotos', [
-                                                'seccion' => 'esclerometria',
-                                                'placeholder' => 'Ej.: Se realizaron ensayos de esclerometría sobre los elementos estructurales a fin de estimar la resistencia superficial del hormigón.',
-                                                'ayuda' => 'Cómo y dónde se hizo el ensayo de esclerometría. Cada renglón se convierte en un párrafo del Word.',
+                                                'seccion' => $clave,
+                                                'placeholder' => $textosEnsayo['placeholder'],
+                                                'ayuda' => $textosEnsayo['ayuda'],
                                             ])
-                                            {{-- Sin descripción: la de arriba ya se guarda como esclerometria_descripcion. --}}
+                                            {{-- Sin descripción: la de arriba ya se guarda como {clave}_descripcion. --}}
                                             @include('informe.partials.contenido-seccion', [
-                                                'seccion' => 'esclerometria',
-                                                'trabajosWord' => ['esclerometria'],
+                                                'seccion' => $clave,
+                                                'trabajosWord' => [$clave],
                                                 'botones' => ['planilla', 'texto'],
-                                                'planilla' => 'esclerometria',
+                                                'planilla' => $clave,
                                                 'tituloContenido' => 'Planillas y textos',
-                                                'ayudaContenido' => 'Van después de las fotografías, en este orden (se puede cambiar con las flechas). La planilla sale como imagen con los datos que tenga al generar el Word, y lleva su propio pie de tabla.',
+                                                'ayudaContenido' => 'Van después de las fotografías, en este orden (se puede cambiar con las flechas). La planilla muestra siempre los datos de Planillas (ahí se modifican): acá se pueden mover o quitar filas y columnas sólo para el informe, y separarla en varias tablas con la tijera (cada una con su propio pie).',
                                             ])
                                         @else
                                             {{-- Por ahora vacío. --}}
@@ -799,6 +832,23 @@
             <input type="text" class="form-control" id="modal-planos-buscar" placeholder="Buscar plano..." aria-label="Buscar plano">
         </div>
         <div class="modal-planos-lista" id="modal-planos-lista"></div>
+    </div>
+</div>
+{{-- Modal de confirmación (ver confirmar() en el script) --}}
+<div class="modal-fotos" id="modal-confirmar" role="alertdialog" aria-modal="true" aria-labelledby="modal-confirmar-titulo" aria-describedby="modal-confirmar-texto">
+    <div class="modal-fotos-caja modal-confirmar-caja">
+        <div class="modal-fotos-head">
+            <span id="modal-confirmar-titulo"></span>
+            <button type="button" class="modal-fotos-cerrar" data-confirmar="no" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-confirmar-cuerpo">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p id="modal-confirmar-texto"></p>
+        </div>
+        <div class="modal-fotos-pie modal-confirmar-pie">
+            <button type="button" class="btn" data-confirmar="no">Cancelar</button>
+            <button type="button" class="btn btn-primary" data-confirmar="si" id="modal-confirmar-aceptar"></button>
+        </div>
     </div>
 </div>
 <script src="{{ \App\Services\DescargaOfflineService::PDFJS }}"></script>
@@ -1380,21 +1430,79 @@
             esclerometria: {
                 nombre: 'Planilla de esclerometría',
                 url: @json(route('informe.generador.planilla.esclerometria', $obraTc->id)),
-                columnas: ['Nivel', 'Elemento', 'Identificación', 'Dirección', 'Índice esclerométrico corregido'],
-                fila: p => [p.nivel, p.elemento, p.identificacion, p.direccion, p.n_final],
+                // Clave del dato de cada punto y su título, en el orden de la planilla.
+                columnas: [
+                    { clave: 'nivel', titulo: 'Nivel' },
+                    { clave: 'elemento', titulo: 'Elemento' },
+                    { clave: 'identificacion', titulo: 'Identificación' },
+                    { clave: 'direccion', titulo: 'Dirección' },
+                    { clave: 'n_final', titulo: 'Índice esclerométrico corregido' },
+                ],
+                pie: 'Resultados del ensayo de esclerometría',
+            },
+            ultrasonido: {
+                nombre: 'Planilla de ultrasonido',
+                url: @json(route('informe.generador.planilla.ultrasonido', $obraTc->id)),
+                columnas: [
+                    { clave: 'nivel', titulo: 'Nivel' },
+                    { clave: 'elemento', titulo: 'Elemento' },
+                    { clave: 'identificacion', titulo: 'Identificación' },
+                    { clave: 'velocidad', titulo: 'Velocidad (m/s)' },
+                    { clave: 'compactacion', titulo: 'Calidad del hormigón' },
+                ],
+                pie: 'Resultados del ensayo de ultrasonido',
             },
         };
 
-        async function cargarPlanilla(clave) {
-            const config = PLANILLAS[clave];
-            const respuesta = await fetch(config.url, { headers: { 'Accept': 'application/json' } });
-            if (!respuesta.ok) throw new Error('No se pudo cargar la planilla');
-            const datos = await respuesta.json();
-            await Promise.all([
+        /* Ensayos para la tabla "Referencias de ensayos" de los planos (ver
+           InformeTc::ICONOS_ENSAYOS): letra, color, ícono y capa del plano. */
+        const ICONOS_ENSAYOS = {!! json_encode(collect(\App\Models\InformeTc::ICONOS_ENSAYOS)->map(fn ($e) => ['nombre' => $e['nombre'], 'letra' => $e['letra'], 'color' => '#' . $e['color'], 'capa' => $e['capa'], 'url' => asset('img/iconos/' . $e['icono'])])) !!};
+        // Ensayos (claves de ICONOS_ENSAYOS) cuyas capas están prendidas, en ese orden.
+        function ensayosVisibles(capas, ocultas) {
+            return Object.keys(ICONOS_ENSAYOS).filter(t => capas.includes(ICONOS_ENSAYOS[t].capa) && !ocultas.has(ICONOS_ENSAYOS[t].capa));
+        }
+
+        function cargarFuentes() {
+            return Promise.all([
                 document.fonts.load('400 16px ' + FUENTE_PLANILLA),
                 document.fonts.load('700 16px ' + FUENTE_PLANILLA),
             ]);
-            return (datos.puntos || []).map(config.fila);
+        }
+
+        // Puntos de la planilla de la obra (sólo lectura: la planilla se
+        // modifica desde Planillas). Una carga compartida por página; `fresca`
+        // la vuelve a pedir (al generar el Word o al restaurar).
+        const cacheDatosPlanilla = {};
+        function cargarPlanilla(clave, fresca) {
+            if (fresca || !cacheDatosPlanilla[clave]) {
+                cacheDatosPlanilla[clave] = (async function () {
+                    const respuesta = await fetch(PLANILLAS[clave].url, { headers: { 'Accept': 'application/json' } });
+                    if (!respuesta.ok) throw new Error('No se pudo cargar la planilla');
+                    const datos = await respuesta.json();
+                    const puntos = new Map();
+                    (datos.puntos || []).forEach(p => puntos.set(Number(p.id), p));
+                    return puntos;
+                })();
+                cacheDatosPlanilla[clave].catch(() => { delete cacheDatosPlanilla[clave]; });
+            }
+            return cacheDatosPlanilla[clave];
+        }
+
+        /* Disposición de una planilla en el informe: qué columnas (claves) y
+           qué filas (id del punto) se muestran y en qué orden. Es lo único que
+           guarda el informe; los valores siempre salen de la planilla. null =
+           sin cambios (toda la planilla, incluidos los puntos que se agreguen). */
+        function leerDisposicion(valor, config) {
+            try {
+                const d = typeof valor === 'string' ? JSON.parse(valor) : valor;
+                if (!d || !Array.isArray(d.columnas) || !Array.isArray(d.filas)) return null;
+                const validas = config.columnas.map(c => c.clave);
+                const columnas = [...new Set(d.columnas)].filter(c => validas.includes(c));
+                const filas = [...new Set(d.filas.map(Number))].filter(Number.isInteger);
+                return columnas.length ? { columnas, filas } : null;
+            } catch (error) {
+                return null;
+            }
         }
 
         // Tabla con encabezado en negrita, bordes negros y fondo blanco.
@@ -1469,6 +1577,7 @@
                 const nombreBase = prefijo + '[' + k + ']';
                 const el = document.createElement('div');
                 el.className = 'rg-elemento';
+                el.dataset.tipo = tipo;
 
                 const cabecera = document.createElement('div');
                 cabecera.className = 'rg-elemento-head';
@@ -1534,6 +1643,11 @@
                 const inputOcultas = crearHidden(nombreBase + '[capas_ocultas]', [...ocultas].join(','));
                 const inputImagen = crearHidden(nombreBase + '[imagen]', '');
                 inputImagen.dataset.planoImagen = '';
+                // En los grupos de ensayos el plano lleva su tabla "Referencias
+                // de ensayos" con los ensayos de las capas prendidas.
+                const conReferencias = (contenedor.dataset.trabajosWord || '').split(',').some(t => ICONOS_ENSAYOS[t]);
+                const inputReferencias = crearHidden(nombreBase + '[referencias]', '');
+                inputReferencias.dataset.planoImagen = '';
 
                 const vista = document.createElement('div');
                 vista.className = 'rg-plano-vista';
@@ -1547,7 +1661,7 @@
 
                 const { fila, input } = crearCampoPie(nombreBase + '[pie]', guardado.pie, 'Pie de figura (ej.: Planta de encofrado obtenida en el relevamiento geométrico)');
 
-                el.append(vista, capasEl, fila, crearHidden(nombreBase + '[plano_id]', plano.id), inputOcultas, inputImagen);
+                el.append(vista, capasEl, fila, crearHidden(nombreBase + '[plano_id]', plano.id), inputOcultas, inputImagen, inputReferencias);
 
                 let info = null;
                 let fondo = null;
@@ -1616,6 +1730,16 @@
                         chips.appendChild(chip);
                     });
                     capasEl.append(cabecera, chips);
+
+                    if (conReferencias) {
+                        const ensayos = ensayosVisibles(info.capas, ocultas);
+                        const nota = document.createElement('small');
+                        nota.className = 'ayuda d-block mt-2';
+                        nota.textContent = ensayos.length
+                            ? 'Referencias de ensayos (entre el plano y su pie): ' + ensayos.map(t => ICONOS_ENSAYOS[t].letra + ' ' + ICONOS_ENSAYOS[t].nombre).join(' · ') + '.'
+                            : 'Ningún ensayo tiene la capa prendida: el plano va sin tabla de referencias.';
+                        capasEl.appendChild(nota);
+                    }
                 }
 
                 function cambiarCapas() {
@@ -1645,9 +1769,12 @@
                 })();
                 listo.catch(() => {});
 
-                // JPG del plano con las capas prendidas, para el Word.
+                // JPG del plano con las capas prendidas, para el Word; de paso
+                // arma su tabla de referencias con los ensayos de esas capas.
                 el.exportar = async function () {
                     await listo;
+                    const ensayos = conReferencias ? ensayosVisibles(info.capas, ocultas) : [];
+                    inputReferencias.value = ensayos.length ? await dibujarReferencias(ensayos) : '';
                     const factor = Math.min(ANCHO_WORD_PX / info.ancho, ALTO_WORD_PX / info.alto);
                     const canvas = await renderizarPdf(info, factor);
                     dibujarAnotaciones(canvas.getContext('2d'), info, factor, ocultas);
@@ -1666,46 +1793,200 @@
                 return input;
             }
 
-            // Planilla de ensayo de la obra como tabla, con su pie de tabla.
-            // La vista previa se arma al agregarla; la imagen del Word se
-            // vuelve a armar al generar, con los datos de ese momento.
-            function agregarPlanilla(clave, pie) {
+            // Planilla de ensayo de la obra como tabla, con su pie de tabla. Los
+            // datos no se editan (la planilla se modifica sólo desde Planillas):
+            // acá se elige qué filas y columnas van y en qué orden, y se puede
+            // separar en varias tablas. Quitar algo sólo lo saca del informe.
+            // [tabla] guarda esa disposición (JSON); vacío = toda la planilla.
+            // `despuesDe`: elemento tras el cual va (al separar una tabla).
+            function agregarPlanilla(clave, pie, disposicionGuardada, despuesDe) {
                 const config = PLANILLAS[clave];
                 if (!config) return null;
                 const { el, nombreBase } = crearElemento('planilla', 'fa-table', config.nombre);
+                if (despuesDe) {
+                    lista.insertBefore(el, despuesDe.nextElementSibling);
+                    actualizarFlechas();
+                }
+
+                let disposicion = leerDisposicion(disposicionGuardada, config);
+                let puntos = null; // Map id → punto, cuando cargó.
+                const titulo = clave => config.columnas.find(c => c.clave === clave).titulo;
 
                 const vista = document.createElement('div');
-                vista.className = 'rg-plano-vista rg-planilla-vista';
-                const estadoEl = document.createElement('div');
-                estadoEl.className = 'rg-plano-estado';
-                estadoEl.textContent = 'Cargando planilla…';
-                vista.appendChild(estadoEl);
+                vista.className = 'rg-tabla-wrap';
 
-                const { fila, input } = crearCampoPie(nombreBase + '[pie]', pie, 'Pie de tabla (ej.: Resultados del ensayo de esclerometría)');
+                const pieTabla = document.createElement('div');
+                pieTabla.className = 'rg-tabla-pie';
+                const resumen = document.createElement('span');
+                resumen.className = 'resumen';
+                const restaurar = document.createElement('button');
+                restaurar.type = 'button';
+                restaurar.innerHTML = '<i class="fas fa-undo"></i> ';
+                restaurar.appendChild(document.createTextNode('Mostrar toda la planilla'));
+                restaurar.title = 'Vuelve a mostrar todas las filas y columnas de la planilla, en su orden original';
+                pieTabla.append(resumen, restaurar);
+
+                const { fila, input } = crearCampoPie(nombreBase + '[pie]', pie, 'Pie de tabla (ej.: ' + config.pie + ')');
                 input.setAttribute('aria-label', 'Pie de tabla');
+                const inputDisposicion = crearHidden(nombreBase + '[tabla]', '');
                 const inputImagen = crearHidden(nombreBase + '[imagen]', '');
                 inputImagen.dataset.planoImagen = '';
-                el.append(vista, fila, crearHidden(nombreBase + '[planilla]', clave), inputImagen);
+                el.append(vista, pieTabla, fila, crearHidden(nombreBase + '[planilla]', clave), inputDisposicion, inputImagen);
 
-                cargarPlanilla(clave).then(function (filas) {
-                    if (!filas.length) {
-                        estadoEl.classList.add('error');
-                        estadoEl.textContent = 'La planilla todavía no tiene puntos ensayados: no va al Word hasta que los tenga.';
-                        return;
+                // Columnas y filas que se ven: las de la disposición (sin los
+                // puntos que ya no están en la planilla) o toda la planilla.
+                function actual() {
+                    if (!disposicion) {
+                        return { columnas: config.columnas.map(c => c.clave), filas: [...puntos.keys()] };
                     }
-                    const img = document.createElement('img');
-                    img.alt = config.nombre;
-                    img.src = dibujarPlanilla(config.columnas, filas).toDataURL('image/png');
-                    vista.replaceChildren(img);
-                }).catch(function () {
-                    estadoEl.classList.add('error');
-                    estadoEl.textContent = 'No se pudo cargar la planilla. Recargá la página para reintentar.';
+                    disposicion.filas = disposicion.filas.filter(id => puntos.has(id));
+                    return disposicion;
+                }
+
+                // Al primer cambio se fija la disposición (deja de ser "toda la planilla").
+                function modificar(cambio) {
+                    const d = actual();
+                    disposicion = { columnas: d.columnas.slice(), filas: d.filas.slice() };
+                    cambio(disposicion);
+                    renderizar();
+                }
+
+                function guardarDisposicion() {
+                    inputDisposicion.value = disposicion ? JSON.stringify(disposicion) : '';
+                    restaurar.hidden = !disposicion;
+                }
+
+                function mostrarEstado(texto, error) {
+                    const estadoEl = document.createElement('div');
+                    estadoEl.className = 'rg-plano-estado' + (error ? ' error' : '');
+                    estadoEl.textContent = texto;
+                    vista.replaceChildren(estadoEl);
+                    resumen.textContent = '';
+                }
+
+                function botonCtl(iconoClase, tituloBoton, deshabilitado, accion, peligro) {
+                    const boton = botonCabecera(iconoClase, tituloBoton, accion);
+                    boton.disabled = deshabilitado;
+                    if (peligro) boton.className = 'peligro';
+                    return boton;
+                }
+
+                function controles(...botones) {
+                    const grupo = document.createElement('div');
+                    grupo.className = 'rg-ctl';
+                    grupo.append(...botones);
+                    return grupo;
+                }
+
+                function celda(etiqueta, texto) {
+                    const c = document.createElement(etiqueta);
+                    const div = document.createElement('div');
+                    div.className = 'celda';
+                    div.textContent = texto;
+                    c.appendChild(div);
+                    return c;
+                }
+
+                const mover = (arr, de, a) => arr.splice(a, 0, arr.splice(de, 1)[0]);
+
+                // Esta fila y las de abajo pasan a una tabla nueva, justo debajo
+                // de ésta, con las mismas columnas y su propio pie.
+                function separar(r) {
+                    let resto;
+                    modificar(d => { resto = d.filas.splice(r); });
+                    enfocar(agregarPlanilla(clave, '', { columnas: disposicion.columnas.slice(), filas: resto }, el));
+                }
+
+                function renderizar() {
+                    guardarDisposicion();
+                    if (!puntos) return;
+                    const { columnas, filas } = actual();
+                    const nCol = columnas.length;
+                    const nFil = filas.length;
+
+                    resumen.classList.toggle('error', !nFil);
+                    resumen.textContent = !nFil
+                        ? (puntos.size ? 'La tabla no tiene filas: no va al Word.' : 'La planilla todavía no tiene puntos ensayados: no va al Word hasta que los tenga.')
+                        : nFil + (nFil === 1 ? ' fila' : ' filas') + ' · ' + nCol + (nCol === 1 ? ' columna' : ' columnas')
+                            + (disposicion ? '' : ' (toda la planilla)') + '. Los datos se modifican desde Planillas.';
+
+                    const t = document.createElement('table');
+                    t.className = 'rg-tabla';
+                    const thead = t.createTHead();
+                    const esquina = () => {
+                        const th = document.createElement('th');
+                        th.className = 'ctl';
+                        return th;
+                    };
+
+                    // Controles de columnas.
+                    const trCtl = thead.insertRow();
+                    trCtl.appendChild(esquina());
+                    columnas.forEach(function (_, c) {
+                        const th = esquina();
+                        th.appendChild(controles(
+                            botonCtl('fa-arrow-left', 'Mover columna a la izquierda', c === 0, () => modificar(d => mover(d.columnas, c, c - 1))),
+                            botonCtl('fa-arrow-right', 'Mover columna a la derecha', c === nCol - 1, () => modificar(d => mover(d.columnas, c, c + 1))),
+                            botonCtl('fa-times', 'Quitar columna del informe', nCol === 1, () => modificar(d => d.columnas.splice(c, 1)), true),
+                        ));
+                        trCtl.appendChild(th);
+                    });
+
+                    // Títulos.
+                    const trTitulos = thead.insertRow();
+                    trTitulos.appendChild(esquina());
+                    columnas.forEach(c => trTitulos.appendChild(celda('th', titulo(c))));
+
+                    const tbody = t.createTBody();
+                    filas.forEach(function (id, r) {
+                        const tr = tbody.insertRow();
+                        const ctl = tr.insertCell();
+                        ctl.className = 'ctl';
+                        ctl.appendChild(controles(
+                            botonCtl('fa-arrow-up', 'Subir fila', r === 0, () => modificar(d => mover(d.filas, r, r - 1))),
+                            botonCtl('fa-arrow-down', 'Bajar fila', r === nFil - 1, () => modificar(d => mover(d.filas, r, r + 1))),
+                            botonCtl('fa-cut', 'Separar la tabla desde esta fila (esta fila y las de abajo pasan a una tabla nueva)', r === 0, () => separar(r)),
+                            botonCtl('fa-times', 'Quitar fila del informe', false, () => modificar(d => d.filas.splice(r, 1)), true),
+                        ));
+                        const punto = puntos.get(id);
+                        columnas.forEach(c => tr.appendChild(celda('td', String(punto[c] ?? ''))));
+                    });
+
+                    vista.replaceChildren(t);
+                }
+
+                restaurar.addEventListener('click', async function () {
+                    const ok = await confirmar({
+                        titulo: 'Mostrar toda la planilla',
+                        texto: 'Se vuelven a mostrar todas las filas y columnas de la planilla en su orden original y se pierden los cambios hechos en esta tabla del informe (filas o columnas quitadas, orden y separación). La planilla original no se modifica.',
+                        aceptar: 'Mostrar toda la planilla',
+                    });
+                    if (!ok) return;
+                    disposicion = null;
+                    renderizar();
                 });
 
-                // PNG de la tabla para el Word; sin puntos no va nada.
+                guardarDisposicion();
+                mostrarEstado('Cargando planilla…');
+                cargarPlanilla(clave).then(function (datos) {
+                    puntos = datos;
+                    renderizar();
+                }).catch(function () {
+                    mostrarEstado('No se pudo cargar la planilla. Recargá la página para reintentar.', true);
+                });
+
+                // PNG de la tabla para el Word, con los datos actuales de la
+                // planilla y la disposición elegida; sin filas no va nada.
                 el.exportar = async function () {
-                    const filas = await cargarPlanilla(clave);
-                    return filas.length ? dibujarPlanilla(config.columnas, filas).toDataURL('image/png') : '';
+                    puntos = await cargarPlanilla(clave, true);
+                    renderizar();
+                    const { columnas, filas } = actual();
+                    if (!filas.length) return '';
+                    await cargarFuentes();
+                    return dibujarPlanilla(
+                        columnas.map(titulo),
+                        filas.map(id => columnas.map(c => String(puntos.get(id)[c] ?? '')))
+                    ).toDataURL('image/png');
                 };
                 el.inputImagen = inputImagen;
                 el.descripcion = config.nombre;
@@ -1740,12 +2021,43 @@
                     const { fotos, faltantes } = InformeFotos.buscar(guardado.ids);
                     if (fotos.length || faltantes) agregarFotos(fotos, guardado.pie || '', faltantes);
                 } else if (guardado.tipo === 'planilla') {
-                    agregarPlanilla(guardado.planilla, guardado.pie);
+                    agregarPlanilla(guardado.planilla, guardado.pie, guardado.tabla);
                 } else if (guardado.tipo === 'texto') {
                     agregarTexto(guardado.texto);
                 }
             });
         }
+
+        /* ── Modal de confirmación: confirmar({ titulo, texto, aceptar }) → Promise<boolean> ── */
+        const modalConfirmar = document.getElementById('modal-confirmar');
+        let resolverConfirmar = null;
+        function confirmar({ titulo, texto, aceptar }) {
+            if (resolverConfirmar) resolverConfirmar(false);
+            document.getElementById('modal-confirmar-titulo').textContent = titulo;
+            document.getElementById('modal-confirmar-texto').textContent = texto;
+            const botonAceptar = document.getElementById('modal-confirmar-aceptar');
+            botonAceptar.textContent = aceptar || 'Aceptar';
+            const foco = document.activeElement;
+            modalConfirmar.classList.add('abierto');
+            botonAceptar.focus();
+            return new Promise(function (resolve) {
+                resolverConfirmar = function (respuesta) {
+                    resolverConfirmar = null;
+                    modalConfirmar.classList.remove('abierto');
+                    if (foco && foco.isConnected) foco.focus();
+                    resolve(respuesta);
+                };
+            });
+        }
+        modalConfirmar.querySelectorAll('[data-confirmar]').forEach(function (boton) {
+            boton.addEventListener('click', () => resolverConfirmar && resolverConfirmar(boton.dataset.confirmar === 'si'));
+        });
+        modalConfirmar.addEventListener('click', function (e) {
+            if (e.target === modalConfirmar && resolverConfirmar) resolverConfirmar(false);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && resolverConfirmar) resolverConfirmar(false);
+        });
 
         function enfocar(campo) {
             if (!campo) return;
@@ -1842,6 +2154,128 @@
                 .filter(seccion => seccion.dataset.trabajosWord.split(',')
                     .some(trabajo => document.querySelector('[data-trabajo="' + trabajo + '"]').checked))
                 .flatMap(seccion => [...seccion.querySelector('[data-elementos]').children].filter(el => el.exportar));
+        }
+
+        /* ── Tabla "Referencias de ensayos" (imagen): en los grupos de
+           ensayos va entre cada plano y su pie. Una fila por ensayo con la
+           capa prendida en el plano: letra con su color, nombre e ícono. ── */
+
+        // Ícono del ensayo recortado a lo dibujado (los SVG traen mucho margen).
+        const cacheIconosRecortados = {};
+        function iconoRecortado(url) {
+            if (!cacheIconosRecortados[url]) {
+                cacheIconosRecortados[url] = cargarIcono(url).then(function (img) {
+                    if (!img) throw new Error('No se pudo cargar el ícono.');
+                    const ancho = 800;
+                    const alto = Math.round(ancho * (img.naturalHeight || 1) / (img.naturalWidth || 1)) || ancho;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = ancho;
+                    canvas.height = alto;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, ancho, alto);
+                    const pixeles = ctx.getImageData(0, 0, ancho, alto).data;
+                    let x0 = ancho, y0 = alto, x1 = -1, y1 = -1;
+                    for (let y = 0; y < alto; y++) {
+                        for (let x = 0; x < ancho; x++) {
+                            if (pixeles[(y * ancho + x) * 4 + 3] > 8) {
+                                if (x < x0) x0 = x;
+                                if (x > x1) x1 = x;
+                                if (y < y0) y0 = y;
+                                if (y > y1) y1 = y;
+                            }
+                        }
+                    }
+                    if (x1 < 0) return canvas;
+                    const recorte = document.createElement('canvas');
+                    recorte.width = x1 - x0 + 1;
+                    recorte.height = y1 - y0 + 1;
+                    recorte.getContext('2d').drawImage(canvas, x0, y0, recorte.width, recorte.height, 0, 0, recorte.width, recorte.height);
+                    return recorte;
+                });
+                cacheIconosRecortados[url].catch(() => { delete cacheIconosRecortados[url]; });
+            }
+            return cacheIconosRecortados[url];
+        }
+
+        // Misma letra y bordes que las planillas: título en una fila
+        // combinada y centrada, y las columnas letra, ensayo e ícono.
+        async function dibujarReferencias(trabajos) {
+            await cargarFuentes();
+            const ensayos = trabajos.map(t => ICONOS_ENSAYOS[t]);
+            const iconos = await Promise.all(ensayos.map(e => iconoRecortado(e.url).catch(() => null)));
+
+            const tamano = 16;
+            const margenCelda = 12;
+            const altoFila = 36;
+            const altoIcono = 24;
+            const titulo = 'Referencias de ensayos';
+            const medidor = document.createElement('canvas').getContext('2d');
+            const ancho = (texto, negrita) => {
+                medidor.font = (negrita ? '700 ' : '400 ') + tamano + 'px ' + FUENTE_PLANILLA;
+                return medidor.measureText(texto).width;
+            };
+            const anchoIcono = icono => icono ? altoIcono * icono.width / icono.height : 0;
+            const anchos = [
+                Math.ceil(Math.max(50, ...ensayos.map(e => ancho(e.letra, true) + margenCelda * 2))),
+                Math.ceil(Math.max(...ensayos.map(e => ancho(e.nombre, false) + margenCelda * 2))),
+                Math.ceil(Math.max(50, ...iconos.map(i => anchoIcono(i) + margenCelda * 2))),
+            ];
+            // Si el título no entra, se ensancha la columna del nombre.
+            const falta = Math.ceil(ancho(titulo, true) + margenCelda * 2) - anchos.reduce((a, b) => a + b, 0);
+            if (falta > 0) anchos[1] += falta;
+            const anchoTotal = anchos.reduce((a, b) => a + b, 0) + 1;
+            const altoTotal = altoFila * (ensayos.length + 1) + 1;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = anchoTotal * ESCALA_PLANILLA;
+            canvas.height = altoTotal * ESCALA_PLANILLA;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(ESCALA_PLANILLA, ESCALA_PLANILLA);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, anchoTotal, altoTotal);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.fillStyle = '#000000';
+            ctx.font = '700 ' + tamano + 'px ' + FUENTE_PLANILLA;
+            ctx.fillText(titulo, anchoTotal / 2, 0.5 + altoFila / 2);
+
+            ensayos.forEach(function (ensayo, n) {
+                const centroY = 0.5 + altoFila * (n + 1) + altoFila / 2;
+                let x = 0.5;
+                ctx.font = '700 ' + tamano + 'px ' + FUENTE_PLANILLA;
+                ctx.fillStyle = ensayo.color;
+                ctx.fillText(ensayo.letra, x + anchos[0] / 2, centroY);
+                x += anchos[0];
+                ctx.font = '400 ' + tamano + 'px ' + FUENTE_PLANILLA;
+                ctx.fillStyle = '#000000';
+                ctx.fillText(ensayo.nombre, x + anchos[1] / 2, centroY);
+                x += anchos[1];
+                const icono = iconos[n];
+                if (icono) {
+                    const w = anchoIcono(icono);
+                    ctx.drawImage(icono, x + (anchos[2] - w) / 2, centroY - altoIcono / 2, w, altoIcono);
+                }
+            });
+
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let n = 0; n <= ensayos.length + 1; n++) {
+                ctx.moveTo(0.5, 0.5 + altoFila * n);
+                ctx.lineTo(anchoTotal - 0.5, 0.5 + altoFila * n);
+            }
+            // Bordes de los costados de punta a punta; los internos, desde
+            // debajo del título (la fila del título es una sola celda).
+            let x = 0.5;
+            [0, ...anchos].forEach(function (a, c) {
+                x += a;
+                const exterior = c === 0 || c === anchos.length;
+                ctx.moveTo(x, exterior ? 0.5 : 0.5 + altoFila);
+                ctx.lineTo(x, altoTotal - 0.5);
+            });
+            ctx.stroke();
+            return canvas.toDataURL('image/png');
         }
 
         form.addEventListener('submit', async function (e) {

@@ -52,6 +52,7 @@ class EsclerometriaTc extends Model
         $puntos = $esclerometria
             ? $esclerometria->detalles->values()->map(function ($detalle, $i) {
                 return [
+                    'id' => $detalle->id,
                     'nivel' => $detalle->nivel?->descripcion ?: '-',
                     'identificacion' => 'E'.($i + 1),
                     'elemento' => $detalle->elemento ?: '-',

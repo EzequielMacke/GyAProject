@@ -343,28 +343,7 @@ class PlanillaTcController extends Controller
             return response()->json(['message' => 'No tenés acceso a esta obra.'], 403);
         }
 
-        $ultrasonidoIndirecto = UltrasonidoIndirectoTc::with(['detalles' => function ($query) {
-            $query->orderBy('id');
-        }, 'detalles.nivel'])->where('obra_tc_id', $obraTc->id)->first();
-
-        $puntos = $ultrasonidoIndirecto
-            ? $ultrasonidoIndirecto->detalles->values()->map(function ($detalle, $i) {
-                $velocidad = $detalle->promedio !== null ? round((float) $detalle->promedio) : null;
-
-                return [
-                    'nivel' => $detalle->nivel?->descripcion ?: '-',
-                    'identificacion' => 'U'.($i + 1),
-                    'elemento' => $detalle->elemento ?: '-',
-                    'velocidad' => $velocidad !== null ? number_format($velocidad, 0, '', '.') : '-',
-                    'compactacion' => $this->compactacionHormigon($velocidad),
-                ];
-            })
-            : collect();
-
-        return response()->json([
-            'obra' => $obraTc->descripcion,
-            'puntos' => $puntos,
-        ]);
+        return response()->json(UltrasonidoIndirectoTc::reporte($obraTc));
     }
 
     public function reporteCarbonatacion(ObraTc $obraTc)
@@ -522,21 +501,6 @@ class PlanillaTcController extends Controller
             $resistividad >= 10 => ['velocidad' => 'Baja', 'riesgo' => 'Velocidad de corrosión lenta.'],
             $resistividad >= 5 => ['velocidad' => 'Moderada a Alta', 'riesgo' => 'Corrosión activa probable si hay humedad y oxígeno.'],
             default => ['velocidad' => 'Muy Alta', 'riesgo' => 'Corrosión severa y rápida en las armaduras.'],
-        };
-    }
-
-    private function compactacionHormigon(?float $velocidad): string
-    {
-        if ($velocidad === null) {
-            return '-';
-        }
-
-        return match (true) {
-            $velocidad > 4500 => 'Excelente',
-            $velocidad >= 3500 => 'Buena',
-            $velocidad >= 3000 => 'Aceptable',
-            $velocidad >= 2000 => 'Mala',
-            default => 'Muy Mala',
         };
     }
 
