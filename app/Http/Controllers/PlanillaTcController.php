@@ -497,10 +497,10 @@ class PlanillaTcController extends Controller
         }
 
         return match (true) {
-            $resistividad > 20 => ['velocidad' => 'Despreciable', 'riesgo' => 'Concreto muy seco o denso. Corrosión casi nula.'],
-            $resistividad >= 10 => ['velocidad' => 'Baja', 'riesgo' => 'Velocidad de corrosión lenta.'],
-            $resistividad >= 5 => ['velocidad' => 'Moderada a Alta', 'riesgo' => 'Corrosión activa probable si hay humedad y oxígeno.'],
-            default => ['velocidad' => 'Muy Alta', 'riesgo' => 'Corrosión severa y rápida en las armaduras.'],
+            $resistividad > 100 => ['velocidad' => 'Despreciable', 'riesgo' => 'Riesgo de corrosión despreciable (> 100 kΩ·cm).'],
+            $resistividad >= 50 => ['velocidad' => 'Bajo', 'riesgo' => 'Riesgo de corrosión bajo (50 - 100 kΩ·cm).'],
+            $resistividad >= 10 => ['velocidad' => 'Moderado', 'riesgo' => 'Riesgo de corrosión moderado (10 - 50 kΩ·cm).'],
+            default => ['velocidad' => 'Alto', 'riesgo' => 'Riesgo de corrosión alto (< 10 kΩ·cm).'],
         };
     }
 

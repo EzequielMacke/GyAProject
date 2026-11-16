@@ -789,15 +789,15 @@
     }
 
     /* ─── Clasificación según resistividad (kΩ·cm) ─────────────
-       > 20      → Despreciable
-       10 a 20   → Baja
-       5 a 10    → Moderada a Alta
-       < 5       → Muy Alta */
+       > 100      (> 1000 Ω·m)      → Riesgo despreciable
+       50 a 100   (500 a 1000 Ω·m)  → Riesgo bajo
+       10 a 50    (100 a 500 Ω·m)   → Riesgo moderado
+       < 10       (< 100 Ω·m)       → Riesgo alto */
     const CLASIFICACIONES = [
-        { min: 20, excluyeMin: true, clase: 'riesgo-despreciable', velocidad: 'Despreciable',    riesgo: 'Concreto muy seco o denso. Corrosión casi nula.' },
-        { min: 10,                   clase: 'riesgo-baja',         velocidad: 'Baja',            riesgo: 'Velocidad de corrosión lenta.' },
-        { min: 5,                    clase: 'riesgo-moderada',     velocidad: 'Moderada a Alta', riesgo: 'Corrosión activa probable si hay humedad y oxígeno.' },
-        { min: -Infinity,            clase: 'riesgo-muy-alta',     velocidad: 'Muy Alta',        riesgo: 'Corrosión severa y rápida en las armaduras.' },
+        { min: 100, excluyeMin: true, clase: 'riesgo-despreciable', velocidad: 'Despreciable', riesgo: 'Riesgo de corrosión despreciable (> 100 kΩ·cm).' },
+        { min: 50,                    clase: 'riesgo-baja',         velocidad: 'Bajo',         riesgo: 'Riesgo de corrosión bajo (50 - 100 kΩ·cm).' },
+        { min: 10,                    clase: 'riesgo-moderada',     velocidad: 'Moderado',     riesgo: 'Riesgo de corrosión moderado (10 - 50 kΩ·cm).' },
+        { min: -Infinity,             clase: 'riesgo-muy-alta',     velocidad: 'Alto',         riesgo: 'Riesgo de corrosión alto (< 10 kΩ·cm).' },
     ];
 
     function clasificarResistividad(valor) {
@@ -858,7 +858,7 @@
         const clasificacion = resistividadFinal !== null ? clasificarResistividad(resistividadFinal) : null;
         if (clasificacion) {
             elChip.className = `riesgo-chip punto-clasificacion-chip ${clasificacion.clase}`;
-            elChip.textContent = `Corrosión: ${clasificacion.velocidad}`;
+            elChip.textContent = `Riesgo de corrosión: ${clasificacion.velocidad}`;
             elRiesgo.textContent = clasificacion.riesgo;
             elClasificacion.classList.add('visible');
         } else {
