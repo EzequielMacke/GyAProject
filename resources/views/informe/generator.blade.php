@@ -137,6 +137,46 @@
         /* Lo que falta cargar se ve resaltado, para saber qué completar */
         .vista-previa .falta { background: #fff4d6; color: #a07400; border-radius: 0.25rem; padding: 0 0.25rem; }
 
+        /* Vista previa del informe completo (panel inicial) */
+        .vp-ayuda { padding: 0.75rem 1.1rem 0; font-size: 0.78rem; color: var(--muted); }
+        .vp-documento { padding: 1rem 1.1rem 1.5rem; background: var(--surface2); display: flex; flex-direction: column; align-items: center; gap: 1.25rem; }
+        .vp-hoja {
+            width: 100%; max-width: 820px; min-height: 420px; background: #fff; color: #000;
+            box-shadow: 0 2px 10px rgba(15, 23, 35, 0.12); border-radius: 2px;
+            padding: 3.5rem 3.75rem;
+            font-family: 'EB Garamond', Garamond, serif !important; font-size: 16px; line-height: 1.5;
+        }
+        .vp-hoja * { font-family: 'EB Garamond', Garamond, serif !important; }
+        .vp-hoja p { margin: 0 0 0.6rem; text-align: justify; }
+        .vp-parte { border-radius: 0.3rem; margin: 0 -0.5rem; padding: 0 0.5rem; cursor: pointer; transition: background 0.12s, box-shadow 0.12s; }
+        .vp-parte:hover { background: #f5f8ff; box-shadow: 0 0 0 1.5px var(--accent-s); }
+        .vp-t1 { font-size: 20px; font-weight: 700; text-transform: uppercase; margin: 1.4rem 0 0.7rem; }
+        .vp-t2 { font-size: 17px; font-weight: 700; margin: 1.1rem 0 0.5rem; }
+        .vp-t3 { font-size: 16px; font-weight: 700; font-style: italic; margin: 1rem 0 0.5rem; }
+        .vp-parte:first-child > .vp-t1:first-child { margin-top: 0; }
+        .vp-hoja ul { margin: 0 0 0.6rem; padding-left: 1.6rem; }
+        .vp-hoja li { margin-bottom: 0.25rem; text-align: justify; }
+        .vp-negrita { font-weight: 700; }
+        .vp-caratula { display: flex; flex-direction: column; justify-content: space-between; min-height: 640px; text-align: center; }
+        .vp-caratula .vp-car-centro { margin-top: 7rem; display: flex; flex-direction: column; gap: 0.6rem; font-size: 20px; font-weight: 700; }
+        .vp-caratula .vp-car-pie { text-align: left; font-size: 17px; font-weight: 700; }
+        .vp-caratula .vp-car-pie p { text-align: left; margin: 0 0 0.3rem; }
+        .vp-indice-titulo { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 1rem; }
+        .vp-indice div { text-transform: uppercase; font-weight: 700; padding: 0.15rem 0; }
+        .vp-indice .nivel-2 { padding-left: 1.5rem; }
+        .vp-figura { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 0.4rem; margin: 0.5rem 0 0.3rem; }
+        .vp-figura img { max-width: 30%; max-height: 210px; object-fit: contain; }
+        .vp-figura.sola img { max-width: 75%; max-height: 300px; }
+        .vp-figura canvas { max-width: 100%; height: auto; border: 1px solid #ddd; }
+        .vp-figura .letra { font-size: 14px; margin-right: 0.4rem; }
+        .vp-pie { text-align: center !important; font-size: 14px; font-style: italic; margin-bottom: 0.9rem !important; }
+        .vp-tabla { overflow-x: auto; display: flex; justify-content: center; margin-bottom: 0.9rem; }
+        .vp-tabla table { border-collapse: collapse; font-size: 14px; }
+        .vp-tabla th, .vp-tabla td { border: 1px solid #000; padding: 0.15rem 0.5rem; text-align: center; white-space: nowrap; }
+        .vp-cargando { text-align: center !important; color: var(--muted); font-style: italic; font-size: 14px; }
+        .vp-hoja .falta, .vp-vacio { background: #fff4d6; color: #a07400; border-radius: 0.25rem; padding: 0 0.25rem; }
+        .vp-vacio { display: inline-block; font-size: 14px; font-style: italic; margin-bottom: 0.6rem; }
+
         /* Fotos de Características de la obra */
         .bloque-foto {
             border: 1px solid var(--border); border-radius: 0.5rem;
@@ -347,6 +387,9 @@
                                 formaction="{{ route('informe.generador.guardar', $obraTc->id) }}">
                             <i class="fas fa-save"></i> Guardar
                         </button>
+                        <button type="button" class="btn" id="btn-vista-previa">
+                            <i class="fas fa-eye"></i> Vista previa
+                        </button>
                         <a href="{{ route('obras_tc.index', $obraTc->id) }}" class="btn">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
@@ -369,11 +412,14 @@
                             @csrf
                             {{-- Valor guardado (o recién enviado, si volvió con errores) de cada campo. --}}
                             @php $v = fn (string $campo, $porDefecto = '') => $datos[$campo] ?? $porDefecto; @endphp
-                            <div class="panel activo" id="panel-vacio">
-                                <div class="vacio">
-                                    <i class="fas fa-hand-pointer"></i>
-                                    Seleccioná una parte del informe para editarla.
+                            {{-- Vista previa del informe con lo cargado en pantalla (la arma el JS). --}}
+                            <div class="panel activo" id="panel-vista-previa">
+                                <div class="card-box-head">Vista previa del informe</div>
+                                <div class="vp-ayuda">
+                                    <i class="fas fa-info-circle"></i>
+                                    Así se va armando el informe con lo cargado. Hacé clic en una parte para editarla. Es aproximada: los saltos de página y el índice definitivos los arma Word.
                                 </div>
+                                <div class="vp-documento" id="vp-documento"></div>
                             </div>
 
                             <div class="panel" id="panel-caratula">
@@ -723,6 +769,9 @@
                         <div class="card-box">
                             <div class="card-box-head">Partes del informe</div>
                             <ul class="partes">
+                                <li class="parte activa" data-panel="panel-vista-previa">
+                                    <i class="fas fa-eye"></i> Vista previa
+                                </li>
                                 <li class="parte" data-panel="panel-caratula">
                                     <i class="fas fa-file-alt"></i> Carátula
                                 </li>
@@ -926,30 +975,31 @@
         const ubicacion = document.getElementById('ig-ubicacion-obra');
         const vista = document.getElementById('ig-vista-previa');
 
-        // Va armando el párrafo con nodos de texto (no innerHTML) para que lo
-        // que escribe el usuario nunca se interprete como HTML.
-        function agregar(texto) {
-            vista.appendChild(document.createTextNode(texto));
-        }
-        function agregarDato(valor, faltante) {
-            if (valor) {
-                agregar(valor);
-                return;
+        // Arma el párrafo en `destino` con nodos de texto (no innerHTML) para
+        // que lo que escribe el usuario nunca se interprete como HTML. También
+        // lo usa la vista previa del informe completo.
+        function armar(destino) {
+            function agregar(texto) {
+                destino.appendChild(document.createTextNode(texto));
             }
-            const span = document.createElement('span');
-            span.className = 'falta';
-            span.textContent = faltante;
-            vista.appendChild(span);
-        }
+            function agregarDato(valor, faltante) {
+                if (valor) {
+                    agregar(valor);
+                    return;
+                }
+                const span = document.createElement('span');
+                span.className = 'falta';
+                span.textContent = faltante;
+                destino.appendChild(span);
+            }
 
-        function actualizar() {
             const fecha = dia.value && mes.value && anio.value
                 ? dia.value + ' de ' + mes.value.toLowerCase() + ' de ' + anio.value
                 : '';
             // Sin punto doble si la ubicación ya termina en punto.
             const lugar = ubicacion.value.trim().replace(/\.+$/, '');
 
-            vista.textContent = '';
+            destino.textContent = '';
             agregar('En fecha ');
             agregarDato(fecha, '[fecha]');
             agregar(' hemos presentado una propuesta técnica para ');
@@ -957,6 +1007,11 @@
             agregar(' ubicado sobre ');
             agregarDato(lugar, '[ubicación de la obra]');
             agregar('.');
+        }
+        window.armarInfoGeneral = armar;
+
+        function actualizar() {
+            armar(vista);
         }
 
         [dia, mes, anio, motivo, ubicacion].forEach(function (campo) {
@@ -1761,6 +1816,7 @@
                         // Las capas guardadas que el plano ya no tiene no cuentan.
                         [...ocultas].forEach(tool => { if (!info.capas.includes(tool)) ocultas.delete(tool); });
                         cambiarCapas();
+                        document.dispatchEvent(new Event('informe:contenido-cargado'));
                     } catch (error) {
                         estadoEl.classList.add('error');
                         estadoEl.textContent = 'No se pudo cargar el plano. Recargá la página para reintentar.';
@@ -1971,6 +2027,7 @@
                 cargarPlanilla(clave).then(function (datos) {
                     puntos = datos;
                     renderizar();
+                    document.dispatchEvent(new Event('informe:contenido-cargado'));
                 }).catch(function () {
                     mostrarEstado('No se pudo cargar la planilla. Recargá la página para reintentar.', true);
                 });
@@ -2316,6 +2373,311 @@
                 btnGenerar.innerHTML = contenidoBoton;
             }
         });
+    })();
+
+    /* ── Vista previa del informe completo ──
+       Se arma con lo que hay en pantalla, en el mismo orden y con los mismos
+       textos fijos que InformeGeneradorController::generar. Se rehace cada
+       vez que se muestra (y cuando termina de cargar un plano o planilla).
+       Cada parte se puede tocar para ir a editarla. Todo lo que escribe el
+       usuario entra como texto (textContent), nunca como HTML. */
+    (function () {
+        const TRABAJOS = @json(\App\Models\InformeTc::TRABAJOS);
+        const GRUPO_RESISTENCIA = @json(\App\Models\InformeTc::GRUPOS_ENSAYOS['resistencia']);
+        const panel = document.getElementById('panel-vista-previa');
+        const documento = document.getElementById('vp-documento');
+
+        const valor = id => (document.getElementById(id)?.value || '').trim();
+        const activo = trabajo => !!document.querySelector('[data-trabajo="' + trabajo + '"]:checked');
+        const renglones = texto => String(texto || '').split(/\r?\n/).map(r => r.trim()).filter(Boolean);
+        const conPunto = texto => /[.!?…]$/.test(texto.trimEnd()) ? texto.trimEnd() : texto.trimEnd() + '.';
+
+        function el(etiqueta, clase, texto) {
+            const nodo = document.createElement(etiqueta);
+            if (clase) nodo.className = clase;
+            if (texto !== undefined) nodo.textContent = texto;
+            return nodo;
+        }
+
+        // Texto o, si falta, la marca amarilla de lo que hay que completar.
+        function dato(destino, texto, faltante) {
+            if (texto) {
+                destino.appendChild(document.createTextNode(texto));
+            } else {
+                destino.appendChild(el('span', 'falta', faltante));
+            }
+        }
+
+        let hoja = null;
+        const titulos = []; // Para el índice: { nivel, texto }.
+
+        function nuevaHoja(clase) {
+            hoja = el('div', 'vp-hoja' + (clase ? ' ' + clase : ''));
+            documento.appendChild(hoja);
+            return hoja;
+        }
+
+        // Bloque que al tocarlo abre su panel de edición.
+        function parte(idPanel) {
+            const bloque = el('div', 'vp-parte');
+            bloque.title = 'Editar esta parte';
+            bloque.addEventListener('click', function () {
+                document.querySelector('.parte[data-panel="' + idPanel + '"]')?.click();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+            hoja.appendChild(bloque);
+            return bloque;
+        }
+
+        function titulo(destino, texto, nivel) {
+            destino.appendChild(el(nivel === 1 ? 'h2' : nivel === 2 ? 'h3' : 'h4', 'vp-t' + nivel, texto));
+            if (nivel <= 2) titulos.push({ nivel, texto });
+        }
+
+        // Un párrafo por renglón; sin texto, un aviso (que no va al Word).
+        function parrafos(destino, texto, puntoFinal, avisoVacio) {
+            const lineas = renglones(texto);
+            lineas.forEach(r => destino.appendChild(el('p', null, puntoFinal ? conPunto(r) : r)));
+            if (!lineas.length && avisoVacio) destino.appendChild(el('div', 'vp-vacio', avisoVacio));
+        }
+
+        function lista(destino, items) {
+            if (!items.length) return;
+            const ul = el('ul');
+            items.forEach(texto => ul.appendChild(el('li', null, texto)));
+            destino.appendChild(ul);
+        }
+
+        // Igual que descripcionTrabajo(): el último renglón termina en dos puntos.
+        function descripcionTrabajo(destino, texto) {
+            const lineas = renglones(texto);
+            if (!lineas.length) return;
+            lineas[lineas.length - 1] = lineas[lineas.length - 1].replace(/[\s.:;,]+$/, '') + ':';
+            lineas.forEach(r => destino.appendChild(el('p', null, r)));
+        }
+
+        // Bloques de fotos (.bloque-foto) como en fotos(): las imágenes juntas
+        // con su letra y un único pie "(a, b y c) Texto.".
+        function fotos(destino, bloques) {
+            bloques.forEach(function (bloque) {
+                const imagenes = [...bloque.querySelectorAll('.bloque-foto-imagenes img')];
+                if (!imagenes.length) return;
+                const varias = imagenes.length > 1;
+                const fila = el('div', 'vp-figura' + (varias ? '' : ' sola'));
+                const letras = [];
+                imagenes.forEach(function (img, n) {
+                    const copia = el('img');
+                    copia.src = img.src;
+                    copia.alt = '';
+                    fila.appendChild(copia);
+                    if (varias) {
+                        letras.push(String.fromCharCode(97 + n));
+                        fila.appendChild(el('span', 'letra', '(' + letras[n] + ')'));
+                    }
+                });
+                const textoPie = (bloque.querySelector('.bloque-foto-pie input')?.value || '').trim();
+                let pie = textoPie ? conPunto(textoPie) : '';
+                if (varias) {
+                    const ultima = letras.pop();
+                    pie = ('(' + (letras.length ? letras.join(', ') + ' y ' : '') + ultima + ') ' + pie).trim();
+                }
+                destino.append(fila, el('p', 'vp-pie', pie));
+            });
+        }
+
+        // Plano tal como se ve en su panel (con las capas prendidas) y su pie.
+        function plano(destino, elemento) {
+            if (!elemento.querySelector('input[name$="[tipo]"]')) return; // Plano borrado de la obra.
+            const lienzo = elemento.querySelector('.rg-plano-vista canvas');
+            const pie = (elemento.querySelector('input[name$="[pie]"]')?.value || '').trim();
+            if (!lienzo || !lienzo.width) {
+                destino.appendChild(el('p', 'vp-cargando', 'Cargando plano…'));
+                return;
+            }
+            const copia = document.createElement('canvas');
+            copia.width = lienzo.width;
+            copia.height = lienzo.height;
+            copia.getContext('2d').drawImage(lienzo, 0, 0);
+            const fila = el('div', 'vp-figura');
+            fila.appendChild(copia);
+            destino.append(fila, el('p', 'vp-pie', pie ? conPunto(pie) : ''));
+        }
+
+        // Planilla: pie arriba y la tabla sin los controles de filas y columnas.
+        function planilla(destino, elemento) {
+            const tabla = elemento.querySelector('.rg-tabla');
+            if (!tabla) {
+                destino.appendChild(el('p', 'vp-cargando', 'Cargando planilla…'));
+                return;
+            }
+            if (!tabla.tBodies[0] || !tabla.tBodies[0].rows.length) return; // Sin filas no va al Word.
+            const copia = tabla.cloneNode(true);
+            copia.className = '';
+            copia.tHead.rows[0].remove();
+            copia.querySelectorAll('.ctl').forEach(c => c.remove());
+            const pie = (elemento.querySelector('input[name$="[pie]"]')?.value || '').trim();
+            const contenedor = el('div', 'vp-tabla');
+            contenedor.appendChild(copia);
+            destino.append(el('p', 'vp-pie', pie ? conPunto(pie) : ''), contenedor);
+        }
+
+        // Planos, fotos, planillas y textos de una sección, en su orden.
+        function elementos(destino, seccion) {
+            const lista = document.querySelector('[data-seccion="' + seccion + '"] [data-elementos]');
+            if (!lista) return;
+            [...lista.children].forEach(function (elemento) {
+                const tipo = elemento.dataset.tipo;
+                if (tipo === 'plano') plano(destino, elemento);
+                else if (tipo === 'fotos') fotos(destino, [...elemento.querySelectorAll('.bloque-foto')]);
+                else if (tipo === 'planilla') planilla(destino, elemento);
+                else if (tipo === 'texto') parrafos(destino, elemento.querySelector('textarea')?.value, true);
+            });
+        }
+
+        function fechaCorta(iso) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+            return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
+        }
+
+        function caratula() {
+            nuevaHoja();
+            const p = parte('panel-caratula');
+            p.classList.add('vp-caratula');
+            const centro = el('div', 'vp-car-centro');
+            const t = el('div');
+            dato(t, valor('car-titulo'), '[Título del informe]');
+            const obra = el('div', null, 'Obra: ');
+            dato(obra, valor('car-obra'), '[obra]');
+            const mesAnio = el('div');
+            dato(mesAnio, [valor('car-mes'), valor('car-anio')].filter(Boolean).join(' - '), '[mes - año]');
+            centro.append(t, obra, mesAnio);
+
+            const pie = el('div', 'vp-car-pie');
+            const peticionario = el('p', null, 'Peticionario: ');
+            dato(peticionario, valor('car-peticionario'), '[peticionario]');
+            const referencia = el('p', null, 'Ref.: ');
+            dato(referencia, valor('car-referencia'), '[referencia]');
+            pie.append(peticionario, referencia);
+            p.append(centro, pie);
+        }
+
+        function cuerpo() {
+            // Información general, Objetivo y Datos previos van seguidos.
+            nuevaHoja();
+            let p = parte('panel-info-general');
+            titulo(p, 'Información general', 1);
+            const parrafoIg = el('p');
+            window.armarInfoGeneral(parrafoIg);
+            p.appendChild(parrafoIg);
+
+            p = parte('panel-objetivo');
+            titulo(p, 'Objetivo y Alcance', 1);
+            parrafos(p, valor('obj-texto'), false, 'Falta completar el objetivo y alcance.');
+
+            p = parte('panel-datos-previos');
+            titulo(p, 'Datos previos para la realización del estudio', 1);
+            titulo(p, 'Documentación recibida', 2);
+            const documentos = [...document.querySelectorAll('#documentos .documento')].map(function (doc) {
+                const campo = nombre => (doc.querySelector('[name$="[' + nombre + ']"]')?.value || '').trim();
+                const remitente = campo('remitente');
+                const fecha = fechaCorta(campo('fecha'));
+                const entrega = remitente || fecha
+                    ? 'Entregado' + (remitente ? ' por ' + remitente : '') + (fecha ? ' en fecha ' + fecha : '')
+                    : '';
+                const texto = [campo('tipo'), campo('nombre'), entrega].filter(Boolean).join(' - ');
+                return texto ? conPunto(texto) : '';
+            }).filter(Boolean);
+            lista(p, documentos);
+            if (!documentos.length) p.appendChild(el('div', 'vp-vacio', 'No hay documentos cargados.'));
+            titulo(p, 'Información recibida', 2);
+            parrafos(p, valor('dp-informacion'), true, 'Falta completar la información recibida.');
+            titulo(p, 'Características de la obra', 2);
+            parrafos(p, valor('dp-caracteristicas'), true, 'Falta completar las características de la obra.');
+            fotos(p, [...document.querySelectorAll('#bloques-fotos .bloque-foto')]);
+
+            // Equipo técnico, en página nueva.
+            nuevaHoja();
+            p = parte('panel-equipo-tecnico');
+            titulo(p, 'Equipo Técnico', 1);
+            p.appendChild(el('p', null, 'Para el desarrollo de los distintos trabajos necesarios para dar cumplimiento a los objetivos estipulados en el presente informe se contó con la participación de los siguientes profesionales en cada uno de los aspectos estudiados.'));
+            p.appendChild(el('p', null, 'Los trabajos desarrollados fueron los siguientes:'));
+            p.appendChild(el('p', 'vp-negrita', 'Coordinación general de los trabajos'));
+            lista(p, renglones(valor('et-coordinacion')).map(conPunto));
+            p.appendChild(el('p', 'vp-negrita', 'Trabajos de Campo'));
+            descripcionTrabajo(p, valor('et-campo-descripcion'));
+            lista(p, renglones(valor('et-campo-personas')).map(conPunto));
+            p.appendChild(el('p', 'vp-negrita', 'Trabajos de Gabinete'));
+            descripcionTrabajo(p, valor('et-gabinete-descripcion'));
+            lista(p, renglones(valor('et-gabinete-personas')).map(conPunto));
+
+            // Trabajos desarrollados, en página nueva, y sus secciones.
+            nuevaHoja();
+            p = parte('panel-trabajos-desarrollados');
+            titulo(p, 'Trabajos desarrollados', 1);
+            descripcionTrabajo(p, valor('td-descripcion'));
+            const activos = Object.keys(TRABAJOS).filter(activo);
+            lista(p, activos.map(t => conPunto(TRABAJOS[t])));
+            if (!activos.length) p.appendChild(el('div', 'vp-vacio', 'No hay trabajos activados.'));
+
+            if (activo('relevamiento_encofrado')) {
+                p = parte('panel-trabajo-relevamiento_encofrado');
+                titulo(p, TRABAJOS.relevamiento_encofrado, 2);
+                parrafos(p, valor('relevamiento_geometrico-descripcion'), true);
+                elementos(p, 'relevamiento_geometrico');
+            }
+
+            if (GRUPO_RESISTENCIA.trabajos.some(activo)) {
+                p = parte('panel-grupo-resistencia');
+                titulo(p, GRUPO_RESISTENCIA.titulo, 2);
+                parrafos(p, valor('ensayos_resistencia-descripcion'), true);
+                elementos(p, 'ensayos_resistencia');
+            }
+
+            // Cada ensayo con planilla empieza en una página nueva.
+            ['esclerometria', 'ultrasonido'].filter(activo).forEach(function (trabajo) {
+                nuevaHoja();
+                p = parte('panel-trabajo-' + trabajo);
+                titulo(p, TRABAJOS[trabajo], 3);
+                parrafos(p, valor(trabajo + '-descripcion'), true);
+                fotos(p, [...document.querySelectorAll('[data-seccion-fotos="' + trabajo + '"] .bloque-foto')]);
+                elementos(p, trabajo);
+            });
+        }
+
+        // Índice con los títulos de nivel 1 y 2, después de la carátula.
+        function indice(despuesDe) {
+            const hojaIndice = el('div', 'vp-hoja');
+            hojaIndice.appendChild(el('div', 'vp-indice-titulo', 'Contenido'));
+            const contenido = el('div', 'vp-indice');
+            titulos.forEach(t => contenido.appendChild(el('div', 'nivel-' + t.nivel, t.texto)));
+            hojaIndice.appendChild(contenido);
+            despuesDe.after(hojaIndice);
+        }
+
+        function actualizar() {
+            documento.textContent = '';
+            titulos.length = 0;
+            caratula();
+            const hojaCaratula = hoja;
+            cuerpo();
+            indice(hojaCaratula);
+        }
+
+        // Se rehace al mostrarla y cuando carga algo mientras está a la vista.
+        const parteVistaPrevia = document.querySelector('.parte[data-panel="panel-vista-previa"]');
+        parteVistaPrevia.addEventListener('click', actualizar);
+        // El botón de la cabecera (al lado de Guardar) hace lo mismo que la entrada del menú.
+        document.getElementById('btn-vista-previa').addEventListener('click', function () {
+            parteVistaPrevia.click();
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        let pendiente = null;
+        document.addEventListener('informe:contenido-cargado', function () {
+            if (!panel.classList.contains('activo')) return;
+            clearTimeout(pendiente);
+            pendiente = setTimeout(actualizar, 150);
+        });
+        actualizar();
     })();
 </script>
 </body>
