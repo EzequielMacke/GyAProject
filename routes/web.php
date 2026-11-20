@@ -508,6 +508,7 @@ Route::middleware('permiso:sal,ver')->group(function () {
 });
 Route::middleware('permiso:sal,agregar')->group(function () {
     Route::get('/salidas/crear', [SalidaController::class, 'create'])->name('salidas.create');
+    Route::post('/salidas/guardar', [SalidaController::class, 'guardar'])->name('salidas.guardar');
 });
 
 // ── Trabajo de Campo ────────────────────────────────────────────────────────

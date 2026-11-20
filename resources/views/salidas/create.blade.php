@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nueva Salida</title>
+    <title>Salidas - {{ $fechaTexto }}</title>
     @include('partials.head')
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
@@ -282,6 +282,61 @@
         .btn-save:hover { background: var(--accent-b); }
         .oc-lista { margin-bottom: 1.2rem; max-height: 300px; overflow-y: auto; }
         .oc-lista .chip:hover { border-color: var(--accent); background: var(--accent-s); }
+
+        /* Modal buscador de salidas */
+        .bus-wrap { position: relative; margin-bottom: 0.75rem; }
+        .bus-wrap i { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.75rem; pointer-events: none; }
+        .bus-input { width: 100%; padding-left: 2.1rem; height: 40px; }
+        .bus-lista {
+            display: flex; flex-direction: column; gap: 0.35rem;
+            max-height: 300px; overflow-y: auto; margin-bottom: 1.2rem;
+        }
+        .bus-item {
+            display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left;
+            padding: 0.6rem 0.75rem; border-radius: 0.55rem;
+            border: 1.5px solid var(--border); background: #fff;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.85rem; font-weight: 600; color: var(--text);
+            cursor: pointer; transition: all 0.12s;
+        }
+        .bus-item i { color: var(--accent); font-size: 0.75rem; }
+        .bus-item > span { flex: 1; }
+        .bus-check {
+            width: 20px; height: 20px; border-radius: 0.35rem; flex-shrink: 0;
+            border: 1.5px solid var(--border2); background: #fff;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: all 0.12s;
+        }
+        .bus-check i { color: #fff !important; font-size: 0.65rem !important; opacity: 0; }
+        .bus-item.marcado { border-color: var(--accent); background: var(--accent-s); }
+        .bus-item.marcado .bus-check { background: var(--accent); border-color: var(--accent); }
+        .bus-item.marcado .bus-check i { opacity: 1; }
+        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+        .bus-acciones { display: flex; justify-content: space-between; align-items: center; margin: -0.35rem 0 0.5rem; font-size: 0.75rem; }
+        .bus-acciones button { border: none; background: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0.15rem 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.75rem; }
+        .bus-acciones span { color: var(--muted); }
+        .bus-item:hover, .bus-item.activo { border-color: var(--accent); background: var(--accent-s); }
+        .bus-item mark { background: #fff1b8; color: inherit; padding: 0 1px; border-radius: 2px; }
+        .bus-vacio { font-size: 0.8rem; color: var(--muted); padding: 0.75rem 0.25rem; text-align: center; }
+
+        /* El espacio libre del tablero es clicable */
+        #zona-tablero { cursor: pointer; }
+        #zona-tablero .salida-card, #zona-tablero .panel-head { cursor: default; }
+        #zona-tablero .salida-card-head, #zona-tablero .chip.clickable, #zona-tablero .btn-copiar { cursor: pointer; }
+
+        /* Secciones Vehículos / Personal de la tarjeta: clic abre el buscador */
+        #zona-tablero .sc-seccion {
+            cursor: pointer; border-radius: 0.5rem;
+            margin: -0.3rem; padding: 0.3rem;
+            transition: background 0.12s;
+        }
+        #zona-tablero .sc-seccion:hover { background: var(--surface2); }
+        .sc-section-title .sc-add {
+            margin-left: auto; width: 18px; height: 18px; border-radius: 0.3rem;
+            display: inline-flex; align-items: center; justify-content: center;
+            color: var(--muted); font-size: 0.6rem; transition: all 0.12s;
+        }
+        .sc-seccion:hover .sc-add { background: var(--accent); color: #fff; }
+        .sc-seccion:hover .sc-hint { border-color: var(--accent); color: var(--accent); }
         [hidden] { display: none !important; }
 
         /* Selección múltiple en las barras */
@@ -321,18 +376,22 @@
         .ph-crumb { margin-bottom: 0.3rem; }
         .ph-title { font-size: 1.4rem; }
 
-        /* PC: el tablero ocupa el alto de la pantalla y cada panel hace scroll por dentro */
+        /* PC: como mínimo llena la pantalla; si hay muchas salidas, el tablero crece
+           (las tarjetas se acomodan hacia el costado y luego hacia abajo) */
         .board {
-            height: calc(100vh - 230px); /* se ajusta por JS */
-            min-height: 520px;
+            min-height: 520px; /* se ajusta por JS al alto disponible */
             grid-template-columns: 1fr 260px;
-            grid-template-rows: auto minmax(0, 1fr) auto;
+            grid-template-rows: auto 1fr auto;
             gap: 0.75rem;
         }
         .panel { padding: 0.8rem 0.9rem; gap: 0.6rem; }
-        .area-main, .area-side { min-height: 0; }
-        .tablero { overflow-y: auto; min-height: 0; padding: 2px; margin: -2px; }
-        .area-side .chips-col { flex: 1; min-height: 0; }
+        .tablero { overflow: visible; align-items: start; }
+        /* Que un nombre largo nunca empuje la tarjeta fuera de la pantalla */
+        .salida-card { min-width: 0; }
+        .salida-card .chip { max-width: 100%; }
+        /* La columna de vehículos no estira la página: toma el alto disponible y hace scroll por dentro */
+        .area-side { contain: size; min-height: 0; }
+        .area-side .chips-col { flex: 1; min-height: 0; overflow-y: auto; }
 
         /* Barras de Salidas y Personal en una sola fila: título | campo | etiquetas */
         .panel-row {
@@ -385,6 +444,23 @@
 
         .chip { -webkit-touch-callout: none; }
 
+        /* Botón Guardar */
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; position: relative; }
+        .btn-primary:hover { background: var(--accent-b); border-color: var(--accent-b); color: #fff; }
+        .btn-primary:disabled { opacity: 0.7; cursor: wait; }
+        .btn-primary.cargando .fa-save::before { content: "\f110"; }
+        .btn-primary.cargando .fa-save { animation: fa-spin 1s linear infinite; }
+        .dot-sucio {
+            display: none; position: absolute; top: -4px; right: -4px;
+            width: 12px; height: 12px; border-radius: 50%;
+            background: #f59e0b; border: 2px solid var(--bg);
+        }
+        .btn-primary.sucio .dot-sucio { display: block; }
+
+        /* Autor de la salida en la tarjeta */
+        .salida-card-head .sc-titulo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .salida-card-head .sc-autor { font-size: 0.68rem; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
         /* Botón copiar imagen */
         .btn-copiar {
             height: 32px; padding: 0 0.75rem; border-radius: 0.5rem;
@@ -433,6 +509,8 @@
 
             .tablero { overflow: visible; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
             .area-main { min-height: 260px; }
+            .area-side { contain: none; }
+            .area-side .chips-col { flex: none; }
         }
 
         @media (max-width: 600px) {
@@ -442,7 +520,8 @@
             .btn-label, .oc-label { display: none; }
             .btn { padding: 0 0.75rem; }
             .panel { padding: 0.7rem; border-radius: 0.7rem; }
-            .tablero { grid-template-columns: 1fr; }
+            /* Celular: cada salida en su propio renglón, a todo el ancho */
+            .tablero { grid-template-columns: minmax(0, 1fr); }
             .chip { padding: 0.5rem 0.6rem 0.5rem 0.75rem; } /* más fácil de tocar */
             .sel-bar { left: 0.75rem; right: 0.75rem; transform: none; bottom: 0.75rem; }
             .sel-bar .sel-texto { flex: 1; }
@@ -463,15 +542,19 @@
                             <i class="fas fa-home"></i>
                             <a href="{{ route('home') }}">Inicio</a>
                             <i class="fas fa-chevron-right"></i>
-                            <a href="{{ route('salidas.index') }}">Salidas</a>
+                            <a href="{{ route('salidas.index') }}#{{ substr($fecha, 0, 7) }}">Salidas</a>
                             <i class="fas fa-chevron-right"></i>
-                            Nueva
+                            {{ date('d/m/Y', strtotime($fecha)) }}
                         </div>
-                        <h1 class="ph-title">Nueva <em>Salida</em></h1>
+                        <h1 class="ph-title">Salidas del <em>{{ $fechaTexto }}</em></h1>
                         <p class="ph-sub">Seleccioná vehículos y personal, y tocá una salida del tablero para asignarlos</p>
                     </div>
                     <div class="ph-right">
-                        <a href="{{ route('salidas.index') }}" class="btn">
+                        <button type="button" class="btn btn-primary" id="btn-guardar">
+                            <i class="fas fa-save"></i> <span class="btn-label">Guardar</span>
+                            <span class="dot-sucio"></span>
+                        </button>
+                        <a href="{{ route('salidas.index') }}#{{ substr($fecha, 0, 7) }}" class="btn" title="Volver al calendario">
                             <i class="fas fa-arrow-left"></i> <span class="btn-label">Volver</span>
                         </a>
                     </div>
@@ -604,6 +687,30 @@
     </div>
 </div>
 
+{{-- Modal: buscar salida para llevar al tablero --}}
+<div class="modal-overlay" id="modal-buscar">
+    <div class="modal-box">
+        <div class="modal-icon modal-icon-blue"><i class="fas fa-search"></i></div>
+        <div class="modal-title" id="bus-titulo">Agregar salidas al tablero</div>
+        <div class="modal-sub" id="bus-sub">Buscá y marcá las salidas que querés llevar al tablero.</div>
+        <div class="bus-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" class="add-input bus-input" id="bus-input" placeholder="Buscar salida..." autocomplete="off">
+        </div>
+        <div class="bus-acciones">
+            <button type="button" id="bus-todos">Marcar todas</button>
+            <span id="bus-info"></span>
+        </div>
+        <div class="bus-lista" id="bus-lista"></div>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" data-cerrar="buscar">Cancelar</button>
+            <button type="button" class="btn-save" id="bus-agregar" disabled>
+                <i class="fas fa-plus"></i> <span id="bus-agregar-txt">Agregar al tablero</span> <span id="bus-cant"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
 {{-- Modal: ocultos --}}
 <div class="modal-overlay" id="modal-ocultos">
     <div class="modal-box">
@@ -631,13 +738,36 @@
 
 <script>
 (function () {
-    // ── Estado (solo en memoria, no se guarda nada) ──
+    // ── Estado (viene del servidor; se guarda con el botón "Guardar") ──
     const state = {
-        salidas:   [],   // { id, nombre, enTablero, vehiculos: [ids], personal: [ids] }
-        vehiculos: [],   // { id, nombre }
-        personal:  [],   // { id, nombre }
+        salidas:   [],   // { id, nombre, oculto, enTablero, vehiculos: [ids], personal: [ids], agregadoPor }
+        vehiculos: [],   // { id, nombre, oculto }
+        personal:  [],   // { id, nombre, oculto }
     };
-    let seq = 1;
+    let seq = 1; // para ids temporales de elementos nuevos ("n1", "n2", …)
+
+    // Catálogo: ids nuevos o modificados que hay que enviar al guardar
+    const cambiados = { salida: new Set(), vehiculo: new Set(), personal: new Set() };
+    let sucio = false; // hay cambios sin guardar
+
+    function cargarEstado(e) {
+        state.salidas   = e.salidas.map(s => ({ ...s, vehiculos: [...s.vehiculos], personal: [...s.personal] }));
+        state.vehiculos = e.vehiculos.map(v => ({ ...v }));
+        state.personal  = e.personal.map(p => ({ ...p }));
+        Object.values(cambiados).forEach(c => c.clear());
+    }
+
+    function marcarSucio() {
+        sucio = true;
+        actualizarBotonGuardar();
+    }
+
+    function marcarCambio(tipo, id) {
+        cambiados[tipo].add(id);
+        marcarSucio();
+    }
+
+    cargarEstado(@json($estado));
 
     // Elementos seleccionados en las barras (clic para seleccionar)
     const seleccion = { salida: new Set(), vehiculo: new Set(), personal: new Set() };
@@ -695,13 +825,14 @@
 
     // ── Acciones ──
     function agregar(tipo, nombre) {
-        const item = { id: seq++, nombre };
+        const item = { id: 'n' + (seq++), nombre, oculto: false };
         if (tipo === 'salida') {
-            Object.assign(item, { enTablero: false, vehiculos: [], personal: [] });
+            Object.assign(item, { enTablero: false, vehiculos: [], personal: [], agregadoPor: null });
             state.salidas.push(item);
         } else {
             state[LISTA[tipo]].push(item);
         }
+        marcarCambio(tipo, item.id);
         render();
     }
 
@@ -711,6 +842,7 @@
             const s = getSalida(id);
             if (s) s.enTablero = true;
         });
+        marcarSucio();
         render();
     }
 
@@ -721,6 +853,7 @@
         const key = LISTA[tipo];
         state.salidas.forEach(x => { if (x !== s) x[key] = x[key].filter(i => !ids.includes(i)); });
         ids.forEach(id => { if (!s[key].includes(id)) s[key].push(id); });
+        marcarSucio();
         render();
     }
 
@@ -728,6 +861,7 @@
     function liberar(tipo, ids) {
         const key = LISTA[tipo];
         state.salidas.forEach(s => s[key] = s[key].filter(i => !ids.includes(i)));
+        marcarSucio();
         render();
     }
 
@@ -736,6 +870,7 @@
         if (!s) return;
         const key = LISTA[tipo];
         s[key] = s[key].filter(x => x !== id);
+        marcarSucio();
         render();
     }
 
@@ -746,6 +881,8 @@
         s.enTablero = false;
         s.vehiculos = [];
         s.personal  = [];
+        s.agregadoPor = null;
+        marcarSucio();
         render();
     }
 
@@ -776,6 +913,7 @@
         if ($('modal-quitar').classList.contains('active')) cerrarModal();
         else if ($('modal-opciones').classList.contains('active')) cerrarOpciones();
         else if ($('modal-ocultos').classList.contains('active')) cerrarOcultos();
+        else if ($('modal-buscar').classList.contains('active')) cerrarBuscar();
         else limpiarSeleccion();
     });
 
@@ -871,6 +1009,7 @@
         const nombre = $('op-input').value.trim();
         if (!nombre || !opcionesItem) { $('op-input').focus(); return; }
         opcionesItem.item.nombre = nombre;
+        marcarCambio(opcionesItem.tipo, opcionesItem.item.id);
         cerrarOpciones();
         render();
     });
@@ -879,6 +1018,7 @@
         if (!opcionesItem) return;
         const { tipo, item } = opcionesItem;
         item.oculto = true;
+        marcarCambio(tipo, item.id);
         seleccion[tipo].delete(item.id);
         cerrarOpciones();
         render();
@@ -921,6 +1061,7 @@
             c.appendChild(ojo);
             c.addEventListener('click', () => {
                 item.oculto = false;
+                marcarCambio(tipo, item.id);
                 render();
                 renderOcultos();
             });
@@ -1037,15 +1178,25 @@
 
     function renderSeccion(s, tipo) {
         const key = LISTA[tipo];
-        const sec = el('div');
+        const sec = el('div', 'sc-seccion');
+        sec.title = tipo === 'vehiculo' ? 'Clic para buscar y agregar vehículos' : 'Clic para buscar y agregar personal';
         const t = el('div', 'sc-section-title');
         t.innerHTML = `<i class="fas ${tipo === 'vehiculo' ? 'fa-truck' : 'fa-users'}"></i>`;
         t.append(tipo === 'vehiculo' ? 'Vehículos' : 'Personal');
+        const mas = el('span', 'sc-add');
+        mas.innerHTML = '<i class="fas fa-plus"></i>';
+        t.appendChild(mas);
         sec.appendChild(t);
+
+        // Clic en la sección (fuera de una etiqueta) sin nada seleccionado → buscador
+        sec.addEventListener('click', e => {
+            if (hayRecursosSeleccionados() || e.target.closest('.chip')) return;
+            abrirBuscar(tipo, s.id);
+        });
 
         if (!s[key].length) {
             sec.appendChild(el('div', 'sc-hint',
-                tipo === 'vehiculo' ? 'Seleccioná vehículos y tocá esta salida' : 'Seleccioná personal y tocá esta salida'));
+                tipo === 'vehiculo' ? 'Tocá para agregar vehículos' : 'Tocá para agregar personal'));
             return sec;
         }
 
@@ -1077,7 +1228,7 @@
             const vacio = el('div', 'tablero-empty');
             vacio.innerHTML = '<div class="empty-icon"><i class="fas fa-hand-pointer"></i></div>';
             vacio.appendChild(el('div', 'empty-title', 'El tablero está vacío'));
-            vacio.appendChild(el('div', 'empty-sub', 'Seleccioná salidas en la barra de arriba y tocá "Al tablero" para empezar a asignarles vehículos y personal.'));
+            vacio.appendChild(el('div', 'empty-sub', 'Hacé clic aquí para buscar una salida, o seleccioná varias en la barra de arriba y tocá "Al tablero".'));
             vacio.style.width = '100%';
             cont.appendChild(vacio);
             return;
@@ -1089,7 +1240,10 @@
 
             const head = el('div', 'salida-card-head');
             head.innerHTML = '<span class="sc-icon"><i class="fas fa-sign-out-alt"></i></span>';
-            head.appendChild(el('span', 'sc-name', s.nombre));
+            const nom = el('div', 'sc-titulo');
+            nom.appendChild(el('span', 'sc-name', s.nombre));
+            nom.appendChild(el('span', 'sc-autor', s.agregadoPor ? `Agregada por ${s.agregadoPor}` : 'Sin guardar'));
+            head.appendChild(nom);
             head.title = 'Clic para sacar la salida del tablero';
             head.addEventListener('click', () => confirmarSacarSalida(s));
             card.appendChild(head);
@@ -1119,15 +1273,176 @@
         renderRecurso('personal', 'lista-personal');
     }
 
-    // ── Alto del tablero en PC: llena la pantalla sin generar scroll en la página ──
+    // ── Clic en espacio libre del tablero ──
+    //   · con salidas seleccionadas → las lleva al tablero
+    //   · sin nada seleccionado     → abre el buscador de salidas
+    $('zona-tablero').addEventListener('click', e => {
+        if (e.target.closest('.salida-card, .btn-copiar')) return;
+        if (seleccion.salida.size) {
+            const ids = [...seleccion.salida];
+            seleccion.salida.clear();
+            moverAlTablero(ids);
+            return;
+        }
+        if (hayRecursosSeleccionados()) return; // está asignando vehículos/personal
+        abrirBuscar();
+    });
+
+    // ── Modal buscador de salidas (por coincidencia, sin importar mayúsculas ni acentos) ──
+    const normalizar = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    let busActivo = 0;
+    const busSel = new Set(); // elementos marcados en el buscador
+    let busCtx = { tipo: 'salida', salidaId: null }; // qué se busca y, si aplica, para qué salida
+
+    const BUS_TXT = {
+        salida: {
+            titulo: () => 'Agregar salidas al tablero',
+            sub:    () => 'Buscá y marcá las salidas que querés llevar al tablero.',
+            ph: 'Buscar salida...', icono: 'fa-sign-out-alt', fem: true, uno: 'marcada', varios: 'marcadas',
+            sinRes: 'No hay salidas que coincidan con la búsqueda.',
+            vacio:  'No hay salidas disponibles. Creá una en la barra de arriba.',
+        },
+        vehiculo: {
+            titulo: s => `Agregar vehículos a "${s.nombre}"`,
+            sub:    () => 'Buscá y marcá los vehículos que van en esta salida.',
+            ph: 'Buscar vehículo...', icono: 'fa-truck', fem: false, uno: 'marcado', varios: 'marcados',
+            sinRes: 'No hay vehículos que coincidan con la búsqueda.',
+            vacio:  'No hay vehículos disponibles. Cargá uno en la barra de vehículos.',
+        },
+        personal: {
+            titulo: s => `Agregar personal a "${s.nombre}"`,
+            sub:    () => 'Buscá y marcá las personas que van en esta salida.',
+            ph: 'Buscar persona...', icono: 'fa-user', fem: true, uno: 'marcada', varios: 'marcadas',
+            sinRes: 'No hay personas que coincidan con la búsqueda.',
+            vacio:  'No hay personal disponible. Cargá uno en la barra de personal.',
+        },
+    };
+
+    // Lo que se puede elegir según el tipo (sin filtrar por texto)
+    function disponiblesBuscar() {
+        const { tipo } = busCtx;
+        if (tipo === 'salida') return state.salidas.filter(s => !s.enTablero && !s.oculto);
+        return state[LISTA[tipo]].filter(x => !x.oculto && !estaAsignado(tipo, x.id));
+    }
+
+    function abrirBuscar(tipo = 'salida', salidaId = null) {
+        busCtx = { tipo, salidaId };
+        const txt = BUS_TXT[tipo];
+        $('bus-titulo').textContent = txt.titulo(getSalida(salidaId) || {});
+        $('bus-sub').textContent = txt.sub();
+        $('bus-input').placeholder = txt.ph;
+        $('bus-input').value = '';
+        busActivo = 0;
+        busSel.clear();
+        renderBuscar();
+        $('modal-buscar').classList.add('active');
+        setTimeout(() => $('bus-input').focus(), 30);
+    }
+
+    function cerrarBuscar() {
+        $('modal-buscar').classList.remove('active');
+    }
+
+    function resultadosBuscar() {
+        const q = normalizar($('bus-input').value.trim());
+        return disponiblesBuscar().filter(x => !q || normalizar(x.nombre).includes(q));
+    }
+
+    // Resalta la coincidencia dentro del nombre (respetando acentos del original)
+    function nombreResaltado(nombre, q) {
+        const span = el('span');
+        if (!q) { span.textContent = nombre; return span; }
+        const i = normalizar(nombre).indexOf(q);
+        if (i < 0) { span.textContent = nombre; return span; }
+        span.append(nombre.slice(0, i));
+        span.appendChild(el('mark', '', nombre.slice(i, i + q.length)));
+        span.append(nombre.slice(i + q.length));
+        return span;
+    }
+
+    function renderBuscar() {
+        const cont = $('bus-lista');
+        const q = normalizar($('bus-input').value.trim());
+        const res = resultadosBuscar();
+        cont.innerHTML = '';
+        const txt = BUS_TXT[busCtx.tipo];
+
+        // Botón "Agregar" y contador
+        const n = busSel.size;
+        $('bus-agregar').disabled = n === 0;
+        $('bus-cant').textContent = n ? `(${n})` : '';
+        $('bus-info').textContent = n ? `${n} ${n === 1 ? txt.uno : txt.varios}` : '';
+        $('bus-agregar-txt').textContent = busCtx.tipo === 'salida' ? 'Agregar al tablero' : 'Agregar a la salida';
+
+        // "Marcar todas" / "Desmarcar todas" según los resultados visibles
+        const todasMarcadas = res.length > 0 && res.every(s => busSel.has(s.id));
+        $('bus-todos').textContent = (todasMarcadas ? 'Desmarcar ' : 'Marcar ') + (txt.fem ? 'todas' : 'todos');
+        $('bus-todos').hidden = res.length === 0;
+
+        if (!res.length) {
+            cont.appendChild(el('div', 'bus-vacio', disponiblesBuscar().length ? txt.sinRes : txt.vacio));
+            return;
+        }
+
+        busActivo = Math.min(busActivo, res.length - 1);
+        res.forEach((s, i) => {
+            const cls = 'bus-item' + (i === busActivo ? ' activo' : '') + (busSel.has(s.id) ? ' marcado' : '');
+            const b = el('button', cls);
+            b.type = 'button';
+            b.innerHTML = `<span class="bus-check"><i class="fas fa-check"></i></span><i class="fas ${txt.icono}"></i>`;
+            b.appendChild(nombreResaltado(s.nombre, q));
+            b.addEventListener('click', () => { busActivo = i; marcarBuscar(s.id); });
+            cont.appendChild(b);
+        });
+    }
+
+    function marcarBuscar(id) {
+        busSel.has(id) ? busSel.delete(id) : busSel.add(id);
+        renderBuscar();
+    }
+
+    function agregarBuscar() {
+        if (!busSel.size) return;
+        const ids = [...busSel];
+        busSel.clear();
+        cerrarBuscar();
+        if (busCtx.tipo === 'salida') moverAlTablero(ids);
+        else asignar(busCtx.salidaId, busCtx.tipo, ids);
+    }
+
+    $('bus-agregar').addEventListener('click', agregarBuscar);
+    $('bus-todos').addEventListener('click', () => {
+        const res = resultadosBuscar();
+        const todas = res.every(s => busSel.has(s.id));
+        res.forEach(s => todas ? busSel.delete(s.id) : busSel.add(s.id));
+        renderBuscar();
+    });
+
+    $('bus-input').addEventListener('input', () => { busActivo = 0; renderBuscar(); });
+    $('bus-input').addEventListener('keydown', e => {
+        const res = resultadosBuscar();
+        if (e.key === 'ArrowDown') { e.preventDefault(); busActivo = Math.min(busActivo + 1, res.length - 1); renderBuscar(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); busActivo = Math.max(busActivo - 1, 0); renderBuscar(); }
+        else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (e.ctrlKey || e.metaKey) agregarBuscar();          // Ctrl+Enter → agregar
+            else if (res[busActivo]) marcarBuscar(res[busActivo].id); // Enter → marcar/desmarcar
+        }
+        const act = $('bus-lista').querySelector('.bus-item.activo');
+        if (act) act.scrollIntoView({ block: 'nearest' });
+    });
+    document.querySelectorAll('[data-cerrar="buscar"]').forEach(b => b.addEventListener('click', cerrarBuscar));
+    $('modal-buscar').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarBuscar(); });
+
+    // ── Alto mínimo del tablero en PC: llena la pantalla sin generar scroll innecesario ──
     function ajustarAlto() {
         const board = document.querySelector('.board');
-        if (window.innerWidth <= 900) { board.style.height = ''; return; }
+        if (window.innerWidth <= 900) { board.style.minHeight = ''; return; }
         const top    = board.getBoundingClientRect().top + window.scrollY;
         const footer = document.querySelector('.main-footer');
         const fh     = footer ? footer.offsetHeight : 0;
         const margen = 16; // respiro inferior
-        board.style.height = Math.max(420, window.innerHeight - top - fh - margen) + 'px';
+        board.style.minHeight = Math.max(420, window.innerHeight - top - fh - margen) + 'px';
     }
     window.addEventListener('resize', ajustarAlto);
     window.addEventListener('load', ajustarAlto);
@@ -1146,6 +1461,10 @@
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => t.hidden = true, 3500);
     }
+
+    // Fecha elegida en el calendario
+    const FECHA       = @json($fecha);
+    const FECHA_TEXTO = @json($fechaTexto);
 
     const COL = {
         bg: '#f0f3f7', card: '#ffffff', border: '#d8e0ea', text: '#1e2835', muted: '#8496aa',
@@ -1186,8 +1505,7 @@
             ctx.fillText('Salidas', P, y + 28);
             ctx.fillStyle = COL.muted;
             ctx.font = `500 16px ${FONT}`;
-            const fecha = new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            ctx.fillText(fecha.charAt(0).toUpperCase() + fecha.slice(1), P, y + 54);
+            ctx.fillText(FECHA_TEXTO, P, y + 54);
         }
         y += 54 + 24;
 
@@ -1306,7 +1624,7 @@
     function descargar(blob) {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `salidas-${new Date().toISOString().slice(0, 10)}.png`;
+        a.download = `salidas-${FECHA}.png`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -1326,9 +1644,9 @@
             // Celular: abrir el menú de compartir
             if (esTactil && navigator.canShare) {
                 const blob = await generarImagen();
-                const file = new File([blob], 'salidas.png', { type: 'image/png' });
+                const file = new File([blob], `salidas-${FECHA}.png`, { type: 'image/png' });
                 if (navigator.canShare({ files: [file] })) {
-                    await navigator.share({ files: [file], title: 'Salidas' });
+                    await navigator.share({ files: [file], title: 'Salidas - ' + FECHA_TEXTO });
                     return;
                 }
             }
@@ -1369,6 +1687,85 @@
         });
     });
 
+    // ══════════════════════════════════════
+    //  GUARDAR
+    // ══════════════════════════════════════
+    const URL_GUARDAR = @json(route('salidas.guardar'));
+    const CSRF        = @json(csrf_token());
+    let guardando = false;
+
+    function actualizarBotonGuardar() {
+        const b = $('btn-guardar');
+        b.classList.toggle('sucio', sucio);
+        b.title = sucio ? 'Hay cambios sin guardar (Ctrl+S)' : 'Todo guardado';
+    }
+
+    function armarPayload() {
+        const catalogo = {};
+        [['salida', state.salidas], ['vehiculo', state.vehiculos], ['personal', state.personal]].forEach(([tipo, lista]) => {
+            catalogo[tipo] = lista
+                .filter(x => cambiados[tipo].has(x.id))
+                .map(x => ({ id: x.id, nombre: x.nombre, oculto: !!x.oculto }));
+        });
+        const tablero = state.salidas
+            .filter(s => s.enTablero)
+            .map(s => ({ salida_id: s.id, vehiculos: s.vehiculos, personal: s.personal }));
+        return { fecha: FECHA, catalogo, tablero };
+    }
+
+    async function guardar() {
+        if (guardando) return;
+        guardando = true;
+        const btn = $('btn-guardar');
+        btn.disabled = true;
+        btn.classList.add('cargando');
+
+        try {
+            const resp = await fetch(URL_GUARDAR, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(armarPayload()),
+            });
+            const data = await resp.json().catch(() => ({}));
+
+            if (!resp.ok) {
+                const msg = data.errors ? Object.values(data.errors).flat()[0] : (data.message || 'No se pudo guardar.');
+                aviso(resp.status === 419 ? 'La sesión expiró. Recargá la página.' : msg, 'err');
+                return;
+            }
+
+            // El servidor devuelve el estado con los ids definitivos
+            Object.values(seleccion).forEach(s => s.clear());
+            cargarEstado(data.estado);
+            sucio = false;
+            actualizarBotonGuardar();
+            render();
+            aviso('Salidas guardadas correctamente.');
+        } catch (err) {
+            aviso('No se pudo conectar con el servidor.', 'err');
+        } finally {
+            guardando = false;
+            btn.disabled = false;
+            btn.classList.remove('cargando');
+        }
+    }
+
+    $('btn-guardar').addEventListener('click', guardar);
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); guardar(); }
+    });
+    window.addEventListener('beforeunload', e => {
+        if (!sucio) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    actualizarBotonGuardar();
     render();
 })();
 </script>
