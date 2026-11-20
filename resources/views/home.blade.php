@@ -284,6 +284,13 @@
                     </a>
                     @endpermiso
 
+                    @permiso('sal', 'ver')
+                    <a href="{{ route('salidas.index') }}" class="opcion-card" style="animation-delay:0.60s">
+                        <div class="opcion-icon ic-purple"><i class="fas fa-sign-out-alt"></i></div>
+                        <span class="opcion-label">Salidas</span>
+                    </a>
+                    @endpermiso
+
                     
 
                 </div>

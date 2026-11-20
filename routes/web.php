@@ -29,6 +29,7 @@ use App\Http\Controllers\SituacionAvanceController;
 use App\Http\Controllers\ValidarpresupuestoController;
 use App\Http\Controllers\BibliografiaController;
 use App\Http\Controllers\PlantillaController;
+use App\Http\Controllers\SalidaController;
 use App\Http\Controllers\ObraTcController;
 use App\Http\Controllers\DirectorioTcController;
 use App\Http\Controllers\DirectorioTcAutomaticoController;
@@ -499,6 +500,14 @@ Route::middleware('permiso:pla,editar')->group(function () {
 });
 Route::middleware('permiso:pla,eliminar')->group(function () {
     Route::delete('/plantilla/{id}', [PlantillaController::class, 'destroy'])->name('plantilla.destroy');
+});
+
+// ── Salidas ─────────────────────────────────────────────────────────────────
+Route::middleware('permiso:sal,ver')->group(function () {
+    Route::get('/salidas', [SalidaController::class, 'index'])->name('salidas.index');
+});
+Route::middleware('permiso:sal,agregar')->group(function () {
+    Route::get('/salidas/crear', [SalidaController::class, 'create'])->name('salidas.create');
 });
 
 // ── Trabajo de Campo ────────────────────────────────────────────────────────

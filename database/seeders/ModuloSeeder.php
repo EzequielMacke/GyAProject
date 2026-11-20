@@ -49,7 +49,8 @@ class ModuloSeeder extends Seeder
             ['nombre' => 'gal_tc',  'descripcion' => 'Galería - Trabajo de campo',                'estado' => 1],
             ['nombre' => 'ens_tc',  'descripcion' => 'Planilla de Ensayos - Trabajo de campo',    'estado' => 1],
             ['nombre' => 'pch_tc',  'descripcion' => 'Pachometria - Trabajo de campo',            'estado' => 1],
-            ['nombre' => 'gen_inf',  'descripcion' => 'Generador de Informes',                     'estado' => 1],
+            ['nombre' => 'gen_inf', 'descripcion' => 'Generador de Informes',                     'estado' => 1],
+            ['nombre' => 'sal',     'descripcion' => 'Salidas',                                   'estado' => 1],
 
 
 
