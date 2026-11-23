@@ -366,6 +366,18 @@
         .btn-cancel:hover { background: var(--surface2); }
         .btn-confirm { height: 36px; padding: 0 1rem; border-radius: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; border: none; background: #c0392b; color: #fff; cursor: pointer; transition: background 0.14s; display: inline-flex; align-items: center; gap: 0.4rem; }
         .btn-confirm:hover { background: #a93226; }
+        .modal-icon.modal-icon-amber { background: #fff8e6; color: #d99a0b; }
+        .modal-actions .btn-guardar-salir {
+            height: 36px; padding: 0 1rem; border-radius: 0.5rem; border: none;
+            background: var(--accent); color: #fff; cursor: pointer;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 0.4rem; transition: background 0.14s;
+        }
+        .modal-actions .btn-guardar-salir:hover { background: var(--accent-b); }
+        .modal-actions .btn-guardar-salir:disabled { opacity: 0.7; cursor: wait; }
+        #modal-salir .modal-box { max-width: 460px; }
+        #modal-salir .modal-actions { flex-wrap: wrap; }
+        #modal-salir .btn-confirm { margin-right: auto; }
 
         /* ══════════════════════════════════════
            APROVECHAMIENTO DEL ESPACIO
@@ -456,6 +468,33 @@
             background: #f59e0b; border: 2px solid var(--bg);
         }
         .btn-primary.sucio .dot-sucio { display: block; }
+
+        /* Navegador de fechas */
+        .fecha-nav { display: inline-flex; align-items: center; gap: 0.3rem; }
+        .fecha-nav .fn-btn {
+            height: 34px; min-width: 34px; padding: 0 0.6rem; border-radius: 0.5rem;
+            border: 1.5px solid var(--border); background: #fff; color: var(--text2);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
+            text-decoration: none;
+        }
+        .fecha-nav .fn-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .fecha-nav .fn-input {
+            height: 34px; padding: 0 0.5rem; border-radius: 0.5rem;
+            border: 1.5px solid var(--border); background: #fff; color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem; font-weight: 600;
+        }
+        .fecha-nav .fn-input:focus { outline: none; border-color: var(--accent); }
+
+        /* Aviso de salidas copiadas de otra fecha */
+        .aviso-copia {
+            display: flex; align-items: center; gap: 0.6rem;
+            margin-bottom: 0.9rem; padding: 0.7rem 0.9rem;
+            border: 1.5px solid #f6d58a; border-radius: 0.65rem;
+            background: #fff8e6; color: #7a5a12;
+            font-size: 0.8rem; font-weight: 500;
+        }
+        .aviso-copia i { color: #d99a0b; }
 
         /* Autor de la salida en la tarjeta */
         .salida-card-head .sc-titulo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -550,6 +589,20 @@
                         <p class="ph-sub">Seleccioná vehículos y personal, y tocá una salida del tablero para asignarlos</p>
                     </div>
                     <div class="ph-right">
+                        @php
+                            $fechaCarbon = \Carbon\Carbon::parse($fecha);
+                            $hoy = \Carbon\Carbon::today()->format('Y-m-d');
+                        @endphp
+                        <div class="fecha-nav">
+                            <a href="{{ route('salidas.create', ['fecha' => $fechaCarbon->copy()->subDay()->format('Y-m-d')]) }}"
+                               class="fn-btn" title="Día anterior"><i class="fas fa-chevron-left"></i></a>
+                            <input type="date" id="fecha-nav-input" class="fn-input" value="{{ $fecha }}" title="Ir a una fecha">
+                            <a href="{{ route('salidas.create', ['fecha' => $fechaCarbon->copy()->addDay()->format('Y-m-d')]) }}"
+                               class="fn-btn" title="Día siguiente"><i class="fas fa-chevron-right"></i></a>
+                            @if ($fecha !== $hoy)
+                                <a href="{{ route('salidas.create', ['fecha' => $hoy]) }}" class="fn-btn fn-hoy" title="Ir a hoy">Hoy</a>
+                            @endif
+                        </div>
                         <button type="button" class="btn btn-primary" id="btn-guardar">
                             <i class="fas fa-save"></i> <span class="btn-label">Guardar</span>
                             <span class="dot-sucio"></span>
@@ -564,6 +617,13 @@
 
         <section class="content">
             <div class="container-fluid">
+
+                @if ($copiadoDe)
+                    <div class="aviso-copia">
+                        <i class="fas fa-copy"></i>
+                        <span>Se copiaron las salidas del <strong>{{ $copiadoDe }}</strong>. Revisá, modificá lo que haga falta y tocá <strong>Guardar</strong>. Hasta entonces no se guarda nada.</span>
+                    </div>
+                @endif
 
                 <div class="board">
 
@@ -720,6 +780,19 @@
         <div class="chips oc-lista" id="oc-lista"></div>
         <div class="modal-actions">
             <button type="button" class="btn-cancel" data-cerrar="ocultos">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-salir">
+    <div class="modal-box">
+        <div class="modal-icon modal-icon-amber"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="modal-title">Hay cambios sin guardar</div>
+        <div class="modal-sub">Si salís ahora se pierden los cambios que hiciste en el tablero. ¿Qué querés hacer?</div>
+        <div class="modal-actions">
+            <button type="button" class="btn-confirm" id="salir-igual"><i class="fas fa-sign-out-alt"></i> Salir sin guardar</button>
+            <button type="button" class="btn-cancel" id="salir-cancelar">Cancelar</button>
+            <button type="button" class="btn-guardar-salir" id="salir-guardar"><i class="fas fa-save"></i> Guardar y salir</button>
         </div>
     </div>
 </div>
@@ -910,7 +983,8 @@
     $('modal-quitar').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModal(); });
     document.addEventListener('keydown', e => {
         if (e.key !== 'Escape') return;
-        if ($('modal-quitar').classList.contains('active')) cerrarModal();
+        if ($('modal-salir').classList.contains('active')) cerrarSalir();
+        else if ($('modal-quitar').classList.contains('active')) cerrarModal();
         else if ($('modal-opciones').classList.contains('active')) cerrarOpciones();
         else if ($('modal-ocultos').classList.contains('active')) cerrarOcultos();
         else if ($('modal-buscar').classList.contains('active')) cerrarBuscar();
@@ -1714,7 +1788,7 @@
     }
 
     async function guardar() {
-        if (guardando) return;
+        if (guardando) return false;
         guardando = true;
         const btn = $('btn-guardar');
         btn.disabled = true;
@@ -1736,18 +1810,21 @@
             if (!resp.ok) {
                 const msg = data.errors ? Object.values(data.errors).flat()[0] : (data.message || 'No se pudo guardar.');
                 aviso(resp.status === 419 ? 'La sesión expiró. Recargá la página.' : msg, 'err');
-                return;
+                return false;
             }
 
             // El servidor devuelve el estado con los ids definitivos
             Object.values(seleccion).forEach(s => s.clear());
             cargarEstado(data.estado);
             sucio = false;
+            document.querySelector('.aviso-copia')?.remove();
             actualizarBotonGuardar();
             render();
             aviso('Salidas guardadas correctamente.');
+            return true;
         } catch (err) {
             aviso('No se pudo conectar con el servidor.', 'err');
+            return false;
         } finally {
             guardando = false;
             btn.disabled = false;
@@ -1759,11 +1836,70 @@
     document.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); guardar(); }
     });
+    // ── Salir con cambios sin guardar ──
+    let saliendo = false;     // salida confirmada: no volver a preguntar
+    let destinoSalir = null;  // URL a la que se quiere ir
+
+    function irA(url) {
+        if (sucio) {
+            destinoSalir = url;
+            $('modal-salir').classList.add('active');
+            $('salir-cancelar').focus();
+            return;
+        }
+        window.location.href = url;
+    }
+    function cerrarSalir() {
+        $('modal-salir').classList.remove('active');
+        destinoSalir = null;
+    }
+    function salirAhora() {
+        saliendo = true;
+        window.location.href = destinoSalir;
+    }
+
+    $('salir-cancelar').addEventListener('click', cerrarSalir);
+    $('modal-salir').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarSalir(); });
+    $('salir-igual').addEventListener('click', salirAhora);
+    $('salir-guardar').addEventListener('click', async () => {
+        const b = $('salir-guardar');
+        b.disabled = true;
+        const ok = await guardar();
+        b.disabled = false;
+        if (ok) salirAhora();
+        else cerrarSalir(); // el error ya se mostró en el aviso
+    });
+
+    // Cualquier enlace de la página (Volver, migas, navegador de fechas, menú)
+    document.addEventListener('click', e => {
+        if (!sucio || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        const a = e.target.closest('a[href]');
+        if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+        const href = a.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+        e.preventDefault();
+        irA(a.href);
+    });
+
     window.addEventListener('beforeunload', e => {
-        if (!sucio) return;
+        if (!sucio || saliendo) return;
         e.preventDefault();
         e.returnValue = '';
     });
+
+    // Navegador de fechas: al elegir una fecha se va a esa página
+    // (si hay cambios sin guardar, se muestra el aviso de salir)
+    $('fecha-nav-input').addEventListener('change', e => {
+        const v = e.target.value;
+        if (!v || v === FECHA) return;
+        const url = new URL(@json(route('salidas.create')), window.location.origin);
+        url.searchParams.set('fecha', v);
+        e.target.value = FECHA; // si cancela, queda la fecha actual
+        irA(url.toString());
+    });
+
+    // Tablero copiado de otra fecha: queda pendiente de guardar
+    if (@json((bool) $copiadoDe)) sucio = true;
 
     actualizarBotonGuardar();
     render();

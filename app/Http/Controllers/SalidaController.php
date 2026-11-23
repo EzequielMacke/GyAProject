@@ -28,12 +28,29 @@ class SalidaController extends Controller
     /** Tablero de un día */
     public function create(Request $request)
     {
-        $fecha = $this->fechaDesde($request->query('fecha'));
+        $fecha  = $this->fechaDesde($request->query('fecha'));
+        $estado = $this->estado($fecha->format('Y-m-d'));
+
+        // ?copiar=AAAA-MM-DD → precarga el tablero de otra fecha (sin guardar),
+        // solo si el día todavía no tiene salidas y la fecha origen sí tiene.
+        $copiadoDe = null;
+        $copiar = $request->query('copiar');
+        if ($copiar && preg_match('/^\d{4}-\d{2}-\d{2}$/', $copiar)
+            && !SalidaProgramacion::whereDate('fecha', $fecha)->exists()
+            && SalidaProgramacion::whereDate('fecha', $copiar)->exists()) {
+
+            $origen = $this->fechaDesde($copiar);
+            $estado = $this->estado($origen->format('Y-m-d'));
+            // Todavía no las agregó nadie en esta fecha
+            $estado['salidas'] = $estado['salidas']->map(fn ($s) => ['agregadoPor' => null] + $s)->values();
+            $copiadoDe = $origen->locale('es')->translatedFormat('l j \d\e F');
+        }
 
         return view('salidas.create', [
             'fecha'      => $fecha->format('Y-m-d'),
             'fechaTexto' => ucfirst($fecha->locale('es')->translatedFormat('l j \d\e F \d\e Y')),
-            'estado'     => $this->estado($fecha->format('Y-m-d')),
+            'estado'     => $estado,
+            'copiadoDe'  => $copiadoDe,
         ]);
     }
 
