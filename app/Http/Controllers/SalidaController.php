@@ -182,7 +182,9 @@ class SalidaController extends Controller
                     'vehiculos' => $prog ? $prog->vehiculos->pluck('id')->values() : [],
                     'personal'  => $prog ? $prog->personales->pluck('id')->values() : [],
                     // Usuario que agregó esta salida al tablero de la fecha
-                    'agregadoPor' => $prog && $prog->usuario ? $prog->usuario->nombre : null,
+                    'agregadoPor' => $prog && $prog->usuario
+                        ? ($prog->usuario->nombre_completo ?: $prog->usuario->nombre)
+                        : null,
                 ];
             })->values(),
             'vehiculos' => SalidaVehiculo::orderBy('nombre')->get()->map($item)->values(),
