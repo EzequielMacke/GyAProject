@@ -278,6 +278,39 @@
             display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;
         }
         .op-input { width: 100%; margin-bottom: 1.2rem; }
+
+        /* Personal agrupado por vehículo (opcional) */
+        .sc-grupos { display: flex; flex-direction: column; gap: 0.55rem; }
+        .sc-grupo { display: flex; flex-direction: column; gap: 0.3rem; }
+        .sc-grupo-tit {
+            display: flex; align-items: center; gap: 0.35rem;
+            font-size: 0.72rem; font-weight: 700; color: var(--yellow);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .sc-grupo-tit i { font-size: 0.65rem; }
+        .sc-grupo-sin .sc-grupo-tit { color: var(--muted); }
+        .chip .chip-badge.chip-cond { background: var(--yellow-s); color: var(--yellow); border: 1px solid #f0dcb4; }
+
+        /* Modal de una persona del tablero: vehículo / conductor / sacar */
+        .modal-icon.modal-icon-green { background: var(--green-s); color: var(--green); }
+        .pe-label { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.45rem; }
+        .pe-hint { font-size: 0.78rem; color: var(--muted); border: 1.5px dashed var(--border); border-radius: 0.5rem; padding: 0.6rem 0.7rem; margin-bottom: 1.2rem; }
+        .pe-lista { max-height: 50vh; overflow-y: auto; }
+        .pe-fila { display: flex; gap: 0.4rem; }
+        .pe-fila .op-opcion { flex: 1; min-width: 0; padding: 0.55rem 0.7rem; }
+        .pe-fila .op-opcion > span:last-of-type { flex: 1; min-width: 0; }
+        .pe-fila .op-opcion strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .op-opcion.activo { border-color: var(--accent); background: var(--accent-s); }
+        .pe-check { color: var(--accent); font-size: 0.8rem; }
+        .pe-cond {
+            flex-shrink: 0; padding: 0 0.7rem; border-radius: 0.6rem;
+            border: 1.5px solid var(--border); background: var(--surface); color: var(--text2);
+            font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.74rem; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; transition: all 0.14s;
+        }
+        .pe-cond:hover { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-s); }
+        .pe-cond.activo { background: var(--yellow); border-color: var(--yellow); color: #fff; }
+        .modal-actions .pe-sacar { margin-right: auto; }
         .btn-save { height: 36px; padding: 0 1rem; border-radius: 0.5rem; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.82rem; font-weight: 600; border: none; background: var(--accent); color: #fff; cursor: pointer; transition: background 0.14s; display: inline-flex; align-items: center; gap: 0.4rem; }
         .btn-save:hover { background: var(--accent-b); }
         .oc-lista { margin-bottom: 1.2rem; max-height: 300px; overflow-y: auto; }
@@ -797,6 +830,20 @@
     </div>
 </div>
 
+{{-- Modal: persona del tablero (en qué vehículo va, si conduce, sacarla) --}}
+<div class="modal-overlay" id="modal-persona">
+    <div class="modal-box">
+        <div class="modal-icon modal-icon-green"><i class="fas fa-user"></i></div>
+        <div class="modal-title" id="pe-titulo"></div>
+        <div class="modal-sub" id="pe-sub"></div>
+        <div id="pe-cuerpo"></div>
+        <div class="modal-actions">
+            <button type="button" class="btn-confirm pe-sacar" id="pe-sacar"><i class="fas fa-sign-out-alt"></i> Sacar</button>
+            <button type="button" class="btn-cancel" data-cerrar="persona">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="modal-quitar">
     <div class="modal-box">
         <div class="modal-icon"><i class="fas fa-sign-out-alt"></i></div>
@@ -813,7 +860,8 @@
 (function () {
     // ── Estado (viene del servidor; se guarda con el botón "Guardar") ──
     const state = {
-        salidas:   [],   // { id, nombre, oculto, enTablero, vehiculos: [ids], personal: [ids], agregadoPor }
+        salidas:   [],   // { id, nombre, oculto, enTablero, vehiculos: [ids], personal: [ids], viaje, agregadoPor }
+                         //   viaje (opcional) = { [idPersona]: { veh: idVehiculo, cond: bool } }, solo quienes tienen vehículo
         vehiculos: [],   // { id, nombre, oculto }
         personal:  [],   // { id, nombre, oculto }
     };
@@ -824,7 +872,12 @@
     let sucio = false; // hay cambios sin guardar
 
     function cargarEstado(e) {
-        state.salidas   = e.salidas.map(s => ({ ...s, vehiculos: [...s.vehiculos], personal: [...s.personal] }));
+        state.salidas   = e.salidas.map(s => ({
+            ...s,
+            vehiculos: [...s.vehiculos],
+            personal:  [...s.personal],
+            viaje: Object.fromEntries((s.viaje || []).map(v => [String(v.personal), { veh: v.vehiculo, cond: !!v.conductor }])),
+        }));
         state.vehiculos = e.vehiculos.map(v => ({ ...v }));
         state.personal  = e.personal.map(p => ({ ...p }));
         Object.values(cambiados).forEach(c => c.clear());
@@ -900,7 +953,7 @@
     function agregar(tipo, nombre) {
         const item = { id: 'n' + (seq++), nombre, oculto: false };
         if (tipo === 'salida') {
-            Object.assign(item, { enTablero: false, vehiculos: [], personal: [], agregadoPor: null });
+            Object.assign(item, { enTablero: false, vehiculos: [], personal: [], viaje: {}, agregadoPor: null });
             state.salidas.push(item);
         } else {
             state[LISTA[tipo]].push(item);
@@ -954,9 +1007,64 @@
         s.enTablero = false;
         s.vehiculos = [];
         s.personal  = [];
+        s.viaje     = {};
         s.agregadoPor = null;
         marcarSucio();
         render();
+    }
+
+    // ── Personas en vehículos (opcional) ──
+    // Las claves de s.viaje son texto: se compara siempre con k()
+    const k = id => String(id);
+
+    // Mantiene s.viaje coherente después de cualquier cambio: si la persona o el
+    // vehículo ya no están en la salida, la persona queda "sin especificar";
+    // y nunca hay más de un conductor por vehículo.
+    function depurarViajes() {
+        state.salidas.forEach(s => {
+            const per = new Set(s.personal.map(k));
+            const veh = new Set(s.vehiculos.map(k));
+            const conConductor = new Set();
+            Object.keys(s.viaje).forEach(p => {
+                const v = s.viaje[p];
+                if (!per.has(p) || !veh.has(k(v.veh))) { delete s.viaje[p]; return; }
+                if (v.cond) {
+                    if (conConductor.has(k(v.veh))) v.cond = false;
+                    else conConductor.add(k(v.veh));
+                }
+            });
+        });
+    }
+
+    // vehId null → sin especificar. cond true → pasa a ser el conductor (reemplaza al anterior)
+    function ponerEnVehiculo(s, perId, vehId, cond) {
+        if (vehId === null) {
+            delete s.viaje[k(perId)];
+        } else {
+            if (cond) Object.values(s.viaje).forEach(v => { if (k(v.veh) === k(vehId)) v.cond = false; });
+            s.viaje[k(perId)] = { veh: vehId, cond: !!cond };
+        }
+        marcarSucio();
+        render();
+    }
+
+    // Personal de la salida agrupado por vehículo, o null si nadie tiene vehículo
+    // → [{ veh: vehículo | null (sin especificar), ids: [idsPersona] }], el conductor primero
+    function gruposPersonal(s) {
+        if (!Object.keys(s.viaje).length) return null;
+        const grupos = s.vehiculos
+            .map(id => state.vehiculos.find(v => v.id === id))
+            .filter(Boolean)
+            .map(veh => ({ veh, ids: [] }));
+        const sin = { veh: null, ids: [] };
+        s.personal.forEach(id => {
+            const v = s.viaje[k(id)];
+            const g = v && grupos.find(g => k(g.veh.id) === k(v.veh));
+            (g || sin).ids.push(id);
+        });
+        const esCond = id => s.viaje[k(id)]?.cond ? 1 : 0;
+        grupos.forEach(g => g.ids.sort((a, b) => esCond(b) - esCond(a)));
+        return [...grupos, sin].filter(g => g.ids.length);
     }
 
     // ── Modal de confirmación ──
@@ -985,6 +1093,7 @@
         if (e.key !== 'Escape') return;
         if ($('modal-salir').classList.contains('active')) cerrarSalir();
         else if ($('modal-quitar').classList.contains('active')) cerrarModal();
+        else if ($('modal-persona').classList.contains('active')) cerrarPersona();
         else if ($('modal-opciones').classList.contains('active')) cerrarOpciones();
         else if ($('modal-ocultos').classList.contains('active')) cerrarOcultos();
         else if ($('modal-buscar').classList.contains('active')) cerrarBuscar();
@@ -1002,12 +1111,111 @@
     }
 
     function confirmarQuitarRecurso(s, tipo, item) {
+        const enEl = tipo === 'vehiculo'
+            ? Object.values(s.viaje).filter(v => k(v.veh) === k(item.id)).length : 0;
         abrirModal(
             tipo === 'vehiculo' ? 'Sacar vehículo del tablero' : 'Sacar personal del tablero',
-            `¿Querés sacar "${item.nombre}" de la salida "${s.nombre}"? Vuelve a su lista.`,
+            `¿Querés sacar "${item.nombre}" de la salida "${s.nombre}"? Vuelve a su lista.` +
+                (enEl ? ` ${enEl === 1 ? 'La persona que iba en él queda' : `Las ${enEl} personas que iban en él quedan`} sin vehículo.` : ''),
             () => quitar(s.id, tipo, item.id)
         );
     }
+
+    // ── Modal de una persona del tablero ──
+    let personaCtx = null; // { salidaId, perId }
+
+    function abrirPersona(s, item) {
+        personaCtx = { salidaId: s.id, perId: item.id };
+        renderPersona();
+        $('modal-persona').classList.add('active');
+    }
+
+    function cerrarPersona() {
+        personaCtx = null;
+        $('modal-persona').classList.remove('active');
+    }
+
+    function renderPersona() {
+        const s = personaCtx && getSalida(personaCtx.salidaId);
+        const item = personaCtx && state.personal.find(p => p.id === personaCtx.perId);
+        if (!s || !item) return cerrarPersona();
+
+        const actual = s.viaje[k(item.id)] || null;
+        $('pe-titulo').textContent = item.nombre;
+        $('pe-sub').textContent = `En la salida "${s.nombre}"`;
+
+        const cuerpo = $('pe-cuerpo');
+        cuerpo.innerHTML = '';
+        const vehiculos = s.vehiculos.map(id => state.vehiculos.find(v => v.id === id)).filter(Boolean);
+
+        if (!vehiculos.length) {
+            cuerpo.appendChild(el('div', 'pe-hint',
+                'Si agregás vehículos a esta salida, acá vas a poder elegir en cuál va y quién lo conduce.'));
+            return;
+        }
+
+        cuerpo.appendChild(el('div', 'pe-label', '¿En qué vehículo va?'));
+        const lista = el('div', 'op-opciones pe-lista');
+
+        const opcion = (icono, clsIcono, titulo, detalle, activo, onClick) => {
+            const b = el('button', 'op-opcion' + (activo ? ' activo' : ''));
+            b.type = 'button';
+            b.innerHTML = `<span class="op-ic ${clsIcono}"><i class="fas ${icono}"></i></span>`;
+            const txt = el('span');
+            txt.appendChild(el('strong', '', titulo));
+            if (detalle) txt.appendChild(el('small', '', detalle));
+            b.appendChild(txt);
+            if (activo) b.insertAdjacentHTML('beforeend', '<i class="fas fa-check pe-check"></i>');
+            b.addEventListener('click', onClick);
+            return b;
+        };
+
+        const fila = el('div', 'pe-fila');
+        fila.appendChild(opcion('fa-question', 'pi-blue', 'Sin especificar', 'No importa en qué vehículo va', !actual, () => {
+            ponerEnVehiculo(s, item.id, null);
+            cerrarPersona();
+        }));
+        lista.appendChild(fila);
+
+        vehiculos.forEach(veh => {
+            const enEste = actual && k(actual.veh) === k(veh.id);
+            const conduce = enEste && actual.cond;
+            const otroCond = Object.entries(s.viaje).find(([p, v]) => v.cond && k(v.veh) === k(veh.id) && p !== k(item.id));
+            const nomCond = otroCond && state.personal.find(p => k(p.id) === otroCond[0])?.nombre;
+            const n = Object.values(s.viaje).filter(v => k(v.veh) === k(veh.id)).length;
+            const detalle = [n ? `${n} ${n === 1 ? 'persona' : 'personas'}` : 'Sin personas', nomCond ? `conduce ${nomCond}` : '']
+                .filter(Boolean).join(' · ');
+
+            const f = el('div', 'pe-fila');
+            f.appendChild(opcion('fa-truck', 'pi-yellow', veh.nombre, detalle, enEste, () => {
+                // Elegir el vehículo donde ya está no cambia nada (conserva si es conductor)
+                if (!enEste) ponerEnVehiculo(s, item.id, veh.id, false);
+                cerrarPersona();
+            }));
+
+            const c = el('button', 'pe-cond' + (conduce ? ' activo' : ''));
+            c.type = 'button';
+            c.title = conduce ? 'Dejar de ser el conductor' : `Que ${item.nombre} conduzca ${veh.nombre}`;
+            c.innerHTML = '<i class="fas fa-id-card"></i>';
+            c.append('Conduce');
+            c.addEventListener('click', () => {
+                ponerEnVehiculo(s, item.id, veh.id, !conduce);
+                cerrarPersona();
+            });
+            f.appendChild(c);
+            lista.appendChild(f);
+        });
+        cuerpo.appendChild(lista);
+    }
+
+    $('pe-sacar').addEventListener('click', () => {
+        if (!personaCtx) return;
+        const { salidaId, perId } = personaCtx;
+        cerrarPersona();
+        quitar(salidaId, 'personal', perId);
+    });
+    document.querySelectorAll('[data-cerrar="persona"]').forEach(b => b.addEventListener('click', cerrarPersona));
+    $('modal-persona').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarPersona(); });
 
     function estaAsignado(tipo, id) {
         const key = LISTA[tipo];
@@ -1274,22 +1482,55 @@
             return sec;
         }
 
-        const lista = el('div', 'chips');
-        s[key].forEach(id => {
-            const item = state[key].find(x => x.id === id);
-            if (!item) return;
-            const c = chip(tipo === 'vehiculo' ? 'fa-truck' : 'fa-user', item.nombre,
-                           tipo === 'vehiculo' ? 'chip-veh' : 'chip-per');
-            c.title = 'Clic para sacar del tablero';
-            c.classList.add('clickable');
-            c.addEventListener('click', () => {
-                if (hayRecursosSeleccionados()) return; // la tarjeta se encarga de asignar
-                confirmarQuitarRecurso(s, tipo, item);
+        const chipsDe = ids => {
+            const lista = el('div', 'chips');
+            ids.forEach(id => {
+                const item = state[key].find(x => x.id === id);
+                if (item) lista.appendChild(tipo === 'vehiculo' ? chipVehiculo(s, item) : chipPersona(s, item));
             });
-            lista.appendChild(c);
+            return lista;
+        };
+
+        // Personal: si alguien tiene vehículo asignado, se agrupa por vehículo
+        const grupos = tipo === 'personal' ? gruposPersonal(s) : null;
+        if (!grupos) {
+            sec.appendChild(chipsDe(s[key]));
+            return sec;
+        }
+        const cont = el('div', 'sc-grupos');
+        grupos.forEach(g => {
+            const box = el('div', 'sc-grupo' + (g.veh ? '' : ' sc-grupo-sin'));
+            const tit = el('div', 'sc-grupo-tit');
+            tit.innerHTML = `<i class="fas ${g.veh ? 'fa-truck' : 'fa-question-circle'}"></i>`;
+            tit.append(g.veh ? g.veh.nombre : 'Sin especificar');
+            box.appendChild(tit);
+            box.appendChild(chipsDe(g.ids));
+            cont.appendChild(box);
         });
-        sec.appendChild(lista);
+        sec.appendChild(cont);
         return sec;
+    }
+
+    function chipVehiculo(s, item) {
+        const c = chip('fa-truck', item.nombre, 'chip-veh clickable');
+        c.title = 'Clic para sacar del tablero';
+        c.addEventListener('click', () => {
+            if (hayRecursosSeleccionados()) return; // la tarjeta se encarga de asignar
+            confirmarQuitarRecurso(s, 'vehiculo', item);
+        });
+        return c;
+    }
+
+    function chipPersona(s, item) {
+        const conduce = !!s.viaje[k(item.id)]?.cond;
+        const c = chip(conduce ? 'fa-id-card' : 'fa-user', item.nombre, 'chip-per clickable');
+        if (conduce) c.appendChild(el('span', 'chip-badge chip-cond', 'Conductor'));
+        c.title = 'Clic para elegir vehículo, conductor o sacarlo de la salida';
+        c.addEventListener('click', () => {
+            if (hayRecursosSeleccionados()) return; // la tarjeta se encarga de asignar
+            abrirPersona(s, item);
+        });
+        return c;
     }
 
     function renderTablero() {
@@ -1338,6 +1579,7 @@
     }
 
     function render() {
+        depurarViajes();
         depurarSeleccion();
         actualizarBotonesOcultos();
         renderSelBar();
@@ -1590,14 +1832,27 @@
             const HEAD_H = 52;
             let cy = y0 + HEAD_H + 16;
 
-            const seccion = (titulo, ids, lista, bg, bd, tx) => {
+            const subtitulo = (texto, color) => {
+                if (draw) {
+                    ctx.fillStyle = color;
+                    ctx.font = `700 13px ${FONT}`;
+                    ctx.fillText(recortar(ctx, texto, cw - 36), P + 18, cy + 12);
+                }
+                cy += 20;
+            };
+
+            const tituloSeccion = titulo => {
                 if (draw) {
                     ctx.fillStyle = COL.muted;
                     ctx.font = `700 12px ${FONT}`;
                     ctx.fillText(titulo, P + 18, cy + 10);
                 }
                 cy += 20;
-                const items = ids.map(id => lista.find(x => x.id === id)).filter(Boolean);
+            };
+
+            // items: [{ nombre }]; titulo null → solo los chips
+            const seccion = (titulo, items, bg, bd, tx) => {
+                if (titulo !== null) tituloSeccion(titulo);
                 if (!items.length) {
                     if (draw) {
                         ctx.fillStyle = COL.muted;
@@ -1630,12 +1885,29 @@
                 cy += CHIP_H;
             };
 
+            const nombres = (ids, lista) => ids.map(id => lista.find(x => x.id === id)).filter(Boolean);
+            const nombrePersona = p => ({ nombre: s.viaje[k(p.id)]?.cond ? `${p.nombre} (conductor)` : p.nombre });
+
+            const contenido = () => {
+                seccion('VEHÍCULOS', nombres(s.vehiculos, state.vehiculos), COL.vehBg, COL.vehBd, COL.vehTx);
+                cy += 14;
+                const grupos = gruposPersonal(s);
+                if (!grupos) {
+                    seccion('PERSONAL', nombres(s.personal, state.personal).map(nombrePersona), COL.perBg, COL.perBd, COL.perTx);
+                    return;
+                }
+                tituloSeccion('PERSONAL');
+                grupos.forEach((g, i) => {
+                    if (i) cy += 10;
+                    subtitulo(g.veh ? g.veh.nombre : 'Sin especificar', g.veh ? COL.vehTx : COL.muted);
+                    seccion(null, nombres(g.ids, state.personal).map(nombrePersona), COL.perBg, COL.perBd, COL.perTx);
+                });
+            };
+
             // Primero medimos el contenido para saber el alto de la tarjeta
             const drawOrig = draw;
             draw = false;
-            seccion('VEHÍCULOS', s.vehiculos, state.vehiculos);
-            cy += 14;
-            seccion('PERSONAL', s.personal, state.personal);
+            contenido();
             const cardH = cy + 18 - y0;
             draw = drawOrig;
 
@@ -1659,9 +1931,7 @@
                 ctx.fillText(recortar(ctx, s.nombre, cw - 40), P + 20, y0 + 33);
 
                 cy = y0 + HEAD_H + 16;
-                seccion('VEHÍCULOS', s.vehiculos, state.vehiculos, COL.vehBg, COL.vehBd, COL.vehTx);
-                cy += 14;
-                seccion('PERSONAL', s.personal, state.personal, COL.perBg, COL.perBd, COL.perTx);
+                contenido();
             }
 
             y = y0 + cardH + CARD_GAP;
@@ -1783,7 +2053,15 @@
         });
         const tablero = state.salidas
             .filter(s => s.enTablero)
-            .map(s => ({ salida_id: s.id, vehiculos: s.vehiculos, personal: s.personal }));
+            .map(s => ({
+                salida_id: s.id,
+                vehiculos: s.vehiculos,
+                personal:  s.personal,
+                // La clave es texto: se envía el id original (número o temporal "n…")
+                viaje: s.personal
+                    .filter(id => s.viaje[k(id)])
+                    .map(id => ({ personal: id, vehiculo: s.viaje[k(id)].veh, conductor: s.viaje[k(id)].cond })),
+            }));
         return { fecha: FECHA, catalogo, tablero };
     }
 

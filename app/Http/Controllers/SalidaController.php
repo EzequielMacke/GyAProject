@@ -78,6 +78,10 @@ class SalidaController extends Controller
             'tablero.*.salida_id'            => ['required'],
             'tablero.*.vehiculos'            => ['array'],
             'tablero.*.personal'             => ['array'],
+            'tablero.*.viaje'                => ['array'],
+            'tablero.*.viaje.*.personal'     => ['required'],
+            'tablero.*.viaje.*.vehiculo'     => ['required'],
+            'tablero.*.viaje.*.conductor'    => ['boolean'],
         ]);
 
         $fecha     = $datos['fecha'];
@@ -146,7 +150,26 @@ class SalidaController extends Controller
                 $usadosVeh = array_merge($usadosVeh, $veh);
                 $usadosPer = array_merge($usadosPer, $per);
 
-                $tablero[$salidaId] = ['vehiculos' => $veh, 'personal' => $per];
+                // Opcional: en qué vehículo va cada persona y quién lo conduce
+                $viaje = [];
+                $conductores = [];
+                foreach ($fila['viaje'] ?? [] as $v) {
+                    $perId = $resolver('personal', $v['personal']);
+                    $vehId = $resolver('vehiculo', $v['vehiculo']);
+                    if (!in_array($perId, $per, true) || !in_array($vehId, $veh, true)) {
+                        throw ValidationException::withMessages(['tablero' => 'Una persona está en un vehículo que no pertenece a su salida.']);
+                    }
+                    $conductor = (bool) ($v['conductor'] ?? false);
+                    if ($conductor) {
+                        if (isset($conductores[$vehId])) {
+                            throw ValidationException::withMessages(['tablero' => 'Un vehículo tiene más de un conductor.']);
+                        }
+                        $conductores[$vehId] = true;
+                    }
+                    $viaje[$perId] = ['salida_vehiculo_id' => $vehId, 'conductor' => $conductor];
+                }
+
+                $tablero[$salidaId] = ['vehiculos' => $veh, 'personal' => $per, 'viaje' => $viaje];
             }
 
             // Conservar quién creó cada programación que sigue en el tablero
@@ -168,7 +191,10 @@ class SalidaController extends Controller
                 $prog->vehiculos()->detach();
                 $prog->personales()->detach();
                 $prog->vehiculos()->attach(array_fill_keys($asig['vehiculos'], $pivot));
-                $prog->personales()->attach(array_fill_keys($asig['personal'], $pivot));
+                $sinVehiculo = ['salida_vehiculo_id' => null, 'conductor' => false];
+                $prog->personales()->attach(collect($asig['personal'])
+                    ->mapWithKeys(fn ($id) => [$id => $pivot + ($asig['viaje'][$id] ?? $sinVehiculo)])
+                    ->all());
                 $prog->touch();
             }
         });
@@ -198,6 +224,14 @@ class SalidaController extends Controller
                     'enTablero' => (bool) $prog,
                     'vehiculos' => $prog ? $prog->vehiculos->pluck('id')->values() : [],
                     'personal'  => $prog ? $prog->personales->pluck('id')->values() : [],
+                    // Solo las personas con vehículo especificado
+                    'viaje'     => $prog ? $prog->personales
+                        ->filter(fn ($p) => $p->pivot->salida_vehiculo_id)
+                        ->map(fn ($p) => [
+                            'personal'  => $p->id,
+                            'vehiculo'  => (int) $p->pivot->salida_vehiculo_id,
+                            'conductor' => (bool) $p->pivot->conductor,
+                        ])->values() : [],
                     // Usuario que agregó esta salida al tablero de la fecha
                     'agregadoPor' => $prog && $prog->usuario
                         ? ($prog->usuario->nombre_completo ?: $prog->usuario->nombre)

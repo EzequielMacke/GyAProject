@@ -39,7 +39,7 @@ class SalidaProgramacion extends Model
             'salida_programacion_personales',
             'salida_programacion_id',
             'salida_personal_id'
-        )->withPivot('fecha');
+        )->withPivot('fecha', 'salida_vehiculo_id', 'conductor');
     }
 
     public function usuario()
