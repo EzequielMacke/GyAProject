@@ -180,6 +180,13 @@ class SalidaController extends Controller
                 ->whereNotIn('salida_id', array_keys($tablero))
                 ->delete();
 
+            // Vaciar todas las asignaciones del día antes de volver a cargarlas: si un
+            // vehículo o una persona se movió de una salida a otra, cargarlo en la nueva
+            // mientras sigue en la anterior viola el índice único (fecha, vehículo/persona).
+            $progIds = $existentes->pluck('id');
+            DB::table('salida_programacion_vehiculos')->whereIn('salida_programacion_id', $progIds)->delete();
+            DB::table('salida_programacion_personales')->whereIn('salida_programacion_id', $progIds)->delete();
+
             foreach ($tablero as $salidaId => $asig) {
                 $prog = $existentes->get($salidaId) ?? SalidaProgramacion::create([
                     'fecha'      => $fecha,
@@ -188,8 +195,6 @@ class SalidaController extends Controller
                 ]);
 
                 $pivot = ['fecha' => $fecha];
-                $prog->vehiculos()->detach();
-                $prog->personales()->detach();
                 $prog->vehiculos()->attach(array_fill_keys($asig['vehiculos'], $pivot));
                 $sinVehiculo = ['salida_vehiculo_id' => null, 'conductor' => false];
                 $prog->personales()->attach(collect($asig['personal'])
